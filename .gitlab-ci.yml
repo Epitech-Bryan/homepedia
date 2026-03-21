@@ -49,7 +49,7 @@ variables:
 
 .rules-default: &rules-default
   rules:
-    - if: '$CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
       when: never
     - if: '$CI_PIPELINE_SOURCE == "push"'
       when: on_success
@@ -108,7 +108,7 @@ trigger-app:
     include: app/.gitlab-ci.yml
     strategy: depend
   rules:
-    - if: '$CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
       when: never
     - changes:
         - app/**/*
@@ -129,7 +129,7 @@ trigger-api:
     include: api/.gitlab-ci.yml
     strategy: depend
   rules:
-    - if: '$CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
       when: never
     - changes:
         - api/**/*
@@ -162,7 +162,7 @@ mirror-to-github:
     - git push --mirror "$GH_MIRROR_URL"
     - echo "Mirror successful."
   rules:
-    - if: '$CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
       when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
       when: on_success

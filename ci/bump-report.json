@@ -3,16 +3,8 @@
     "project": "app",
     "dir": "app",
     "type": "app",
-    "old_version": "0.1.1",
-    "new_version": "0.1.2",
-    "bump_type": "patch"
-  },
-  {
-    "project": "api",
-    "dir": "api",
-    "type": "api",
-    "old_version": "0.1.1",
-    "new_version": "0.1.2",
+    "old_version": "0.1.2",
+    "new_version": "0.1.3",
     "bump_type": "patch"
   }
 ]

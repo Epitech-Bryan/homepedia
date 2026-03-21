@@ -1,5 +1,11 @@
 # app
 
+## 0.1.3
+
+### Patch Changes
+
+- fix: remove package-lock.json reference from app Dockerfiles
+
 ## 0.1.2
 
 ### Patch Changes

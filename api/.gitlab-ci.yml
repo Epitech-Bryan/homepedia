@@ -1,0 +1,16 @@
+stages:
+  - docker
+
+docker-api:
+  stage: docker
+  image: quay.io/buildah/stable
+  variables:
+    PROJECT_VERSION: "0.0.0"
+    STORAGE_DRIVER: vfs
+  script:
+    - IMAGE="${CI_REGISTRY_IMAGE}/api"
+    - buildah bud -t "${IMAGE}:${PROJECT_VERSION}" -t "${IMAGE}:latest" -f api/Dockerfile api/
+    - buildah login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - buildah push "${IMAGE}:${PROJECT_VERSION}"
+    - buildah push "${IMAGE}:latest"
+    - echo "Pushed ${IMAGE}:${PROJECT_VERSION} and ${IMAGE}:latest"

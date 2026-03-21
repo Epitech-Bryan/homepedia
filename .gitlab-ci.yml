@@ -1,0 +1,170 @@
+# =============================================================================
+# HomePedia — Pipeline CI/CD GitLab
+# =============================================================================
+#
+# Architecture : parent → child pipelines (statiques par projet)
+#
+# Projets du monorepo :
+#   app/   — frontend React + Vite (Docker build + push)
+#   api/   — backend Spring Boot (Docker build + push)
+#
+# Stages :
+#   1. bump    → Semantic versioning via @changesets/cli
+#                (package.json + CHANGELOG.md + git tags)
+#   2. parse   → Lecture de bump-report.json → ci/pipeline.env (dotenv)
+#   3. trigger → child pipelines indépendants (app / api)
+#   4. mirror  → Mirror vers GitHub (main uniquement, après succès complet)
+#
+# Prérequis — Variables CI/CD (Settings > CI/CD > Variables) :
+#   GITLAB_CI_TOKEN  : Project Access Token avec scope write_repository + role Developer
+#   GH_MIRROR_URL    : https://oauth2:<GITHUB_PAT>@github.com/<user>/<repo>.git
+#   GIT_USER_EMAIL   : (optionnel) email pour le commit de bump — défaut: ci@homepedia.local
+#   GIT_USER_NAME    : (optionnel) nom pour le commit de bump   — défaut: CI Bot
+#
+# Convention de commits : Conventional Commits (https://www.conventionalcommits.org)
+#   feat:          → bump minor
+#   fix:/perf:/refactor: → bump patch
+#   feat!: / BREAKING CHANGE → bump major
+#   chore:/docs:   → pas de bump, pas de build
+#
+# =============================================================================
+
+stages:
+  - bump
+  - parse
+  - trigger
+  - mirror
+
+# -----------------------------------------------------------------------------
+# Variables globales
+# -----------------------------------------------------------------------------
+
+variables:
+  GIT_DEPTH: "0"
+  GIT_STRATEGY: clone
+
+# -----------------------------------------------------------------------------
+# Règles communes
+# -----------------------------------------------------------------------------
+
+.rules-default: &rules-default
+  rules:
+    - if: '$CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: on_success
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: on_success
+
+# =============================================================================
+# STAGE 1 — BUMP
+# =============================================================================
+
+bump-versions:
+  stage: bump
+  image: node:20-slim
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git
+    - git fetch --tags --force
+    - npm ci --prefer-offline
+  script:
+    - node ci/generate-changesets.js
+  artifacts:
+    paths:
+      - ci/bump-report.json
+    expire_in: 1 hour
+  <<: *rules-default
+
+# =============================================================================
+# STAGE 2 — PARSE
+# =============================================================================
+
+parse-versions:
+  stage: parse
+  image: python:3.11-slim
+  needs:
+    - job: bump-versions
+      artifacts: true
+  script:
+    - python3 ci/parse-versions.py
+  artifacts:
+    reports:
+      dotenv: ci/pipeline.env
+    expire_in: 1 hour
+  <<: *rules-default
+
+# =============================================================================
+# STAGE 3 — TRIGGER (child pipelines)
+# =============================================================================
+
+trigger-app:
+  stage: trigger
+  needs:
+    - job: parse-versions
+      artifacts: true
+  variables:
+    PROJECT_VERSION: $APP_VERSION
+  trigger:
+    include: app/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - if: '$CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+      when: never
+    - changes:
+        - app/**/*
+        - .gitlab-ci.yml
+        - ci/**/*
+      when: on_success
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: on_success
+
+trigger-api:
+  stage: trigger
+  needs:
+    - job: parse-versions
+      artifacts: true
+  variables:
+    PROJECT_VERSION: $API_VERSION
+  trigger:
+    include: api/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - if: '$CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+      when: never
+    - changes:
+        - api/**/*
+        - .gitlab-ci.yml
+        - ci/**/*
+      when: on_success
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: on_success
+
+# =============================================================================
+# STAGE 4 — MIRROR
+# =============================================================================
+
+mirror-to-github:
+  stage: mirror
+  image: alpine/git:2.43.0
+  needs:
+    - job: trigger-app
+      optional: true
+    - job: trigger-api
+      optional: true
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "0"
+  before_script:
+    - git fetch --tags --force
+    - git checkout -B "$CI_COMMIT_BRANCH" HEAD
+  script:
+    - echo "Mirroring to GitHub..."
+    - git push --mirror "$GH_MIRROR_URL"
+    - echo "Mirror successful."
+  rules:
+    - if: '$CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+      when: on_success
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "web"'
+      when: on_success

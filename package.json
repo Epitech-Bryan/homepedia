@@ -1,0 +1,19 @@
+{
+  "name": "homepedia",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "HomePedia monorepo — React + Spring Boot",
+  "workspaces": [
+    "app",
+    "api"
+  ],
+  "scripts": {
+    "changeset": "changeset",
+    "version": "changeset version",
+    "ci:bump": "node ci/generate-changesets.js"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1"
+  }
+}

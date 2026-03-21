@@ -1,0 +1,72 @@
+services:
+  traefik:
+    image: traefik:v3.3
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - "80:80"
+      - "8090:8080"   # Dashboard Traefik → http://localhost:8090
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=/api
+    depends_on:
+      - api
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.app.rule=Host(`homepedia.localhost`)
+      - traefik.http.routers.app.entrypoints=web
+      - traefik.http.routers.app.priority=1
+      - traefik.http.services.app.loadbalancer.server.port=5173
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./api:/app
+      - maven-repo:/root/.m2
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/homepedia
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-homepedia}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-homepedia}
+    depends_on:
+      - db
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`homepedia.localhost`) && PathPrefix(`/api`)
+      - traefik.http.routers.api.entrypoints=web
+      - traefik.http.routers.api.priority=2
+      - traefik.http.middlewares.api-strip.stripprefix.prefixes=/api
+      - traefik.http.routers.api.middlewares=api-strip
+      - traefik.http.services.api.loadbalancer.server.port=8080
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=homepedia
+      - POSTGRES_USER=${DB_USERNAME:-homepedia}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-homepedia}
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  maven-repo:

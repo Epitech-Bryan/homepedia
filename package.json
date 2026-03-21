@@ -15,5 +15,8 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.1"
+  },
+  "overrides": {
+    "@types/node": "^20.0.0"
   }
 }

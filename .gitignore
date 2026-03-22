@@ -34,3 +34,4 @@ Thumbs.db
 # === CI — fichiers générés ===
 ci/bump-report.json
 ci/pipeline.env
+package-lock.json

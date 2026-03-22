@@ -1,5 +1,11 @@
 # api
 
+## 0.1.3
+
+### Patch Changes
+
+- fix: trigger jobs main-branch only, optional needs, remove automergeType
+
 ## 0.1.2
 
 ### Patch Changes

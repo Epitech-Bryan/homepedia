@@ -63,10 +63,19 @@ variables:
 bump-versions:
   stage: bump
   image: node:20-slim
+  cache:
+    - key:
+        files:
+          - package-lock.json
+      fallback_keys:
+        - npm-default
+      paths:
+        - .npm/
+      policy: pull-push
   before_script:
     - apt-get update -qq && apt-get install -y -qq git
     - git fetch --tags --force
-    - npm ci --prefer-offline
+    - npm ci --prefer-offline --cache .npm/
   script:
     - node ci/generate-changesets.js
   artifacts:

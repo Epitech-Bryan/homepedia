@@ -102,6 +102,7 @@ trigger-app:
   needs:
     - job: parse-versions
       artifacts: true
+      optional: true
   variables:
     PROJECT_VERSION: $APP_VERSION
   trigger:
@@ -109,6 +110,8 @@ trigger-app:
     strategy: depend
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+      when: never
+    - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "web"'
       when: never
     - changes:
         - app/**/*
@@ -123,6 +126,7 @@ trigger-api:
   needs:
     - job: parse-versions
       artifacts: true
+      optional: true
   variables:
     PROJECT_VERSION: $API_VERSION
   trigger:
@@ -130,6 +134,8 @@ trigger-api:
     strategy: depend
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_MESSAGE =~ /\[skip ci\]/'
+      when: never
+    - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "web"'
       when: never
     - changes:
         - api/**/*

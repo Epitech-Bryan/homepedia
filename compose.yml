@@ -13,32 +13,29 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
 
-  app:
+  webapp:
     build:
-      context: ./app
+      context: ./webapp
       dockerfile: Dockerfile.dev
     volumes:
-      - ./app:/app
-      - /app/node_modules
+      - ./webapp:/webapp
+      - /webapp/node_modules
     environment:
       - VITE_API_URL=/api
     depends_on:
-      - api
+      - backend
     labels:
       - traefik.enable=true
-      - traefik.http.routers.app.rule=Host(`homepedia.localhost`)
-      - traefik.http.routers.app.entrypoints=web
-      - traefik.http.routers.app.priority=1
-      - traefik.http.services.app.loadbalancer.server.port=5173
+      - traefik.http.routers.webapp.rule=Host(`homepedia.localhost`)
+      - traefik.http.routers.webapp.entrypoints=web
+      - traefik.http.routers.webapp.priority=1
+      - traefik.http.services.webapp.loadbalancer.server.port=5173
     restart: unless-stopped
 
-  api:
+  backend:
     build:
-      context: ./api
-      dockerfile: Dockerfile.dev
-    volumes:
-      - ./api:/app
-      - maven-repo:/root/.m2
+      context: ./backend
+      dockerfile: rest-api/Dockerfile
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/homepedia
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-homepedia}
@@ -47,12 +44,24 @@ services:
       - db
     labels:
       - traefik.enable=true
-      - traefik.http.routers.api.rule=Host(`homepedia.localhost`) && PathPrefix(`/api`)
-      - traefik.http.routers.api.entrypoints=web
-      - traefik.http.routers.api.priority=2
-      - traefik.http.middlewares.api-strip.stripprefix.prefixes=/api
-      - traefik.http.routers.api.middlewares=api-strip
-      - traefik.http.services.api.loadbalancer.server.port=8080
+      - traefik.http.routers.backend.rule=Host(`homepedia.localhost`) && PathPrefix(`/api`)
+      - traefik.http.routers.backend.entrypoints=web
+      - traefik.http.routers.backend.priority=2
+      - traefik.http.middlewares.backend-strip.stripprefix.prefixes=/api
+      - traefik.http.routers.backend.middlewares=backend-strip
+      - traefik.http.services.backend.loadbalancer.server.port=8080
+    restart: unless-stopped
+
+  data-pipeline:
+    build:
+      context: ./backend
+      dockerfile: data-pipeline/Dockerfile
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/homepedia
+      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-homepedia}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-homepedia}
+    depends_on:
+      - db
     restart: unless-stopped
 
   db:
@@ -69,4 +78,3 @@ services:
 
 volumes:
   postgres-data:
-  maven-repo:

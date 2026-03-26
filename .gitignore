@@ -1,4 +1,4 @@
-# === Java / Maven ===
+# java
 target/
 *.class
 *.jar
@@ -6,28 +6,23 @@ target/
 *.ear
 .mvn/wrapper/maven-wrapper.jar
 
-# === Node.js / React ===
+# node
 node_modules/
 dist/
 .vite/
 *.tsbuildinfo
 
-# === Python ===
-__pycache__/
-*.py[cod]
-.venv/
-
-# === Environment ===
+# env
 .env
 
-# === Editor / IDE ===
+# ide
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# === OS ===
+# system
 .DS_Store
 Thumbs.db
 

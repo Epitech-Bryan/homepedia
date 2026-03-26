@@ -7,7 +7,8 @@
   "semanticCommitType": "fix",
   "semanticCommitScope": null,
   "enabledManagers": [
-    "npm"
+    "npm",
+    "maven"
   ],
   "ignorePaths": [
     "**/node_modules/**"

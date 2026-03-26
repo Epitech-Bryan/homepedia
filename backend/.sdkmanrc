@@ -1,0 +1,4 @@
+# Homepedia backend toolchain
+java=21-tem
+maven=3.9.11
+

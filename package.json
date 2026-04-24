@@ -7,13 +7,6 @@
   "workspaces": [
     "webapp"
   ],
-  "devDependencies": {
-    "semantic-release": "^24",
-    "@semantic-release/changelog": "^6",
-    "@semantic-release/exec": "^6",
-    "@semantic-release/git": "^10",
-    "@semantic-release/gitlab": "^13"
-  },
   "overrides": {
     "@types/node": "^24.0.0"
   },

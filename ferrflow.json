@@ -1,0 +1,30 @@
+{
+  "$schema": "https://ferrflow.com/schema/ferrflow.json",
+  "workspace": {
+    "versioning": "semver",
+    "tagTemplate": "{name}-v{version}",
+    "recoverMissedReleases": true,
+    "commitPerPackage": false
+  },
+  "package": [
+    {
+      "name": "webapp",
+      "path": "webapp",
+      "changelog": "webapp/CHANGELOG.md",
+      "versionedFiles": [
+        { "path": "webapp/package.json", "format": "json" }
+      ]
+    },
+    {
+      "name": "rest-api",
+      "path": "backend/rest-api",
+      "changelog": "backend/rest-api/CHANGELOG.md",
+      "sharedPaths": ["backend/common", "backend/pom.xml"],
+      "versionedFiles": [
+        { "path": "backend/pom.xml", "format": "xml" },
+        { "path": "backend/common/pom.xml", "format": "xml" },
+        { "path": "backend/rest-api/pom.xml", "format": "xml" }
+      ]
+    }
+  ]
+}

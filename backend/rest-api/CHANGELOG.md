@@ -1,3 +1,11 @@
+## [1.1.1](https://gitlab.com/t-dat-902/homepedia/compare/rest-api-v1.1.0...rest-api-v1.1.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* update dependency org.apache.commons:commons-collections4 to v4.5.0 ([22ffa2c](https://gitlab.com/t-dat-902/homepedia/commit/22ffa2c099f23e348822346ada8976f88d7982cd))
+* update dependency org.projectlombok:lombok to v1.18.46 ([8ae7af9](https://gitlab.com/t-dat-902/homepedia/commit/8ae7af9fc31fb76c548f541faae882c80069193a))
+
 # [1.1.0](https://gitlab.com/t-dat-902/homepedia/compare/rest-api-v1.0.2...rest-api-v1.1.0) (2026-04-24)
 
 

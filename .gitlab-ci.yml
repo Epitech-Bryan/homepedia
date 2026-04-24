@@ -32,7 +32,7 @@ lint:webapp:
     - npm install -g pnpm
     - cd webapp && pnpm install --frozen-lockfile
   script:
-    - cd webapp && pnpm lint && pnpm format:check
+    - pnpm lint && pnpm format:check
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -76,19 +76,6 @@ release:rest-api:
         - backend/rest-api/**/*
         - backend/common/**/*
 
-release:data-pipeline:
-  extends: .release_base
-  before_script:
-    - !reference [.release_base, before_script]
-    - apk add --no-cache openjdk21-jdk maven
-  script:
-    - npx semantic-release --extends ./backend/data-pipeline/.releaserc.yml
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
-      changes:
-        - backend/data-pipeline/**/*
-        - backend/common/**/*
-
 .build_base:
   stage: build
   image: docker:27
@@ -117,16 +104,6 @@ build:rest-api:
     - docker push "$CI_REGISTRY_IMAGE/rest-api:$VERSION"
     - docker push "$CI_REGISTRY_IMAGE/rest-api:latest"
 
-build:data-pipeline:
-  extends: .build_base
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^data-pipeline-v.*/
-  script:
-    - VERSION=${CI_COMMIT_TAG#data-pipeline-v}
-    - docker build -t "$CI_REGISTRY_IMAGE/data-pipeline:$VERSION" -t "$CI_REGISTRY_IMAGE/data-pipeline:latest" -f backend/data-pipeline/Dockerfile ./backend
-    - docker push "$CI_REGISTRY_IMAGE/data-pipeline:$VERSION"
-    - docker push "$CI_REGISTRY_IMAGE/data-pipeline:latest"
-
 mirror:
   stage: mirror
   image: alpine/git:2.43.0
@@ -134,8 +111,6 @@ mirror:
     - job: release:webapp
       optional: true
     - job: release:rest-api
-      optional: true
-    - job: release:data-pipeline
       optional: true
   variables:
     GIT_DEPTH: 0

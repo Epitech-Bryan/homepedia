@@ -90,7 +90,7 @@ build:webapp:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
   script:
     - VERSION=${CI_COMMIT_SHORT_SHA}
-    - buildah bud -t "$CI_REGISTRY_IMAGE/webapp:$VERSION" -t "$CI_REGISTRY_IMAGE/webapp:latest" ./webapp
+    - buildah bud -t "$CI_REGISTRY_IMAGE/webapp:$VERSION" -t "$CI_REGISTRY_IMAGE/webapp:latest" -f webapp/Dockerfile .
     - buildah push "$CI_REGISTRY_IMAGE/webapp:$VERSION"
     - buildah push "$CI_REGISTRY_IMAGE/webapp:latest"
 

@@ -82,26 +82,41 @@ release:rest-api:
   variables:
     STORAGE_DRIVER: vfs
   before_script:
+    - dnf install -y git
+    - git fetch --tags --force
     - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
 
 build:webapp:
   extends: .build_base
-  needs: []
+  needs:
+    - job: release:webapp
+      optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - webapp/**/*
   script:
-    - VERSION=${CI_COMMIT_SHORT_SHA}
+    - VERSION=$(git tag -l 'webapp-v*' --sort=-v:refname | head -1 | sed 's/^webapp-v//')
+    - if [ -z "$VERSION" ]; then echo "No webapp-v* tag yet — skipping image build"; exit 0; fi
+    - echo "Building webapp $VERSION"
     - buildah bud -t "$CI_REGISTRY_IMAGE/webapp:$VERSION" -t "$CI_REGISTRY_IMAGE/webapp:latest" -f webapp/Dockerfile .
     - buildah push "$CI_REGISTRY_IMAGE/webapp:$VERSION"
     - buildah push "$CI_REGISTRY_IMAGE/webapp:latest"
 
 build:rest-api:
   extends: .build_base
-  needs: []
+  needs:
+    - job: release:rest-api
+      optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - backend/rest-api/**/*
+        - backend/common/**/*
   script:
-    - VERSION=${CI_COMMIT_SHORT_SHA}
+    - VERSION=$(git tag -l 'rest-api-v*' --sort=-v:refname | head -1 | sed 's/^rest-api-v//')
+    - if [ -z "$VERSION" ]; then echo "No rest-api-v* tag yet — skipping image build"; exit 0; fi
+    - echo "Building rest-api $VERSION"
     - buildah bud -t "$CI_REGISTRY_IMAGE/rest-api:$VERSION" -t "$CI_REGISTRY_IMAGE/rest-api:latest" -f backend/rest-api/Dockerfile ./backend
     - buildah push "$CI_REGISTRY_IMAGE/rest-api:$VERSION"
     - buildah push "$CI_REGISTRY_IMAGE/rest-api:latest"

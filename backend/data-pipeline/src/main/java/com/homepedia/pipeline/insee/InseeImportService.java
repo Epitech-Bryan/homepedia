@@ -54,7 +54,7 @@ public class InseeImportService {
 				existing.setName(dto.nom());
 				regions.add(existing);
 			} else {
-				regions.add(new Region(dto.code(), dto.nom()));
+				regions.add(Region.builder().code(dto.code()).name(dto.nom()).build());
 			}
 		}
 
@@ -88,7 +88,7 @@ public class InseeImportService {
 				existing.setName(dto.nom());
 				departments.add(existing);
 			} else {
-				departments.add(new Department(dto.code(), dto.nom(), region));
+				departments.add(Department.builder().code(dto.code()).name(dto.nom()).region(region).build());
 			}
 		}
 
@@ -131,9 +131,8 @@ public class InseeImportService {
 				setCoordinates(existing, dto);
 				city = existing;
 			} else {
-				city = new City(dto.code(), dto.nom(), postalCode, department);
-				city.setPopulation(dto.population());
-				city.setArea(dto.surface());
+				city = City.builder().inseeCode(dto.code()).name(dto.nom()).postalCode(postalCode)
+						.department(department).population(dto.population()).area(dto.surface()).build();
 				setCoordinates(city, dto);
 			}
 

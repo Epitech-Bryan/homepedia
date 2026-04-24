@@ -1,7 +1,6 @@
 package com.homepedia.api.service;
 
 import com.homepedia.api.mapper.ReviewMapper;
-import com.homepedia.common.review.CityReview;
 import com.homepedia.common.review.ReviewRepository;
 import com.homepedia.common.review.ReviewSummary;
 import com.homepedia.common.review.SentimentStats;

@@ -10,13 +10,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class SentimentAnalysisService {
 
-	private static final Set<String> POSITIVE_WORDS = Set.of("agreable", "calme", "propre", "securitaire",
-			"dynamique", "belle", "bien", "excellent", "parfait", "magnifique", "tranquille", "verdoyant",
-			"accueillant", "pratique", "moderne", "formidable", "qualite", "bon", "bonne", "super");
+	private static final Set<String> POSITIVE_WORDS = Set.of("agreable", "calme", "propre", "securitaire", "dynamique",
+			"belle", "bien", "excellent", "parfait", "magnifique", "tranquille", "verdoyant", "accueillant", "pratique",
+			"moderne", "formidable", "qualite", "bon", "bonne", "super");
 
 	private static final Set<String> NEGATIVE_WORDS = Set.of("bruyant", "sale", "dangereux", "cher", "pollue",
-			"degrade", "insecurite", "probleme", "difficile", "mauvais", "nul", "horrible", "pire", "manque",
-			"abandon", "bruit", "nuisance", "cruel");
+			"degrade", "insecurite", "probleme", "difficile", "mauvais", "nul", "horrible", "pire", "manque", "abandon",
+			"bruit", "nuisance", "cruel");
 
 	private static final Pattern DIACRITICS_PATTERN = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
 

@@ -75,7 +75,8 @@ public class GeoJsonImportService {
 					boundary.setGeometry(geometry);
 					geoJsonBoundaryRepository.save(boundary);
 				} else {
-					geoJsonBoundaryRepository.save(new GeoJsonBoundary(level, code, nom, geometry));
+					geoJsonBoundaryRepository.save(GeoJsonBoundary.builder().geographicLevel(level).geographicCode(code)
+							.name(nom).geometry(geometry).build());
 				}
 				count++;
 			}

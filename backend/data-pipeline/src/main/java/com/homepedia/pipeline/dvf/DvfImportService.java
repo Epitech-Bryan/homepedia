@@ -97,20 +97,15 @@ public class DvfImportService {
 					clean(fields[9]), clean(fields[10]), clean(fields[11]), clean(fields[12]), clean(fields[13]),
 					clean(fields[14]), clean(fields[15]), clean(fields[16]));
 
-			final var transaction = new RealEstateTransaction();
-			transaction.setMutationDate(LocalDate.parse(raw.dateMutation(), DVF_DATE_FORMAT));
-			transaction.setMutationNature(raw.natureMutation());
-			transaction.setPropertyValue(raw.parsedValeurFonciere());
-			transaction.setStreetNumber(raw.noVoie());
-			transaction.setPostalCode(raw.codePostal());
-			transaction.setSection(raw.section());
-			transaction.setPlanNumber(raw.noPlan());
-			transaction.setStreetType(raw.typeVoie());
-			transaction.setPropertyType(mapPropertyType(raw.typeLocal()));
-			transaction.setBuiltSurface(ParseUtils.parseDouble(raw.surfaceReelleBati()));
-			transaction.setRoomCount(ParseUtils.parseInteger(raw.nombrePiecesPrincipales()));
-			transaction.setLandSurface(ParseUtils.parseDouble(raw.surfaceTerrain()));
-			transaction.setLotCount(ParseUtils.parseInteger(raw.nombreDeLots()));
+			final var transaction = RealEstateTransaction.builder()
+					.mutationDate(LocalDate.parse(raw.dateMutation(), DVF_DATE_FORMAT))
+					.mutationNature(raw.natureMutation()).propertyValue(raw.parsedValeurFonciere())
+					.streetNumber(raw.noVoie()).postalCode(raw.codePostal()).section(raw.section())
+					.planNumber(raw.noPlan()).streetType(raw.typeVoie()).propertyType(mapPropertyType(raw.typeLocal()))
+					.builtSurface(ParseUtils.parseDouble(raw.surfaceReelleBati()))
+					.roomCount(ParseUtils.parseInteger(raw.nombrePiecesPrincipales()))
+					.landSurface(ParseUtils.parseDouble(raw.surfaceTerrain()))
+					.lotCount(ParseUtils.parseInteger(raw.nombreDeLots())).build();
 
 			final var inseeCode = raw.fullInseeCode();
 			if (StringUtils.isNotBlank(inseeCode)) {

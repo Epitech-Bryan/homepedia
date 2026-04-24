@@ -76,8 +76,8 @@ public class ReviewDataGenerator {
 			final var daysAgo = random.nextInt(365 * 4);
 			final var publishedAt = LocalDate.of(2024, 6, 1).minusDays(daysAgo);
 
-			reviews.add(new GeneratedReview(cityInseeCode, content, Math.round(rating * 10.0) / 10.0, author,
-					publishedAt));
+			reviews.add(
+					new GeneratedReview(cityInseeCode, content, Math.round(rating * 10.0) / 10.0, author, publishedAt));
 		}
 
 		return reviews;

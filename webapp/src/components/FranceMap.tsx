@@ -1,9 +1,18 @@
-import { useCallback } from 'react';
-import Map, { Source, Layer, type MapMouseEvent } from 'react-map-gl/mapbox';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { useCallback, useRef } from 'react';
+import { MapContainer, TileLayer, GeoJSON as LeafletGeoJSON } from 'react-leaflet';
+import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import 'leaflet/dist/leaflet.css';
 
-const MAPBOX_TOKEN = (import.meta as unknown as { env: Record<string, string | undefined> }).env.VITE_MAPBOX_TOKEN;
-const FRANCE_CENTER = { longitude: 2.5, latitude: 46.6, zoom: 5 };
+const FRANCE_CENTER: [number, number] = [46.6, 2.5];
+const FRANCE_ZOOM = 6;
+
+interface FeatureProperties {
+  code?: string;
+  name?: string;
+  nom?: string;
+}
 
 interface FranceMapProps {
   geojson: GeoJSON.FeatureCollection | null;
@@ -12,62 +21,86 @@ interface FranceMapProps {
   height?: string;
 }
 
-export function FranceMap({ geojson, onFeatureClick, fillColor = '#6366f1', height = '500px' }: FranceMapProps) {
-  if (!MAPBOX_TOKEN) {
-    return (
-      <div className="flex items-center justify-center rounded-xl bg-gray-100 border-2 border-dashed border-gray-300" style={{ height }}>
-        <p className="text-gray-500 text-sm">Set VITE_MAPBOX_TOKEN to enable the map</p>
-      </div>
-    );
-  }
+export function FranceMap({
+  geojson,
+  onFeatureClick,
+  fillColor = 'hsl(221.2 83.2% 53.3%)',
+  height = '500px',
+}: FranceMapProps) {
+  const geoJsonRef = useRef<L.GeoJSON | null>(null);
 
-  const handleClick = useCallback(
-    (e: MapMouseEvent) => {
-      const feature = e.features?.[0];
-      if (feature && onFeatureClick) {
-        const code = (feature.properties?.code as string) ?? '';
-        const name = (feature.properties?.name as string) ?? '';
-        onFeatureClick(code, name);
+  const defaultStyle: PathOptions = {
+    fillColor,
+    fillOpacity: 0.35,
+    color: fillColor,
+    weight: 1.5,
+    opacity: 0.8,
+  };
+
+  const highlightStyle: PathOptions = {
+    fillOpacity: 0.6,
+    weight: 3,
+    opacity: 1,
+  };
+
+  const onEachFeature = useCallback(
+    (feature: GeoJSON.Feature<GeoJSON.Geometry, FeatureProperties>, layer: Layer) => {
+      const props = feature.properties;
+      const name = props?.name ?? props?.nom ?? '';
+      const code = props?.code ?? '';
+
+      if (name) {
+        layer.bindTooltip(name, { sticky: true });
       }
+
+      layer.on({
+        mouseover: (e: LeafletMouseEvent) => {
+          const target = e.target as L.Path;
+          target.setStyle(highlightStyle);
+          target.bringToFront();
+        },
+        mouseout: (e: LeafletMouseEvent) => {
+          const target = e.target as L.Path;
+          target.setStyle(defaultStyle);
+        },
+        click: () => {
+          if (onFeatureClick && code) {
+            onFeatureClick(code, name);
+          }
+        },
+      });
     },
-    [onFeatureClick],
+    [onFeatureClick, fillColor],
   );
 
+  if (!geojson) {
+    return <Skeleton className="w-full rounded-lg" style={{ height }} />;
+  }
+
   return (
-    <div className="rounded-xl overflow-hidden shadow-sm border border-gray-100" style={{ height }}>
-      <Map
-        initialViewState={FRANCE_CENTER}
-        style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/light-v11"
-        mapboxAccessToken={MAPBOX_TOKEN}
-        interactiveLayerIds={geojson ? ['fill-layer'] : []}
-        onClick={handleClick}
-      >
-        {geojson && (
-          <Source type="geojson" data={geojson}>
-            <Layer
-              id="fill-layer"
-              type="fill"
-              paint={{ 'fill-color': fillColor, 'fill-opacity': 0.4 }}
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div style={{ height }}>
+          <MapContainer
+            center={FRANCE_CENTER}
+            zoom={FRANCE_ZOOM}
+            scrollWheelZoom={true}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            <Layer
-              id="line-layer"
-              type="line"
-              paint={{ 'line-color': fillColor, 'line-width': 1.5 }}
+            <LeafletGeoJSON
+              key={JSON.stringify(geojson).slice(0, 100)}
+              ref={geoJsonRef}
+              data={geojson}
+              style={defaultStyle}
+              onEachFeature={onEachFeature}
             />
-            <Layer
-              id="label-layer"
-              type="symbol"
-              layout={{
-                'text-field': ['get', 'name'],
-                'text-size': 11,
-                'text-anchor': 'center',
-              }}
-              paint={{ 'text-color': '#1e1b4b', 'text-halo-color': '#fff', 'text-halo-width': 1 }}
-            />
-          </Source>
-        )}
-      </Map>
-    </div>
+          </MapContainer>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

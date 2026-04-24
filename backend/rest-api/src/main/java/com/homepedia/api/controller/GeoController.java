@@ -1,6 +1,5 @@
 package com.homepedia.api.controller;
 
-import static com.homepedia.api.constant.HomepediaConstant.RestPath;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.GEO;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Geo.GEO_DEPARTMENTS;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Geo.GEO_REGIONS;

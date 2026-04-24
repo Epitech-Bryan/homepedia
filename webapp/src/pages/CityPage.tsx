@@ -1,9 +1,10 @@
 import { useParams, Link } from 'react-router-dom';
-import { useCity, useTransactionStats } from '../api/hooks';
-import { StatCard } from '../components/StatCard';
-import { PriceChart } from '../components/PriceChart';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { ErrorMessage } from '../components/ErrorMessage';
+import { useCity, useTransactionStats } from '@/api/hooks';
+import { StatCard } from '@/components/StatCard';
+import { PriceChart } from '@/components/PriceChart';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { ErrorMessage } from '@/components/ErrorMessage';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 
 export function CityPage() {
   const { code } = useParams<{ code: string }>();
@@ -25,19 +26,19 @@ export function CityPage() {
 
   return (
     <div className="space-y-8">
-      <nav className="flex items-center gap-2 text-sm text-gray-500">
-        <Link to="/" className="hover:text-indigo-600">France</Link>
-        <span>/</span>
-        <Link to={`/departments/${city.departmentCode}`} className="hover:text-indigo-600">
-          Dept. {city.departmentCode}
-        </Link>
-        <span>/</span>
-        <span className="text-gray-900 font-medium">{city.name}</span>
-      </nav>
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem><BreadcrumbLink render={<Link to="/" />}>France</BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem><BreadcrumbLink render={<Link to={`/departments/${city.departmentCode}`} />}>Dept. {city.departmentCode}</BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem><BreadcrumbPage>{city.name}</BreadcrumbPage></BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">{city.name}</h1>
-        <p className="mt-1 text-gray-500">
+        <h1 className="text-3xl font-bold tracking-tight">{city.name}</h1>
+        <p className="text-muted-foreground mt-1">
           {city.postalCode} · INSEE {city.inseeCode}
         </p>
       </div>

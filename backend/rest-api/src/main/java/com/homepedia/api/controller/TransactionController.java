@@ -1,6 +1,5 @@
 package com.homepedia.api.controller;
 
-import static com.homepedia.api.constant.HomepediaConstant.RestPath;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.TRANSACTIONS;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.STATS;
 

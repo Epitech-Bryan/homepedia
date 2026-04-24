@@ -22,14 +22,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 @RequiredArgsConstructor
 public class DvfImportJobConfig {
 
+	private static final String DEFAULT_DOWNLOAD_URL = "https://files.data.gouv.fr/geo-dvf/latest/csv/2024/full.csv.gz";
+
 	private final DvfImportService dvfImportService;
 	private final DatasetDownloadService downloadService;
 
 	@Value("${homepedia.dvf.zip-path:}")
 	private String dvfZipPath;
-
-	@Value("${homepedia.dvf.download-url:}")
-	private String downloadUrl;
 
 	@Bean
 	public Job dvfImportJob(JobRepository jobRepository, Step dvfImportStep) {
@@ -45,24 +44,20 @@ public class DvfImportJobConfig {
 				return RepeatStatus.FINISHED;
 			}
 
-			if (StringUtils.isNotBlank(downloadUrl)) {
-				return importFromDownload();
-			}
-
-			log.info("No DVF zip path or download URL configured. Skipping.");
-			return RepeatStatus.FINISHED;
+			return importFromDownload();
 		};
 		return new StepBuilder("dvfImportStep", jobRepository).tasklet(tasklet, transactionManager).build();
 	}
 
 	private RepeatStatus importFromDownload() throws Exception {
-		final var isGzip = downloadUrl.endsWith(".gz");
-		final var suffix = isGzip ? ".csv.gz" : downloadUrl.endsWith(".zip") ? ".zip" : ".csv";
+		final var url = DEFAULT_DOWNLOAD_URL;
+		final var isGzip = url.endsWith(".gz");
+		final var suffix = isGzip ? ".csv.gz" : url.endsWith(".zip") ? ".zip" : ".csv";
 		Path tempFile = null;
 		try {
-			tempFile = downloadService.downloadToTempFile(downloadUrl, "dvf-", suffix);
+			tempFile = downloadService.downloadToTempFile(url, "dvf-", suffix);
 			int count;
-			if (downloadUrl.endsWith(".zip")) {
+			if (url.endsWith(".zip")) {
 				count = dvfImportService.importFromZip(tempFile);
 			} else if (isGzip) {
 				count = dvfImportService.importFromGzip(tempFile);

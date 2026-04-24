@@ -1,6 +1,5 @@
 package com.homepedia.api.batch.dpe;
 
-import com.homepedia.api.batch.config.DatasetDownloadService;
 import java.nio.file.Path;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,20 +15,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.web.client.RestClient;
 
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class DpeImportJobConfig {
 
+	private static final String DEFAULT_DOWNLOAD_URL = "https://data.ademe.fr/data-fair/api/v1/datasets/meg-83tjwtg8dyz4vv7h1dqe/lines?format=csv&size=10000&select=code_insee_ban,etiquette_dpe,etiquette_ges,annee_construction";
+
 	private final DpeImportService dpeImportService;
-	private final DatasetDownloadService downloadService;
+	private final RestClient restClient;
 
 	@Value("${homepedia.dpe.csv-path:}")
 	private String csvPath;
-
-	@Value("${homepedia.dpe.download-url:}")
-	private String downloadUrl;
 
 	@Bean
 	public Job dpeImportJob(JobRepository jobRepository, Step dpeImportStep) {
@@ -45,19 +44,8 @@ public class DpeImportJobConfig {
 				return RepeatStatus.FINISHED;
 			}
 
-			if (StringUtils.isNotBlank(downloadUrl)) {
-				Path tempFile = null;
-				try {
-					tempFile = downloadService.downloadToTempFile(downloadUrl, "dpe-", ".csv");
-					final var count = dpeImportService.importFromCsv(tempFile);
-					log.info("DPE import from download finished: {} indicators loaded", count);
-				} finally {
-					downloadService.cleanup(tempFile);
-				}
-				return RepeatStatus.FINISHED;
-			}
-
-			log.info("No DPE CSV path or download URL configured. Skipping.");
+			final var count = dpeImportService.importFromApi(DEFAULT_DOWNLOAD_URL, restClient);
+			log.info("DPE import from API finished: {} indicators loaded", count);
 			return RepeatStatus.FINISHED;
 		};
 		return new StepBuilder("dpeImportStep", jobRepository).tasklet(tasklet, transactionManager).build();

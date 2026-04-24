@@ -28,7 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DvfImportService {
 
-	private static final DateTimeFormatter DVF_DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+	private static final DateTimeFormatter DVF_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 	private static final int BATCH_SIZE = 1000;
 
 	private final TransactionRepository transactionRepository;
@@ -119,14 +119,22 @@ public class DvfImportService {
 	private Optional<RealEstateTransaction> parseLine(String line) {
 		try {
 			final var fields = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
-			if (fields.length < 17) {
+			if (fields.length < 38) {
 				return Optional.empty();
 			}
 
-			final var raw = new DvfRawRecord(clean(fields[0]), clean(fields[1]), clean(fields[2]), clean(fields[3]),
-					clean(fields[4]), clean(fields[5]), clean(fields[6]), clean(fields[7]), clean(fields[8]),
-					clean(fields[9]), clean(fields[10]), clean(fields[11]), clean(fields[12]), clean(fields[13]),
-					clean(fields[14]), clean(fields[15]), clean(fields[16]));
+			final var idParcelle = clean(fields[15]);
+			String section = null;
+			String noPlan = null;
+			if (idParcelle != null && idParcelle.length() >= 6) {
+				section = idParcelle.substring(idParcelle.length() - 8, idParcelle.length() - 4).trim();
+				noPlan = idParcelle.substring(idParcelle.length() - 4);
+			}
+
+			final var raw = new DvfRawRecord(clean(fields[1]), clean(fields[3]), clean(fields[4]), clean(fields[5]),
+					clean(fields[8]), clean(fields[9]), clean(fields[11]), clean(fields[12]), clean(fields[10]),
+					section, noPlan, clean(fields[28]), clean(fields[30]), clean(fields[31]), clean(fields[32]),
+					clean(fields[37]), null);
 
 			final var transaction = RealEstateTransaction.builder()
 					.mutationDate(LocalDate.parse(raw.dateMutation(), DVF_DATE_FORMAT))

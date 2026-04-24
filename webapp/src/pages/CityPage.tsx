@@ -1,39 +1,55 @@
-import { useParams, Link } from 'react-router-dom';
-import { useCity, useTransactionStats } from '@/api/hooks';
-import { StatCard } from '@/components/StatCard';
-import { PriceChart } from '@/components/PriceChart';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { ErrorMessage } from '@/components/ErrorMessage';
-import { Button } from '@/components/ui/button';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { useParams, Link } from "react-router-dom";
+import { useCity, useTransactionStats } from "@/api/hooks";
+import { StatCard } from "@/components/StatCard";
+import { PriceChart } from "@/components/PriceChart";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 export function CityPage() {
-  const { code } = useParams<{ code: string }>();
-  const { data: city, isLoading, error } = useCity(code!);
+  const { code = "" } = useParams<{ code: string }>();
+  const { data: city, isLoading, error } = useCity(code);
   const { data: stats } = useTransactionStats(code ? { cityInseeCode: code } : undefined);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
   if (!city) return <ErrorMessage message="City not found" />;
 
-  const chartData = stats && stats.totalTransactions > 0
-    ? [
-        { label: 'Average', value: stats.averagePrice },
-        { label: 'Median', value: stats.medianPrice },
-        { label: 'Min', value: stats.minPrice },
-        { label: 'Max', value: stats.maxPrice },
-      ]
-    : [];
+  const chartData =
+    stats && stats.totalTransactions > 0
+      ? [
+          { label: "Average", value: stats.averagePrice },
+          { label: "Median", value: stats.medianPrice },
+          { label: "Min", value: stats.minPrice },
+          { label: "Max", value: stats.maxPrice },
+        ]
+      : [];
 
   return (
     <div className="space-y-8">
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem><BreadcrumbLink render={<Link to="/" />}>France</BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbLink render={<Link to="/" />}>France</BreadcrumbLink>
+          </BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbLink render={<Link to={`/departments/${city.departmentCode}`} />}>Dept. {city.departmentCode}</BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbLink render={<Link to={`/departments/${city.departmentCode}`} />}>
+              Dept. {city.departmentCode}
+            </BreadcrumbLink>
+          </BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbPage>{city.name}</BreadcrumbPage></BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbPage>{city.name}</BreadcrumbPage>
+          </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
@@ -48,7 +64,10 @@ export function CityPage() {
         <StatCard label="Population" value={city.population ?? 0} />
         <StatCard label="Area" value={city.area ?? 0} unit="km²" />
         {city.latitude && city.longitude && (
-          <StatCard label="Coordinates" value={`${city.latitude.toFixed(4)}, ${city.longitude.toFixed(4)}`} />
+          <StatCard
+            label="Coordinates"
+            value={`${city.latitude.toFixed(4)}, ${city.longitude.toFixed(4)}`}
+          />
         )}
         {stats && stats.totalTransactions > 0 && (
           <StatCard label="Transactions" value={stats.totalTransactions} />

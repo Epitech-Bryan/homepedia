@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useCity, useReviews, useWordCloud, useSentimentStats } from '@/api/hooks';
-import { StatCard } from '@/components/StatCard';
-import { WordCloud } from '@/components/WordCloud';
-import { SentimentChart } from '@/components/SentimentChart';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { ErrorMessage } from '@/components/ErrorMessage';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { useCity, useReviews, useWordCloud, useSentimentStats } from "@/api/hooks";
+import { StatCard } from "@/components/StatCard";
+import { WordCloud } from "@/components/WordCloud";
+import { SentimentChart } from "@/components/SentimentChart";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,27 +16,27 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+} from "@/components/ui/breadcrumb";
 
 function sentimentBadgeVariant(label: string) {
   switch (label.toLowerCase()) {
-    case 'positive':
-      return 'default' as const;
-    case 'negative':
-      return 'destructive' as const;
+    case "positive":
+      return "default" as const;
+    case "negative":
+      return "destructive" as const;
     default:
-      return 'secondary' as const;
+      return "secondary" as const;
   }
 }
 
 function sentimentBadgeClass(label: string) {
   switch (label.toLowerCase()) {
-    case 'positive':
-      return 'bg-green-500/15 text-green-700 dark:text-green-400';
-    case 'negative':
-      return 'bg-red-500/15 text-red-700 dark:text-red-400';
+    case "positive":
+      return "bg-green-500/15 text-green-700 dark:text-green-400";
+    case "negative":
+      return "bg-red-500/15 text-red-700 dark:text-red-400";
     default:
-      return 'bg-gray-500/15 text-gray-700 dark:text-gray-400';
+      return "bg-gray-500/15 text-gray-700 dark:text-gray-400";
   }
 }
 
@@ -44,7 +44,7 @@ function StarRating({ rating }: { rating: number }) {
   return (
     <span className="inline-flex gap-0.5" aria-label={`${rating} out of 5 stars`}>
       {Array.from({ length: 5 }, (_, i) => (
-        <span key={i} className={i < rating ? 'text-yellow-500' : 'text-muted-foreground/30'}>
+        <span key={i} className={i < rating ? "text-yellow-500" : "text-muted-foreground/30"}>
           ★
         </span>
       ))}
@@ -53,13 +53,13 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export function ReviewsPage() {
-  const { code } = useParams<{ code: string }>();
+  const { code = "" } = useParams<{ code: string }>();
   const [page, setPage] = useState(0);
 
-  const { data: city, isLoading: cityLoading, error: cityError } = useCity(code!);
-  const { data: sentiment } = useSentimentStats(code!);
-  const { data: wordCloudData } = useWordCloud(code!);
-  const { data: reviews } = useReviews(code!, { page: String(page), size: '10' });
+  const { data: city, isLoading: cityLoading, error: cityError } = useCity(code);
+  const { data: sentiment } = useSentimentStats(code);
+  const { data: wordCloudData } = useWordCloud(code);
+  const { data: reviews } = useReviews(code, { page: String(page), size: "10" });
 
   if (cityLoading) return <LoadingSpinner />;
   if (cityError) return <ErrorMessage message={cityError.message} />;
@@ -133,11 +133,14 @@ export function ReviewsPage() {
                       <StarRating rating={review.rating} />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className={sentimentBadgeClass(review.sentimentLabel)} variant={sentimentBadgeVariant(review.sentimentLabel)}>
+                      <Badge
+                        className={sentimentBadgeClass(review.sentimentLabel)}
+                        variant={sentimentBadgeVariant(review.sentimentLabel)}
+                      >
                         {review.sentimentLabel}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(review.publishedAt).toLocaleDateString('fr-FR')}
+                        {new Date(review.publishedAt).toLocaleDateString("fr-FR")}
                       </span>
                     </div>
                   </CardTitle>

@@ -1,19 +1,19 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useRegions, useGeoRegions } from '@/api/hooks';
-import { FranceMap } from '@/components/FranceMap';
-import { StatCard } from '@/components/StatCard';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { ErrorMessage } from '@/components/ErrorMessage';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useRegions, useGeoRegions } from "@/api/hooks";
+import { FranceMap } from "@/components/FranceMap";
+import { StatCard } from "@/components/StatCard";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 export function HomePage() {
   const navigate = useNavigate();
   const { data: regions, isLoading, error } = useRegions();
   const { data: geoRegions } = useGeoRegions();
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
@@ -29,9 +29,7 @@ export function HomePage() {
   return (
     <div className="space-y-8">
       <div className="text-center space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">
-          Explore the French Housing Market
-        </h1>
+        <h1 className="text-4xl font-bold tracking-tight">Explore the French Housing Market</h1>
         <p className="text-lg text-muted-foreground">
           Interactive analysis of real estate data across all regions and departments of France.
         </p>
@@ -71,11 +69,9 @@ export function HomePage() {
                 <h3 className="font-semibold">{region.name}</h3>
                 <div className="mt-2 flex items-center gap-2">
                   <Badge variant="secondary">
-                    {(region.population ?? 0).toLocaleString('fr-FR')} hab.
+                    {(region.population ?? 0).toLocaleString("fr-FR")} hab.
                   </Badge>
-                  <Badge variant="outline">
-                    {(region.area ?? 0).toLocaleString('fr-FR')} km²
-                  </Badge>
+                  <Badge variant="outline">{(region.area ?? 0).toLocaleString("fr-FR")} km²</Badge>
                 </div>
               </CardContent>
             </Card>

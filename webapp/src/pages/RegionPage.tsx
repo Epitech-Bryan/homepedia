@@ -1,18 +1,25 @@
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useRegion, useDepartments, useGeoDepartments, useTransactionStats } from '@/api/hooks';
-import { FranceMap } from '@/components/FranceMap';
-import { StatCard } from '@/components/StatCard';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { ErrorMessage } from '@/components/ErrorMessage';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import type { DepartmentSummary } from '@/api/client';
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { useRegion, useDepartments, useGeoDepartments, useTransactionStats } from "@/api/hooks";
+import { FranceMap } from "@/components/FranceMap";
+import { StatCard } from "@/components/StatCard";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { ErrorMessage } from "@/components/ErrorMessage";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import type { DepartmentSummary } from "@/api/client";
 
 export function RegionPage() {
-  const { code } = useParams<{ code: string }>();
+  const { code = "" } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { data: region, isLoading, error } = useRegion(code!);
+  const { data: region, isLoading, error } = useRegion(code);
   const { data: deptPage } = useDepartments(code ? { regionCode: code } : undefined);
   const { data: geoDepts } = useGeoDepartments(code);
   const { data: stats } = useTransactionStats(code ? { regionCode: code } : undefined);
@@ -29,9 +36,13 @@ export function RegionPage() {
     <div className="space-y-8">
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem><BreadcrumbLink render={<Link to="/" />}>France</BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbLink render={<Link to="/" />}>France</BreadcrumbLink>
+          </BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbPage>{region.name}</BreadcrumbPage></BreadcrumbItem>
+          <BreadcrumbItem>
+            <BreadcrumbPage>{region.name}</BreadcrumbPage>
+          </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
@@ -67,8 +78,10 @@ export function RegionPage() {
               <CardContent className="pt-6">
                 <h3 className="font-semibold">{dept.name}</h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  <Badge variant="outline" className="mr-2">{dept.code}</Badge>
-                  {(dept.population ?? 0).toLocaleString('fr-FR')} hab.
+                  <Badge variant="outline" className="mr-2">
+                    {dept.code}
+                  </Badge>
+                  {(dept.population ?? 0).toLocaleString("fr-FR")} hab.
                 </p>
               </CardContent>
             </Card>

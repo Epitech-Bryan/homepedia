@@ -1,7 +1,6 @@
 package com.homepedia.common.city;
 
 import com.homepedia.common.department.Department;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
@@ -27,17 +26,14 @@ import static lombok.AccessLevel.PROTECTED;
 public class City {
 
 	@Id
-	@Column(length = 5)
 	private String inseeCode;
 
-	@Column(nullable = false)
 	private String name;
 
-	@Column(length = 5)
 	private String postalCode;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "department_code", nullable = false)
+	@JoinColumn(name = "department_code")
 	private Department department;
 
 	private Long population;

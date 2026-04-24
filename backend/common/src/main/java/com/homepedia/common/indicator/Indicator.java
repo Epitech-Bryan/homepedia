@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,9 +18,7 @@ import static lombok.AccessLevel.PRIVATE;
 import static lombok.AccessLevel.PROTECTED;
 
 @Entity
-@Table(name = "indicators", indexes = {
-		@Index(name = "idx_indicator_geo", columnList = "geographic_level, geographic_code"),
-		@Index(name = "idx_indicator_category", columnList = "category")})
+@Table(name = "indicators")
 @Getter
 @Setter
 @Builder
@@ -34,20 +31,16 @@ public class Indicator {
 	private Long id;
 
 	@Enumerated(STRING)
-	@Column(nullable = false, length = 20)
 	private GeographicLevel geographicLevel;
 
-	@Column(nullable = false, length = 5)
 	private String geographicCode;
 
 	@Enumerated(STRING)
-	@Column(nullable = false, length = 30)
 	private IndicatorCategory category;
 
-	@Column(nullable = false)
 	private String label;
 
-	@Column(name = "indicator_value", nullable = false)
+	@Column(name = "indicator_value")
 	private Double value;
 
 	private String unit;

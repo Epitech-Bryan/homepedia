@@ -53,19 +53,6 @@ services:
       - traefik.http.services.backend.loadbalancer.server.port=8080
     restart: unless-stopped
 
-  data-pipeline:
-    build:
-      context: ./backend
-      dockerfile: data-pipeline/Dockerfile
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/homepedia
-      - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-homepedia}
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-homepedia}
-    depends_on:
-      - db
-    restart: unless-stopped
-
   db:
     image: postgres:16-alpine
     ports:

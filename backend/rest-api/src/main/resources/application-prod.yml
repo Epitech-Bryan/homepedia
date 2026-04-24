@@ -4,8 +4,6 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
-    hibernate:
-      ddl-auto: validate
     properties:
       hibernate:
         jdbc:
@@ -17,6 +15,23 @@ management:
   endpoint:
     health:
       show-details: always
+
+homepedia:
+  insee:
+    import-enabled: true
+  geo:
+    import-enabled: true
+  dpe:
+    import-enabled: ${HOMEPEDIA_DPE_ENABLED:false}
+    csv-path: ${HOMEPEDIA_DPE_CSV_PATH:}
+  health:
+    import-enabled: ${HOMEPEDIA_HEALTH_ENABLED:false}
+    csv-path: ${HOMEPEDIA_HEALTH_CSV_PATH:}
+  dvf:
+    zip-path: ${HOMEPEDIA_DVF_ZIP_PATH:}
+  import:
+    reviews:
+      enabled: ${IMPORT_REVIEWS_ENABLED:false}
 
 logging:
   level:

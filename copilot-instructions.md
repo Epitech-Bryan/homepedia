@@ -11,10 +11,10 @@ homepedia/                    ← pnpm monorepo root
 ├── backend/                  ← Maven multi-module (Java 21, Spring Boot 3.5)
 │   ├── common/               ← Shared JPA entities, records, utilities
 │   ├── rest-api/             ← Spring Boot REST API (port 8080)
-│   ├── data-pipeline/        ← Spring Batch ETL jobs (port 8081)
+│   │   └── batch/            ← Spring Batch ETL jobs (inside rest-api)
 │   └── project-data/         ← Raw CSV/data source files (git-ignored large files)
 ├── webapp/                   ← React 19 + TypeScript + Vite frontend
-├── compose.yml               ← Docker Compose (Traefik, backend, pipeline, PostgreSQL)
+├── compose.yml               ← Docker Compose (Traefik, backend, PostgreSQL)
 └── docs/adr/                 ← Architecture Decision Records
 ```
 
@@ -205,11 +205,18 @@ Use TanStack Query hooks for data fetching — never call fetch directly in comp
 
 ## Database
 
-PostgreSQL 16 with PostGIS extension for spatial queries. Schema managed by JPA/Hibernate (`ddl-auto: update` in dev, Flyway migrations in prod).
+PostgreSQL 16. Schema managed by Liquibase (YAML changelogs in `rest-api/src/main/resources/db/changelog/`). JPA/Hibernate runs in `validate` mode — all DDL changes go through Liquibase changelogs.
+
+### Adding a Schema Change
+
+1. Create a new changeset file in `db/changelog/changes/` (e.g. `002-add-foo-table.yaml`)
+2. Add the include in `db.changelog-master.yaml`
+3. Update the JPA entity in `common/` to match
+4. Liquibase applies the migration automatically on startup
 
 ## Adding a New Feature
 
-1. Create a new package under the appropriate module (`common/` for entities, `rest-api/` for endpoints, `data-pipeline/` for importers)
+1. Create a new package under the appropriate module (`common/` for entities, `rest-api/` for endpoints, `rest-api/batch/` for importers)
 2. Follow package-by-feature structure
 3. Use records for all DTOs
 4. Add the corresponding API endpoint

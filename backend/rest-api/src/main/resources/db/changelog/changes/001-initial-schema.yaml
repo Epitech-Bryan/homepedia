@@ -1,0 +1,335 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 001-create-regions
+      author: homepedia
+      changes:
+        - createTable:
+            tableName: regions
+            columns:
+              - column:
+                  name: code
+                  type: varchar(3)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: population
+                  type: bigint
+              - column:
+                  name: area
+                  type: double
+
+  - changeSet:
+      id: 001-create-departments
+      author: homepedia
+      changes:
+        - createTable:
+            tableName: departments
+            columns:
+              - column:
+                  name: code
+                  type: varchar(3)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: region_code
+                  type: varchar(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: population
+                  type: bigint
+              - column:
+                  name: area
+                  type: double
+        - addForeignKeyConstraint:
+            baseTableName: departments
+            baseColumnNames: region_code
+            referencedTableName: regions
+            referencedColumnNames: code
+            constraintName: fk_department_region
+
+  - changeSet:
+      id: 001-create-cities
+      author: homepedia
+      changes:
+        - createTable:
+            tableName: cities
+            columns:
+              - column:
+                  name: insee_code
+                  type: varchar(5)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: postal_code
+                  type: varchar(5)
+              - column:
+                  name: department_code
+                  type: varchar(3)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: population
+                  type: bigint
+              - column:
+                  name: area
+                  type: double
+              - column:
+                  name: latitude
+                  type: double
+              - column:
+                  name: longitude
+                  type: double
+        - addForeignKeyConstraint:
+            baseTableName: cities
+            baseColumnNames: department_code
+            referencedTableName: departments
+            referencedColumnNames: code
+            constraintName: fk_city_department
+
+  - changeSet:
+      id: 001-create-transactions
+      author: homepedia
+      changes:
+        - createTable:
+            tableName: transactions
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: mutation_date
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mutation_nature
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: property_value
+                  type: decimal(15,2)
+              - column:
+                  name: street_number
+                  type: varchar(10)
+              - column:
+                  name: postal_code
+                  type: varchar(10)
+              - column:
+                  name: city_insee_code
+                  type: varchar(5)
+              - column:
+                  name: section
+                  type: varchar(10)
+              - column:
+                  name: plan_number
+                  type: varchar(10)
+              - column:
+                  name: lot_count
+                  type: int
+              - column:
+                  name: property_type
+                  type: varchar(30)
+              - column:
+                  name: built_surface
+                  type: double
+              - column:
+                  name: room_count
+                  type: int
+              - column:
+                  name: land_surface
+                  type: double
+              - column:
+                  name: street_type
+                  type: varchar(255)
+        - addForeignKeyConstraint:
+            baseTableName: transactions
+            baseColumnNames: city_insee_code
+            referencedTableName: cities
+            referencedColumnNames: insee_code
+            constraintName: fk_transaction_city
+        - createIndex:
+            tableName: transactions
+            indexName: idx_transaction_city
+            columns:
+              - column:
+                  name: city_insee_code
+        - createIndex:
+            tableName: transactions
+            indexName: idx_transaction_date
+            columns:
+              - column:
+                  name: mutation_date
+        - createIndex:
+            tableName: transactions
+            indexName: idx_transaction_type
+            columns:
+              - column:
+                  name: property_type
+
+  - changeSet:
+      id: 001-create-indicators
+      author: homepedia
+      changes:
+        - createTable:
+            tableName: indicators
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: geographic_level
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: geographic_code
+                  type: varchar(5)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: label
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: indicator_value
+                  type: double
+                  constraints:
+                    nullable: false
+              - column:
+                  name: unit
+                  type: varchar(255)
+              - column:
+                  name: year
+                  type: int
+        - createIndex:
+            tableName: indicators
+            indexName: idx_indicator_geo
+            columns:
+              - column:
+                  name: geographic_level
+              - column:
+                  name: geographic_code
+        - createIndex:
+            tableName: indicators
+            indexName: idx_indicator_category
+            columns:
+              - column:
+                  name: category
+
+  - changeSet:
+      id: 001-create-geo-boundaries
+      author: homepedia
+      changes:
+        - createTable:
+            tableName: geo_boundaries
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: geographic_level
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: geographic_code
+                  type: varchar(5)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: geometry
+                  type: text
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: geo_boundaries
+            columnNames: geographic_level, geographic_code
+            constraintName: uq_geo_level_code
+
+  - changeSet:
+      id: 001-create-city-reviews
+      author: homepedia
+      changes:
+        - createTable:
+            tableName: city_reviews
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: city_insee_code
+                  type: varchar(5)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: text
+              - column:
+                  name: sentiment_score
+                  type: double
+              - column:
+                  name: sentiment_label
+                  type: varchar(255)
+              - column:
+                  name: published_at
+                  type: date
+              - column:
+                  name: author
+                  type: varchar(255)
+              - column:
+                  name: rating
+                  type: double
+        - createIndex:
+            tableName: city_reviews
+            indexName: idx_review_city
+            columns:
+              - column:
+                  name: city_insee_code

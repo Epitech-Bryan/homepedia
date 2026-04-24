@@ -1,5 +1,12 @@
 # app
 
+## [0.2.0] - 2026-04-24
+
+### Features
+
+- feat(ci): migrate from semantic-release to FerrFlow
+- feat(ci): migrate from semantic-release to FerrFlow
+
 ## 0.1.4
 
 ### Patch Changes

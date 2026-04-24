@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.6.0] - 2026-04-24
+
+### Features
+
+- feat(ci): migrate from semantic-release to FerrFlow
+- feat(ci): migrate from semantic-release to FerrFlow
+
 ## [1.1.1](https://gitlab.com/t-dat-902/homepedia/compare/rest-api-v1.1.0...rest-api-v1.1.1) (2026-04-24)
 
 

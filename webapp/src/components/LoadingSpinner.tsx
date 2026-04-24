@@ -1,7 +1,15 @@
+import { Skeleton } from '@/components/ui/skeleton';
+
 export function LoadingSpinner() {
   return (
-    <div className="flex items-center justify-center py-12">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+    <div className="space-y-4 py-8">
+      <Skeleton className="h-8 w-64" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-24" />
+      </div>
+      <Skeleton className="h-[400px] w-full" />
     </div>
   );
 }

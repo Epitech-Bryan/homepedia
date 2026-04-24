@@ -37,6 +37,7 @@ services:
       context: ./backend
       dockerfile: rest-api/Dockerfile
     environment:
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/homepedia
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-homepedia}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-homepedia}
@@ -57,6 +58,7 @@ services:
       context: ./backend
       dockerfile: data-pipeline/Dockerfile
     environment:
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/homepedia
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-homepedia}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-homepedia}

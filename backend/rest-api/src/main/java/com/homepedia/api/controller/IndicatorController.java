@@ -1,6 +1,5 @@
 package com.homepedia.api.controller;
 
-import static com.homepedia.api.constant.HomepediaConstant.RestPath;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.INDICATORS;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Indicator.BY_LEVEL_AND_CODE;
 

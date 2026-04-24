@@ -1,9 +1,12 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useDepartment, useCities, useTransactionStats } from '../api/hooks';
-import { StatCard } from '../components/StatCard';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { ErrorMessage } from '../components/ErrorMessage';
-import type { CitySummary } from '../api/client';
+import { useDepartment, useCities, useTransactionStats } from '@/api/hooks';
+import { StatCard } from '@/components/StatCard';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { ErrorMessage } from '@/components/ErrorMessage';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import type { CitySummary } from '@/api/client';
 
 export function DepartmentPage() {
   const { code } = useParams<{ code: string }>();
@@ -22,17 +25,19 @@ export function DepartmentPage() {
 
   return (
     <div className="space-y-8">
-      <nav className="flex items-center gap-2 text-sm text-gray-500">
-        <Link to="/" className="hover:text-indigo-600">France</Link>
-        <span>/</span>
-        <Link to={`/regions/${dept.regionCode}`} className="hover:text-indigo-600">Region {dept.regionCode}</Link>
-        <span>/</span>
-        <span className="text-gray-900 font-medium">{dept.name}</span>
-      </nav>
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem><BreadcrumbLink render={<Link to="/" />}>France</BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem><BreadcrumbLink render={<Link to={`/regions/${dept.regionCode}`} />}>Region {dept.regionCode}</BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem><BreadcrumbPage>{dept.name}</BreadcrumbPage></BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">{dept.name}</h1>
-        <p className="mt-1 text-gray-500">Department {dept.code}</p>
+        <h1 className="text-3xl font-bold tracking-tight">{dept.name}</h1>
+        <p className="text-muted-foreground mt-1">Department {dept.code}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -53,21 +58,24 @@ export function DepartmentPage() {
       )}
 
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        <h2 className="text-xl font-semibold mb-4">
           Cities ({citiesPage?.page?.totalElements ?? cities.length})
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {cities.map((city) => (
-            <button
+            <Card
               key={city.inseeCode}
+              className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => navigate(`/cities/${city.inseeCode}`)}
-              className="text-left rounded-xl bg-white p-5 shadow-sm border border-gray-100 hover:border-indigo-300 hover:shadow-md transition-all"
             >
-              <h3 className="font-semibold text-gray-900">{city.name}</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {city.postalCode} · {(city.population ?? 0).toLocaleString('fr-FR')} hab.
-              </p>
-            </button>
+              <CardContent className="pt-6">
+                <h3 className="font-semibold">{city.name}</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <Badge variant="outline" className="mr-2">{city.postalCode}</Badge>
+                  {(city.population ?? 0).toLocaleString('fr-FR')} hab.
+                </p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>

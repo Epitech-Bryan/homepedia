@@ -1,13 +1,7 @@
 spring:
   application:
     name: homepedia-api
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/homepedia}
-    username: ${SPRING_DATASOURCE_USERNAME:homepedia}
-    password: ${SPRING_DATASOURCE_PASSWORD:homepedia}
   jpa:
-    hibernate:
-      ddl-auto: update
     open-in-view: false
 
 server:
@@ -17,10 +11,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,env
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
+    env:
+      show-values: when-authorized
 
 springdoc:
   api-docs:

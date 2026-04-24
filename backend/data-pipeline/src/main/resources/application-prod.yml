@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+homepedia:
+  insee:
+    import-enabled: true
+  geo:
+    import-enabled: true
+  dpe:
+    import-enabled: ${HOMEPEDIA_DPE_ENABLED:false}
+    csv-path: ${HOMEPEDIA_DPE_CSV_PATH:}
+  health:
+    import-enabled: ${HOMEPEDIA_HEALTH_ENABLED:false}
+    csv-path: ${HOMEPEDIA_HEALTH_CSV_PATH:}
+  dvf:
+    zip-path: ${HOMEPEDIA_DVF_ZIP_PATH:}
+
+logging:
+  level:
+    com.homepedia: INFO

@@ -1,44 +1,43 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Home, Compass, Map } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Home' },
-  { to: '/explorer', label: 'Explorer' },
+  { to: '/', label: 'Home', icon: Home },
+  { to: '/explorer', label: 'Explorer', icon: Compass },
 ];
 
 export function Layout() {
   const { pathname } = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <Link to="/" className="text-xl font-bold tracking-tight text-indigo-600">
-              🏠 Homepedia
-            </Link>
-            <div className="flex space-x-1">
-              {NAV_ITEMS.map(({ to, label }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    pathname === to
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex h-14 items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 font-bold text-lg tracking-tight">
+            <Map className="h-5 w-5 text-primary" />
+            Homepedia
+          </Link>
+          <nav className="flex items-center gap-1">
+            {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+              <Button
+                key={to}
+                variant={pathname === to ? 'secondary' : 'ghost'}
+                size="sm"
+                render={<Link to={to} />}
+              >
+                <Icon className="h-4 w-4 mr-1.5" />
+                {label}
+              </Button>
+            ))}
+          </nav>
         </div>
-      </nav>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      </header>
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <Outlet />
       </main>
-      <footer className="border-t border-gray-200 bg-white mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-sm text-gray-500">
+      <footer className="border-t bg-muted/40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-sm text-muted-foreground">
           Homepedia — French Housing Market Analysis
         </div>
       </footer>

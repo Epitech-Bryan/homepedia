@@ -1,11 +1,11 @@
 import { createBrowserRouter } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import { HomePage } from './pages/HomePage';
-import { RegionPage } from './pages/RegionPage';
-import { DepartmentPage } from './pages/DepartmentPage';
-import { CityPage } from './pages/CityPage';
-import { ExplorerPage } from './pages/ExplorerPage';
-import { NotFoundPage } from './pages/NotFoundPage';
+import { Layout } from '@/components/Layout';
+import { HomePage } from '@/pages/HomePage';
+import { RegionPage } from '@/pages/RegionPage';
+import { DepartmentPage } from '@/pages/DepartmentPage';
+import { CityPage } from '@/pages/CityPage';
+import { ExplorerPage } from '@/pages/ExplorerPage';
+import { NotFoundPage } from '@/pages/NotFoundPage';
 
 export const router = createBrowserRouter([
   {

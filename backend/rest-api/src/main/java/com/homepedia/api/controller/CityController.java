@@ -1,6 +1,5 @@
 package com.homepedia.api.controller;
 
-import static com.homepedia.api.constant.HomepediaConstant.RestPath;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.CITIES;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.City.BY_INSEE_CODE;
 

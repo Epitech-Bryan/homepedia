@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
+import static com.homepedia.common.indicator.GeographicLevel.DEPARTMENT;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,7 +41,7 @@ public class GeoJsonImportService {
 	public void importDepartments() {
 		log.info("Importing GeoJSON department boundaries...");
 		final var geojson = downloadGeoJson("departements.geojson");
-		final var count = importFeatures(geojson, GeographicLevel.DEPARTMENT);
+		final var count = importFeatures(geojson, DEPARTMENT);
 		log.info("Imported {} department boundaries", count);
 	}
 

@@ -7,12 +7,15 @@ spring:
 homepedia:
   dvf:
     zip-path:
+    download-url:
   dpe:
     import-enabled: false
     csv-path:
+    download-url:
   health:
     import-enabled: false
     csv-path:
+    download-url:
   insee:
     import-enabled: false
   geo:

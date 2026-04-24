@@ -1,3 +1,10 @@
+## [1.0.1](https://gitlab.com/t-dat-902/homepedia/compare/rest-api-v1.0.0...rest-api-v1.0.1) (2026-04-24)
+
+
+### Bug Fixes
+
+* sync child POM parent versions to 1.0.0 ([1673532](https://gitlab.com/t-dat-902/homepedia/commit/16735323af25a80ab4d3b4a21b859a64ec77ba04))
+
 # 1.0.0 (2026-04-24)
 
 

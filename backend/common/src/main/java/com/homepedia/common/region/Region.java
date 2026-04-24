@@ -1,6 +1,5 @@
 package com.homepedia.common.region;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -23,10 +22,8 @@ import static lombok.AccessLevel.PROTECTED;
 public class Region {
 
 	@Id
-	@Column(length = 3)
 	private String code;
 
-	@Column(nullable = false)
 	private String name;
 
 	private Long population;

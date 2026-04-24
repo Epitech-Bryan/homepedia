@@ -1,11 +1,9 @@
 package com.homepedia.common.review;
 
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +17,7 @@ import static lombok.AccessLevel.PRIVATE;
 import static lombok.AccessLevel.PROTECTED;
 
 @Entity
-@Table(name = "city_reviews", indexes = {@Index(name = "idx_review_city", columnList = "city_insee_code")})
+@Table(name = "city_reviews")
 @Getter
 @Setter
 @Builder
@@ -31,10 +29,8 @@ public class CityReview {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(nullable = false, length = 5)
 	private String cityInseeCode;
 
-	@Column(columnDefinition = "TEXT")
 	private String content;
 
 	private Double sentimentScore;

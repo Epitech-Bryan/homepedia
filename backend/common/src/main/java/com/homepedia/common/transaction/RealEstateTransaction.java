@@ -6,7 +6,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -25,9 +24,7 @@ import static jakarta.persistence.GenerationType.IDENTITY;
 import static lombok.AccessLevel.PRIVATE;
 
 @Entity
-@Table(name = "transactions", indexes = {@Index(name = "idx_transaction_city", columnList = "city_insee_code"),
-		@Index(name = "idx_transaction_date", columnList = "mutation_date"),
-		@Index(name = "idx_transaction_type", columnList = "property_type")})
+@Table(name = "transactions")
 @Getter
 @Setter
 @Builder
@@ -39,35 +36,28 @@ public class RealEstateTransaction {
 	@GeneratedValue(strategy = IDENTITY)
 	private Long id;
 
-	@Column(nullable = false)
 	private LocalDate mutationDate;
 
-	@Column(nullable = false, length = 50)
 	private String mutationNature;
 
-	@Column(precision = 15, scale = 2)
+	@Column(name = "property_value")
 	private BigDecimal propertyValue;
 
-	@Column(length = 10)
 	private String streetNumber;
 
-	@Column(length = 10)
 	private String postalCode;
 
 	@ManyToOne(fetch = LAZY)
 	@JoinColumn(name = "city_insee_code")
 	private City city;
 
-	@Column(length = 10)
 	private String section;
 
-	@Column(length = 10)
 	private String planNumber;
 
 	private Integer lotCount;
 
 	@Enumerated(STRING)
-	@Column(length = 30)
 	private PropertyType propertyType;
 
 	private Double builtSurface;

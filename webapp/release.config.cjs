@@ -5,7 +5,13 @@ module.exports = {
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
     ["@semantic-release/changelog", { changelogFile: "webapp/CHANGELOG.md" }],
-    ["@semantic-release/npm", { npmPublish: false, pkgRoot: "webapp" }],
+    [
+      "@semantic-release/exec",
+      {
+        prepareCmd:
+          'cd webapp && npm pkg set version=${nextRelease.version}',
+      },
+    ],
     [
       "@semantic-release/git",
       {

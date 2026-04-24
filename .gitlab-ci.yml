@@ -86,6 +86,7 @@ release:rest-api:
 
 build:webapp:
   extends: .build_base
+  needs: []
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
   script:
@@ -96,6 +97,7 @@ build:webapp:
 
 build:rest-api:
   extends: .build_base
+  needs: []
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
   script:

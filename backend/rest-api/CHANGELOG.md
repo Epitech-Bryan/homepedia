@@ -1,3 +1,15 @@
+# [1.1.0](https://gitlab.com/t-dat-902/homepedia/compare/rest-api-v1.0.2...rest-api-v1.1.0) (2026-04-24)
+
+
+### Bug Fixes
+
+* **ci:** replace @semantic-release/npm with exec for webapp ([fd512d8](https://gitlab.com/t-dat-902/homepedia/commit/fd512d85d88a0863bf6c8f5a261e7ebf87057919))
+
+
+### Features
+
+* **batch:** add auto-download support for DVF, DPE, and Health datasets ([8020100](https://gitlab.com/t-dat-902/homepedia/commit/80201005cb99084e07bf742ed133c0cb094d8bca))
+
 ## [1.0.2](https://gitlab.com/t-dat-902/homepedia/compare/rest-api-v1.0.1...rest-api-v1.0.2) (2026-04-24)
 
 

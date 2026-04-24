@@ -5,6 +5,7 @@ import { RegionPage } from '@/pages/RegionPage';
 import { DepartmentPage } from '@/pages/DepartmentPage';
 import { CityPage } from '@/pages/CityPage';
 import { ExplorerPage } from '@/pages/ExplorerPage';
+import { ReviewsPage } from '@/pages/ReviewsPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -16,6 +17,7 @@ export const router = createBrowserRouter([
       { path: 'regions/:code', element: <RegionPage /> },
       { path: 'departments/:code', element: <DepartmentPage /> },
       { path: 'cities/:code', element: <CityPage /> },
+      { path: 'cities/:code/reviews', element: <ReviewsPage /> },
       { path: 'explorer', element: <ExplorerPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],

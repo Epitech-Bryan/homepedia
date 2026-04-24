@@ -47,6 +47,14 @@ export const api = {
     byLevelAndCode: (level: string, code: string, params?: Record<string, string>) =>
       fetchJson<IndicatorSummary[]>(`/indicators/${level}/${code}`, params),
   },
+  reviews: {
+    list: (inseeCode: string, params?: Record<string, string>) =>
+      fetchJson<PagedResponse<ReviewSummary>>(`/cities/${inseeCode}/reviews`, params),
+    wordCloud: (inseeCode: string) =>
+      fetchJson<Record<string, number>>(`/cities/${inseeCode}/reviews/word-cloud`),
+    sentimentStats: (inseeCode: string) =>
+      fetchJson<SentimentStats>(`/cities/${inseeCode}/reviews/sentiment-stats`),
+  },
 };
 
 // Types matching backend DTOs
@@ -105,6 +113,24 @@ export interface IndicatorSummary {
   unit: string;
   year: number;
   source: string;
+}
+
+export interface ReviewSummary {
+  id: number;
+  content: string;
+  sentimentScore: number;
+  sentimentLabel: string;
+  publishedAt: string;
+  author: string;
+  rating: number;
+}
+
+export interface SentimentStats {
+  averageScore: number;
+  positiveCount: number;
+  negativeCount: number;
+  neutralCount: number;
+  totalReviews: number;
 }
 
 export interface PagedResponse<T> {

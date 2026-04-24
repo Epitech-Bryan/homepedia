@@ -1,9 +1,12 @@
-function App() {
-  return (
-    <div>
-      <h1>HomePedia</h1>
-    </div>
-  )
-}
+import { RouterProvider } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './api/queryClient';
+import { router } from './router';
 
-export default App
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
+}

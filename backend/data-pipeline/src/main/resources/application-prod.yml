@@ -20,6 +20,9 @@ homepedia:
     csv-path: ${HOMEPEDIA_HEALTH_CSV_PATH:}
   dvf:
     zip-path: ${HOMEPEDIA_DVF_ZIP_PATH:}
+  import:
+    reviews:
+      enabled: ${IMPORT_REVIEWS_ENABLED:false}
 
 logging:
   level:

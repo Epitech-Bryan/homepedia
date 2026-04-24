@@ -22,6 +22,8 @@ public interface HomepediaConstant {
 		interface City {
 			String BY_INSEE_CODE = "/{inseeCode}";
 			String REVIEWS = CITIES + "/{inseeCode}/reviews";
+			String WORD_CLOUD = REVIEWS + "/word-cloud";
+			String SENTIMENT_STATS = REVIEWS + "/sentiment-stats";
 		}
 
 		interface Transaction {

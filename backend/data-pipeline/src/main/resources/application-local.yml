@@ -20,6 +20,9 @@ homepedia:
     import-enabled: false
   geo:
     import-enabled: false
+  import:
+    reviews:
+      enabled: false
 
 logging:
   level:

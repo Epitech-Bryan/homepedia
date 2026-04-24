@@ -21,6 +21,10 @@ import java.time.LocalDate;
 @NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
 public class CityReview {
 
+	public CityReview(final String cityInseeCode) {
+		this.cityInseeCode = cityInseeCode;
+	}
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;

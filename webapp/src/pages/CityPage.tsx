@@ -4,6 +4,7 @@ import { StatCard } from '@/components/StatCard';
 import { PriceChart } from '@/components/PriceChart';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorMessage } from '@/components/ErrorMessage';
+import { Button } from '@/components/ui/button';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 
 export function CityPage() {
@@ -64,6 +65,12 @@ export function CityPage() {
           <PriceChart data={chartData} title="Price Overview" />
         </>
       )}
+
+      <div>
+        <Link to={`/cities/${code}/reviews`}>
+          <Button variant="outline">View Reviews &amp; Opinions</Button>
+        </Link>
+      </div>
     </div>
   );
 }

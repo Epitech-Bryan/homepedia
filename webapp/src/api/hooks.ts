@@ -1,6 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/client';
 
+export function useReviews(inseeCode: string, params?: Record<string, string>) {
+  return useQuery({ queryKey: ['reviews', inseeCode, params], queryFn: () => api.reviews.list(inseeCode, params), enabled: !!inseeCode });
+}
+
+export function useWordCloud(inseeCode: string) {
+  return useQuery({ queryKey: ['wordCloud', inseeCode], queryFn: () => api.reviews.wordCloud(inseeCode), enabled: !!inseeCode });
+}
+
+export function useSentimentStats(inseeCode: string) {
+  return useQuery({ queryKey: ['sentimentStats', inseeCode], queryFn: () => api.reviews.sentimentStats(inseeCode), enabled: !!inseeCode });
+}
+
 export function useRegions() {
   return useQuery({ queryKey: ['regions'], queryFn: () => api.regions.list() });
 }

@@ -1,4 +1,4 @@
-const BASE_URL = '/api';
+const BASE_URL = "/api";
 
 async function fetchJson<T>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${BASE_URL}${path}`, window.location.origin);
@@ -16,30 +16,30 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
 
 export const api = {
   regions: {
-    list: () => fetchJson<RegionSummary[]>('/regions'),
+    list: () => fetchJson<RegionSummary[]>("/regions"),
     get: (code: string) => fetchJson<RegionSummary>(`/regions/${code}`),
   },
   departments: {
     list: (params?: Record<string, string>) =>
-      fetchJson<PagedResponse<DepartmentSummary>>('/departments', params),
+      fetchJson<PagedResponse<DepartmentSummary>>("/departments", params),
     get: (code: string) => fetchJson<DepartmentSummary>(`/departments/${code}`),
   },
   cities: {
     list: (params?: Record<string, string>) =>
-      fetchJson<PagedResponse<CitySummary>>('/cities', params),
+      fetchJson<PagedResponse<CitySummary>>("/cities", params),
     get: (code: string) => fetchJson<CitySummary>(`/cities/${code}`),
   },
   transactions: {
     list: (params?: Record<string, string>) =>
-      fetchJson<PagedResponse<TransactionSummary>>('/transactions', params),
+      fetchJson<PagedResponse<TransactionSummary>>("/transactions", params),
     stats: (params?: Record<string, string>) =>
-      fetchJson<TransactionStats>('/transactions/stats', params),
+      fetchJson<TransactionStats>("/transactions/stats", params),
   },
   geo: {
-    regions: () => fetchJson<GeoJSON.FeatureCollection>('/geo/regions'),
+    regions: () => fetchJson<GeoJSON.FeatureCollection>("/geo/regions"),
     departments: (regionCode?: string) =>
       fetchJson<GeoJSON.FeatureCollection>(
-        '/geo/departments',
+        "/geo/departments",
         regionCode ? { regionCode } : undefined,
       ),
   },

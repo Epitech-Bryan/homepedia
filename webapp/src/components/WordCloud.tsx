@@ -1,15 +1,15 @@
-import { useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface WordCloudProps {
   words: Record<string, number>;
 }
 
 const COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--secondary-foreground))',
-  'hsl(var(--accent-foreground))',
-  'hsl(var(--muted-foreground))',
+  "hsl(var(--primary))",
+  "hsl(var(--secondary-foreground))",
+  "hsl(var(--accent-foreground))",
+  "hsl(var(--muted-foreground))",
 ];
 
 function seededRandom(seed: number) {
@@ -63,7 +63,7 @@ export function WordCloud({ words }: WordCloudProps) {
               className="cursor-pointer transition-all duration-200 hover:scale-110"
               style={{
                 fontSize: `${fontSize}rem`,
-                color: highlighted === word ? 'hsl(var(--primary))' : color,
+                color: highlighted === word ? "hsl(var(--primary))" : color,
                 transform: `rotate(${rotation}deg)`,
                 opacity: highlighted && highlighted !== word ? 0.4 : 1,
                 fontWeight: fontSize > 1.5 ? 700 : 500,

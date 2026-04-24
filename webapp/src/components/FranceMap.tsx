@@ -1,9 +1,9 @@
-import { useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, GeoJSON as LeafletGeoJSON } from 'react-leaflet';
-import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import 'leaflet/dist/leaflet.css';
+import { useCallback, useRef } from "react";
+import { MapContainer, TileLayer, GeoJSON as LeafletGeoJSON } from "react-leaflet";
+import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import "leaflet/dist/leaflet.css";
 
 const FRANCE_CENTER: [number, number] = [46.6, 2.5];
 const FRANCE_ZOOM = 6;
@@ -24,8 +24,8 @@ interface FranceMapProps {
 export function FranceMap({
   geojson,
   onFeatureClick,
-  fillColor = 'hsl(221.2 83.2% 53.3%)',
-  height = '500px',
+  fillColor = "hsl(221.2 83.2% 53.3%)",
+  height = "500px",
 }: FranceMapProps) {
   const geoJsonRef = useRef<L.GeoJSON | null>(null);
 
@@ -46,8 +46,8 @@ export function FranceMap({
   const onEachFeature = useCallback(
     (feature: GeoJSON.Feature<GeoJSON.Geometry, FeatureProperties>, layer: Layer) => {
       const props = feature.properties;
-      const name = props?.name ?? props?.nom ?? '';
-      const code = props?.code ?? '';
+      const name = props?.name ?? props?.nom ?? "";
+      const code = props?.code ?? "";
 
       if (name) {
         layer.bindTooltip(name, { sticky: true });
@@ -85,7 +85,7 @@ export function FranceMap({
             center={FRANCE_CENTER}
             zoom={FRANCE_ZOOM}
             scrollWheelZoom={true}
-            style={{ width: '100%', height: '100%' }}
+            style={{ width: "100%", height: "100%" }}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

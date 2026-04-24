@@ -1,10 +1,10 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Home, Compass, Map } from 'lucide-react';
+import { Outlet, Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Home, Compass, Map } from "lucide-react";
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Home', icon: Home },
-  { to: '/explorer', label: 'Explorer', icon: Compass },
+  { to: "/", label: "Home", icon: Home },
+  { to: "/explorer", label: "Explorer", icon: Compass },
 ];
 
 export function Layout() {
@@ -22,7 +22,7 @@ export function Layout() {
             {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
               <Button
                 key={to}
-                variant={pathname === to ? 'secondary' : 'ghost'}
+                variant={pathname === to ? "secondary" : "ghost"}
                 size="sm"
                 render={<Link to={to} />}
               >

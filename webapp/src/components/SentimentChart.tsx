@@ -1,22 +1,22 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { SentimentStats } from '@/api/client';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { SentimentStats } from "@/api/client";
 
 interface SentimentChartProps {
   stats: SentimentStats;
 }
 
 const SENTIMENT_COLORS = {
-  positive: '#22c55e',
-  negative: '#ef4444',
-  neutral: '#9ca3af',
+  positive: "#22c55e",
+  negative: "#ef4444",
+  neutral: "#9ca3af",
 };
 
 export function SentimentChart({ stats }: SentimentChartProps) {
   const data = [
-    { name: 'Positive', value: stats.positiveCount },
-    { name: 'Negative', value: stats.negativeCount },
-    { name: 'Neutral', value: stats.neutralCount },
+    { name: "Positive", value: stats.positiveCount },
+    { name: "Negative", value: stats.negativeCount },
+    { name: "Neutral", value: stats.neutralCount },
   ].filter((d) => d.value > 0);
 
   if (data.length === 0) {
@@ -33,9 +33,9 @@ export function SentimentChart({ stats }: SentimentChartProps) {
   }
 
   const colors = data.map((d) =>
-    d.name === 'Positive'
+    d.name === "Positive"
       ? SENTIMENT_COLORS.positive
-      : d.name === 'Negative'
+      : d.name === "Negative"
         ? SENTIMENT_COLORS.negative
         : SENTIMENT_COLORS.neutral,
   );

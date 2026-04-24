@@ -1,12 +1,18 @@
-import { useState } from 'react';
-import { useTransactions, useTransactionStats, useRegions, useDepartments } from '@/api/hooks';
-import { StatCard } from '@/components/StatCard';
-import { PriceChart } from '@/components/PriceChart';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { DepartmentSummary, TransactionSummary } from '@/api/client';
+import { useState } from "react";
+import { useTransactions, useTransactionStats, useRegions, useDepartments } from "@/api/hooks";
+import { StatCard } from "@/components/StatCard";
+import { PriceChart } from "@/components/PriceChart";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { DepartmentSummary, TransactionSummary } from "@/api/client";
 
 export function ExplorerPage() {
   const [filters, setFilters] = useState<Record<string, string>>({});
@@ -27,33 +33,34 @@ export function ExplorerPage() {
 
   const updateFilter = (key: string, value: string | null) => {
     setFilters((prev) => {
-      const next = { ...prev };
-      if (value && value !== '__all__') {
+      const next = Object.fromEntries(Object.entries(prev).filter(([k]) => k !== key));
+      if (value && value !== "__all__") {
         next[key] = value;
-      } else {
-        delete next[key];
       }
-      if (key === 'regionCode') {
-        delete next.departmentCode;
+      if (key === "regionCode") {
+        return Object.fromEntries(Object.entries(next).filter(([k]) => k !== "departmentCode"));
       }
       return next;
     });
   };
 
-  const chartData = stats && stats.totalTransactions > 0
-    ? [
-        { label: 'Average', value: stats.averagePrice },
-        { label: 'Median', value: stats.medianPrice },
-        { label: 'Min', value: stats.minPrice },
-        { label: 'Max', value: stats.maxPrice },
-      ]
-    : [];
+  const chartData =
+    stats && stats.totalTransactions > 0
+      ? [
+          { label: "Average", value: stats.averagePrice },
+          { label: "Median", value: stats.medianPrice },
+          { label: "Min", value: stats.minPrice },
+          { label: "Max", value: stats.maxPrice },
+        ]
+      : [];
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Data Explorer</h1>
-        <p className="text-muted-foreground mt-1">Filter and analyze real estate transactions across France.</p>
+        <p className="text-muted-foreground mt-1">
+          Filter and analyze real estate transactions across France.
+        </p>
       </div>
 
       <Card>
@@ -64,14 +71,19 @@ export function ExplorerPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">Region</label>
-              <Select value={filters.regionCode ?? '__all__'} onValueChange={(v) => updateFilter('regionCode', v)}>
+              <Select
+                value={filters.regionCode ?? "__all__"}
+                onValueChange={(v) => updateFilter("regionCode", v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All regions" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All regions</SelectItem>
                   {(regions ?? []).map((r) => (
-                    <SelectItem key={r.code} value={r.code}>{r.name}</SelectItem>
+                    <SelectItem key={r.code} value={r.code}>
+                      {r.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -79,14 +91,19 @@ export function ExplorerPage() {
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">Department</label>
-              <Select value={filters.departmentCode ?? '__all__'} onValueChange={(v) => updateFilter('departmentCode', v)}>
+              <Select
+                value={filters.departmentCode ?? "__all__"}
+                onValueChange={(v) => updateFilter("departmentCode", v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All departments" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All departments</SelectItem>
                   {departments.map((d) => (
-                    <SelectItem key={d.code} value={d.code}>{d.name} ({d.code})</SelectItem>
+                    <SelectItem key={d.code} value={d.code}>
+                      {d.name} ({d.code})
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -94,14 +111,19 @@ export function ExplorerPage() {
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">Year</label>
-              <Select value={filters.year ?? '__all__'} onValueChange={(v) => updateFilter('year', v)}>
+              <Select
+                value={filters.year ?? "__all__"}
+                onValueChange={(v) => updateFilter("year", v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All years" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All years</SelectItem>
                   {[2024, 2023, 2022, 2021, 2020, 2019].map((y) => (
-                    <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                    <SelectItem key={y} value={y.toString()}>
+                      {y}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -109,7 +131,10 @@ export function ExplorerPage() {
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-muted-foreground">Property Type</label>
-              <Select value={filters.propertyType ?? '__all__'} onValueChange={(v) => updateFilter('propertyType', v)}>
+              <Select
+                value={filters.propertyType ?? "__all__"}
+                onValueChange={(v) => updateFilter("propertyType", v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
@@ -133,22 +158,27 @@ export function ExplorerPage() {
           <StatCard label="Average Price" value={stats.averagePrice} unit="€" />
           <StatCard label="Median Price" value={stats.medianPrice} unit="€" />
           <StatCard label="Avg. €/m²" value={stats.averagePricePerSqm} unit="€/m²" />
-          <StatCard label="Price Range" value={`${(stats.minPrice / 1000).toFixed(0)}k - ${(stats.maxPrice / 1000).toFixed(0)}k`} unit="€" />
+          <StatCard
+            label="Price Range"
+            value={`${(stats.minPrice / 1000).toFixed(0)}k - ${(stats.maxPrice / 1000).toFixed(0)}k`}
+            unit="€"
+          />
         </div>
       )}
 
-      {chartData.length > 0 && (
-        <PriceChart data={chartData} title="Price Distribution" />
-      )}
+      {chartData.length > 0 && <PriceChart data={chartData} title="Price Distribution" />}
 
       <div>
         <h2 className="text-xl font-semibold mb-4">
-          Transactions {transactions?.page ? `(${transactions.page.totalElements.toLocaleString('fr-FR')})` : ''}
+          Transactions{" "}
+          {transactions?.page ? `(${transactions.page.totalElements.toLocaleString("fr-FR")})` : ""}
         </h2>
         {isLoading ? (
           <LoadingSpinner />
         ) : items.length === 0 ? (
-          <p className="text-muted-foreground py-8 text-center">No transactions match your filters.</p>
+          <p className="text-muted-foreground py-8 text-center">
+            No transactions match your filters.
+          </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {items.map((tx) => (
@@ -156,9 +186,7 @@ export function ExplorerPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-semibold">
-                        {tx.propertyValue?.toLocaleString('fr-FR')} €
-                      </p>
+                      <p className="font-semibold">{tx.propertyValue?.toLocaleString("fr-FR")} €</p>
                       <p className="text-sm text-muted-foreground mt-1">{tx.cityName}</p>
                     </div>
                     <Badge>{tx.propertyType}</Badge>

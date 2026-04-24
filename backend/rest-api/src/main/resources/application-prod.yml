@@ -24,14 +24,11 @@ homepedia:
   dpe:
     import-enabled: ${HOMEPEDIA_DPE_ENABLED:false}
     csv-path: ${HOMEPEDIA_DPE_CSV_PATH:}
-    download-url: ${HOMEPEDIA_DPE_DOWNLOAD_URL:}
   health:
     import-enabled: ${HOMEPEDIA_HEALTH_ENABLED:false}
     csv-path: ${HOMEPEDIA_HEALTH_CSV_PATH:}
-    download-url: ${HOMEPEDIA_HEALTH_DOWNLOAD_URL:}
   dvf:
     zip-path: ${HOMEPEDIA_DVF_ZIP_PATH:}
-    download-url: ${HOMEPEDIA_DVF_DOWNLOAD_URL:}
   import:
     reviews:
       enabled: ${IMPORT_REVIEWS_ENABLED:false}

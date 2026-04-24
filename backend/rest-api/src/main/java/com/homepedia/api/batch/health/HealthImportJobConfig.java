@@ -22,14 +22,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 @RequiredArgsConstructor
 public class HealthImportJobConfig {
 
+	private static final String DEFAULT_DOWNLOAD_URL = "https://data.ameli.fr/api/explore/v2.1/catalog/datasets/effectifs/exports/csv?delimiter=;";
+
 	private final HealthDataImportService healthDataImportService;
 	private final DatasetDownloadService downloadService;
 
 	@Value("${homepedia.health.csv-path:}")
 	private String csvPath;
-
-	@Value("${homepedia.health.download-url:}")
-	private String downloadUrl;
 
 	@Bean
 	public Job healthImportJob(JobRepository jobRepository, Step healthImportStep) {
@@ -45,19 +44,14 @@ public class HealthImportJobConfig {
 				return RepeatStatus.FINISHED;
 			}
 
-			if (StringUtils.isNotBlank(downloadUrl)) {
-				Path tempFile = null;
-				try {
-					tempFile = downloadService.downloadToTempFile(downloadUrl, "health-", ".csv");
-					final var count = healthDataImportService.importFromCsv(tempFile);
-					log.info("Health import from download finished: {} indicators loaded", count);
-				} finally {
-					downloadService.cleanup(tempFile);
-				}
-				return RepeatStatus.FINISHED;
+			Path tempFile = null;
+			try {
+				tempFile = downloadService.downloadToTempFile(DEFAULT_DOWNLOAD_URL, "health-", ".csv");
+				final var count = healthDataImportService.importFromCsv(tempFile);
+				log.info("Health import from download finished: {} indicators loaded", count);
+			} finally {
+				downloadService.cleanup(tempFile);
 			}
-
-			log.info("No health CSV path or download URL configured. Skipping.");
 			return RepeatStatus.FINISHED;
 		};
 		return new StepBuilder("healthImportStep", jobRepository).tasklet(tasklet, transactionManager).build();

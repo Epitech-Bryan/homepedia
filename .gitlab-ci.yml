@@ -57,7 +57,7 @@ lint:webapp:
 release:webapp:
   extends: .release_base
   script:
-    - npx semantic-release --extends ./webapp/.releaserc.yml
+    - npx semantic-release --extends ./webapp/release.config.cjs
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
       changes:
@@ -69,7 +69,7 @@ release:rest-api:
     - !reference [.release_base, before_script]
     - apk add --no-cache openjdk21-jdk maven
   script:
-    - npx semantic-release --extends ./backend/rest-api/.releaserc.yml
+    - npx semantic-release --extends ./backend/rest-api/release.config.cjs
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
       changes:

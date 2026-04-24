@@ -1,3 +1,12 @@
+## [1.0.2](https://gitlab.com/t-dat-902/homepedia/compare/rest-api-v1.0.1...rest-api-v1.0.2) (2026-04-24)
+
+
+### Bug Fixes
+
+* **ci:** configure DOCKER_HOST for DinD on Kubernetes executor ([728423d](https://gitlab.com/t-dat-902/homepedia/commit/728423d47f39a75c18c06264a9aca3c7adf6c0f3))
+* **ci:** use Buildah instead of Docker for K8s builds ([1f958c7](https://gitlab.com/t-dat-902/homepedia/commit/1f958c7d96a2a55cf5afd5bc4c8dae6441288af1))
+* update Dockerfiles for current project structure ([ebab65b](https://gitlab.com/t-dat-902/homepedia/commit/ebab65b0c614b8b5d29f4e5b05b1e69ddf11e7ee))
+
 ## [1.0.1](https://gitlab.com/t-dat-902/homepedia/compare/rest-api-v1.0.0...rest-api-v1.0.1) (2026-04-24)
 
 

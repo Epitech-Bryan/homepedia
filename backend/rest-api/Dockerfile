@@ -3,8 +3,8 @@ WORKDIR /app
 COPY pom.xml .
 COPY common/pom.xml common/
 COPY rest-api/pom.xml rest-api/
-COPY data-pipeline/pom.xml data-pipeline/
 RUN mvn dependency:go-offline -B -pl rest-api --am
+COPY common/src common/src
 COPY rest-api/src rest-api/src
 RUN mvn package -DskipTests -B -pl rest-api --am
 

@@ -96,8 +96,9 @@ public class DpeImportService {
 				final var labelCount = communeEntry.getValue().getOrDefault(dpeLabel, 0);
 				final var percentage = (labelCount * 100.0) / total;
 
-				final var indicator = new Indicator(GeographicLevel.CITY, inseeCode, IndicatorCategory.ENERGY,
-						"DPE label " + dpeLabel, percentage, "%", null);
+				final var indicator = Indicator.builder().geographicLevel(GeographicLevel.CITY)
+						.geographicCode(inseeCode).category(IndicatorCategory.ENERGY).label("DPE label " + dpeLabel)
+						.value(percentage).unit("%").build();
 				batch.add(indicator);
 
 				if (batch.size() >= BATCH_SIZE) {

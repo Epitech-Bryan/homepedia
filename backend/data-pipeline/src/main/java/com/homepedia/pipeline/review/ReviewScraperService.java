@@ -33,15 +33,10 @@ public class ReviewScraperService {
 			final var generated = reviewDataGenerator.generateForCity(city.getInseeCode());
 
 			for (final var gen : generated) {
-				final var review = new CityReview(gen.cityInseeCode());
-				review.setContent(gen.content());
-				review.setRating(gen.rating());
-				review.setAuthor(gen.author());
-				review.setPublishedAt(gen.publishedAt());
-
 				final var sentiment = sentimentAnalysisService.analyze(gen.content());
-				review.setSentimentScore(sentiment.score());
-				review.setSentimentLabel(sentiment.label());
+				final var review = CityReview.builder().cityInseeCode(gen.cityInseeCode()).content(gen.content())
+						.rating(gen.rating()).author(gen.author()).publishedAt(gen.publishedAt())
+						.sentimentScore(sentiment.score()).sentimentLabel(sentiment.label()).build();
 
 				batch.add(review);
 			}

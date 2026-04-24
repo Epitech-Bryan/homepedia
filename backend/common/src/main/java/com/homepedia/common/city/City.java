@@ -8,21 +8,27 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import static lombok.AccessLevel.PRIVATE;
+import static lombok.AccessLevel.PROTECTED;
 
 @Entity
 @Table(name = "cities")
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
+@Builder
+@NoArgsConstructor(access = PROTECTED)
+@AllArgsConstructor(access = PRIVATE)
 public class City {
 
 	@Id
 	@Column(length = 5)
-	private final String inseeCode;
+	private String inseeCode;
 
 	@Column(nullable = false)
 	private String name;
@@ -32,7 +38,7 @@ public class City {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "department_code", nullable = false)
-	private final Department department;
+	private Department department;
 
 	private Long population;
 
@@ -41,11 +47,4 @@ public class City {
 	private Double latitude;
 
 	private Double longitude;
-
-	public City(String inseeCode, String name, String postalCode, Department department) {
-		this.inseeCode = inseeCode;
-		this.name = name;
-		this.postalCode = postalCode;
-		this.department = department;
-	}
 }

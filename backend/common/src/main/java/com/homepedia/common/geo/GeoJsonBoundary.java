@@ -1,15 +1,32 @@
 package com.homepedia.common.geo;
 
 import com.homepedia.common.indicator.GeographicLevel;
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import static lombok.AccessLevel.PRIVATE;
+import static lombok.AccessLevel.PROTECTED;
 
 @Entity
 @Table(name = "geo_boundaries", indexes = {
 		@Index(name = "idx_geo_level_code", columnList = "geographic_level, geographic_code", unique = true)})
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
+@Builder
+@NoArgsConstructor(access = PROTECTED)
+@AllArgsConstructor(access = PRIVATE)
 public class GeoJsonBoundary {
 
 	@Id
@@ -28,11 +45,4 @@ public class GeoJsonBoundary {
 
 	@Column(columnDefinition = "text", nullable = false)
 	private String geometry;
-
-	public GeoJsonBoundary(GeographicLevel geographicLevel, String geographicCode, String name, String geometry) {
-		this.geographicLevel = geographicLevel;
-		this.geographicCode = geographicCode;
-		this.name = name;
-		this.geometry = geometry;
-	}
 }

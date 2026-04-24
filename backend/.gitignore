@@ -4,3 +4,4 @@ project-data
 *.log
 *.tmp
 target
+data

@@ -79,8 +79,9 @@ public class HealthDataImportService {
 			final var accumulator = entry.getValue();
 			final var avgPrevalence = accumulator.average();
 
-			final var indicator = new Indicator(GeographicLevel.DEPARTMENT, key.dept(), IndicatorCategory.HEALTH,
-					"Pathology: " + key.pathology(), avgPrevalence, "%", key.year());
+			final var indicator = Indicator.builder().geographicLevel(GeographicLevel.DEPARTMENT)
+					.geographicCode(key.dept()).category(IndicatorCategory.HEALTH)
+					.label("Pathology: " + key.pathology()).value(avgPrevalence).unit("%").year(key.year()).build();
 			batch.add(indicator);
 
 			if (batch.size() >= BATCH_SIZE) {

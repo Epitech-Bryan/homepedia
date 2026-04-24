@@ -7,30 +7,32 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
 
+import static lombok.AccessLevel.PRIVATE;
+import static lombok.AccessLevel.PROTECTED;
+
 @Entity
 @Table(name = "city_reviews", indexes = {@Index(name = "idx_review_city", columnList = "city_insee_code")})
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED, force = true)
+@Builder
+@NoArgsConstructor(access = PROTECTED)
+@AllArgsConstructor(access = PRIVATE)
 public class CityReview {
-
-	public CityReview(final String cityInseeCode) {
-		this.cityInseeCode = cityInseeCode;
-	}
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	@Column(nullable = false, length = 5)
-	private final String cityInseeCode;
+	private String cityInseeCode;
 
 	@Column(columnDefinition = "TEXT")
 	private String content;

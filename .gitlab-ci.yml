@@ -37,44 +37,29 @@ lint:webapp:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-.release_base:
+# -----------------------------------------------------------------------------
+# Release — FerrFlow handles the whole monorepo.
+#
+# Per-package scope is driven by ferrflow.json. FerrFlow reads conventional
+# commits since the last tag, figures out which packages need a bump,
+# writes the pom/package.json + CHANGELOG updates, commits "chore(release): …",
+# pushes commits + tags, and creates a GitLab Release via the API.
+#
+# Auth: FerrFlow reads FERRFLOW_TOKEN (GitLab project access token, scope
+# api + write_repository) and wires it into libgit2's credentials callback
+# + the GitLab Releases API — no manual `git remote set-url` needed.
+# The commit author falls back to "FerrFlow <contact@ferrflow.com>" if no
+# user.name/user.email are configured.
+# -----------------------------------------------------------------------------
+release:
   stage: release
-  image: node:22-alpine
-  before_script:
-    - apk add --no-cache git curl
-    - npm install -g pnpm
-    - git remote set-url origin "https://oauth2:${GL_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
-    - git config user.email "${GIT_USER_EMAIL:-ci@homepedia.local}"
-    - git config user.name "${GIT_USER_NAME:-CI Bot}"
-    - pnpm install --frozen-lockfile
-
-# -----------------------------------------------------------------------------
-# Release — chaque job ne tourne que si son dossier (ou le common partagé) a
-# été modifié depuis le dernier push sur la branche par défaut.
-# GitLab CI "changes:" est le filtre natif ; semantic-release décide ensuite
-# s'il y a un vrai bump (feat/fix/BREAKING) à créer.
-# -----------------------------------------------------------------------------
-release:webapp:
-  extends: .release_base
+  image:
+    name: ghcr.io/ferrlabs/ferrflow:4.4.0
+    entrypoint: [""]
   script:
-    - npx semantic-release --extends ./webapp/release.config.cjs
+    - ferrflow release
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
-      changes:
-        - webapp/**/*
-
-release:rest-api:
-  extends: .release_base
-  before_script:
-    - !reference [.release_base, before_script]
-    - apk add --no-cache openjdk21-jdk maven
-  script:
-    - npx semantic-release --extends ./backend/rest-api/release.config.cjs
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
-      changes:
-        - backend/rest-api/**/*
-        - backend/common/**/*
 
 .build_base:
   stage: build
@@ -89,7 +74,7 @@ release:rest-api:
 build:webapp:
   extends: .build_base
   needs:
-    - job: release:webapp
+    - job: release
       optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
@@ -106,13 +91,14 @@ build:webapp:
 build:rest-api:
   extends: .build_base
   needs:
-    - job: release:rest-api
+    - job: release
       optional: true
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
       changes:
         - backend/rest-api/**/*
         - backend/common/**/*
+        - backend/pom.xml
   script:
     - VERSION=$(git tag -l 'rest-api-v*' --sort=-v:refname | head -1 | sed 's/^rest-api-v//')
     - if [ -z "$VERSION" ]; then echo "No rest-api-v* tag yet — skipping image build"; exit 0; fi
@@ -125,9 +111,7 @@ mirror:
   stage: mirror
   image: alpine/git:2.43.0
   needs:
-    - job: release:webapp
-      optional: true
-    - job: release:rest-api
+    - job: release
       optional: true
   variables:
     GIT_DEPTH: 0
@@ -138,4 +122,3 @@ mirror:
     - git push --mirror "$GH_MIRROR_URL"
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
-

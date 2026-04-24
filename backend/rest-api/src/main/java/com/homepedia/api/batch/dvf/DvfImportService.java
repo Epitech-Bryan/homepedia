@@ -53,8 +53,34 @@ public class DvfImportService {
 		return totalImported;
 	}
 
-	private int importCsvStream(ZipInputStream zis) throws IOException {
-		final var reader = new BufferedReader(new InputStreamReader(zis, StandardCharsets.UTF_8));
+	@Transactional
+	public int importFromCsv(Path csvPath) throws IOException {
+		log.info("Starting DVF import from CSV {}", csvPath);
+		int totalImported;
+
+		try (final var reader = new BufferedReader(Files.newBufferedReader(csvPath, StandardCharsets.UTF_8))) {
+			totalImported = importFromReader(reader);
+		}
+
+		log.info("DVF import complete: {} transactions imported", totalImported);
+		return totalImported;
+	}
+
+	@Transactional
+	public int importFromGzip(Path gzipPath) throws IOException {
+		log.info("Starting DVF import from gzipped CSV {}", gzipPath);
+		int totalImported;
+
+		try (final var gis = new java.util.zip.GZIPInputStream(Files.newInputStream(gzipPath));
+				final var reader = new BufferedReader(new InputStreamReader(gis, StandardCharsets.UTF_8))) {
+			totalImported = importFromReader(reader);
+		}
+
+		log.info("DVF import complete: {} transactions imported", totalImported);
+		return totalImported;
+	}
+
+	private int importFromReader(BufferedReader reader) throws IOException {
 		final var headerLine = reader.readLine();
 		if (headerLine == null) {
 			return 0;
@@ -83,6 +109,11 @@ public class DvfImportService {
 		}
 
 		return count;
+	}
+
+	private int importCsvStream(ZipInputStream zis) throws IOException {
+		final var reader = new BufferedReader(new InputStreamReader(zis, StandardCharsets.UTF_8));
+		return importFromReader(reader);
 	}
 
 	private Optional<RealEstateTransaction> parseLine(String line) {

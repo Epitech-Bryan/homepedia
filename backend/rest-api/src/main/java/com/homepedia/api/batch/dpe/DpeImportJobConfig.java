@@ -1,5 +1,6 @@
 package com.homepedia.api.batch.dpe;
 
+import com.homepedia.api.batch.config.DatasetDownloadService;
 import java.nio.file.Path;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,9 +23,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 public class DpeImportJobConfig {
 
 	private final DpeImportService dpeImportService;
+	private final DatasetDownloadService downloadService;
 
 	@Value("${homepedia.dpe.csv-path:}")
 	private String csvPath;
+
+	@Value("${homepedia.dpe.download-url:}")
+	private String downloadUrl;
 
 	@Bean
 	public Job dpeImportJob(JobRepository jobRepository, Step dpeImportStep) {
@@ -34,17 +39,25 @@ public class DpeImportJobConfig {
 	@Bean
 	public Step dpeImportStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
 		final Tasklet tasklet = (contribution, chunkContext) -> {
-			if (StringUtils.isBlank(csvPath)) {
-				log.info("No DPE CSV path configured. Skipping.");
+			if (StringUtils.isNotBlank(csvPath) && Path.of(csvPath).toFile().exists()) {
+				final var count = dpeImportService.importFromCsv(Path.of(csvPath));
+				log.info("DPE import finished: {} indicators loaded", count);
 				return RepeatStatus.FINISHED;
 			}
-			final var path = Path.of(csvPath);
-			if (!path.toFile().exists()) {
-				log.warn("DPE CSV file not found at {}. Skipping.", csvPath);
+
+			if (StringUtils.isNotBlank(downloadUrl)) {
+				Path tempFile = null;
+				try {
+					tempFile = downloadService.downloadToTempFile(downloadUrl, "dpe-", ".csv");
+					final var count = dpeImportService.importFromCsv(tempFile);
+					log.info("DPE import from download finished: {} indicators loaded", count);
+				} finally {
+					downloadService.cleanup(tempFile);
+				}
 				return RepeatStatus.FINISHED;
 			}
-			final var count = dpeImportService.importFromCsv(path);
-			log.info("DPE import finished: {} indicators loaded", count);
+
+			log.info("No DPE CSV path or download URL configured. Skipping.");
 			return RepeatStatus.FINISHED;
 		};
 		return new StepBuilder("dpeImportStep", jobRepository).tasklet(tasklet, transactionManager).build();

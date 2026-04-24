@@ -1,5 +1,6 @@
 package com.homepedia.api.batch.health;
 
+import com.homepedia.api.batch.config.DatasetDownloadService;
 import java.nio.file.Path;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,9 +23,13 @@ import org.springframework.transaction.PlatformTransactionManager;
 public class HealthImportJobConfig {
 
 	private final HealthDataImportService healthDataImportService;
+	private final DatasetDownloadService downloadService;
 
 	@Value("${homepedia.health.csv-path:}")
 	private String csvPath;
+
+	@Value("${homepedia.health.download-url:}")
+	private String downloadUrl;
 
 	@Bean
 	public Job healthImportJob(JobRepository jobRepository, Step healthImportStep) {
@@ -34,17 +39,25 @@ public class HealthImportJobConfig {
 	@Bean
 	public Step healthImportStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
 		final Tasklet tasklet = (contribution, chunkContext) -> {
-			if (StringUtils.isBlank(csvPath)) {
-				log.info("No health CSV path configured. Skipping.");
+			if (StringUtils.isNotBlank(csvPath) && Path.of(csvPath).toFile().exists()) {
+				final var count = healthDataImportService.importFromCsv(Path.of(csvPath));
+				log.info("Health import finished: {} indicators loaded", count);
 				return RepeatStatus.FINISHED;
 			}
-			final var path = Path.of(csvPath);
-			if (!path.toFile().exists()) {
-				log.warn("Health CSV file not found at {}. Skipping.", csvPath);
+
+			if (StringUtils.isNotBlank(downloadUrl)) {
+				Path tempFile = null;
+				try {
+					tempFile = downloadService.downloadToTempFile(downloadUrl, "health-", ".csv");
+					final var count = healthDataImportService.importFromCsv(tempFile);
+					log.info("Health import from download finished: {} indicators loaded", count);
+				} finally {
+					downloadService.cleanup(tempFile);
+				}
 				return RepeatStatus.FINISHED;
 			}
-			final var count = healthDataImportService.importFromCsv(path);
-			log.info("Health import finished: {} indicators loaded", count);
+
+			log.info("No health CSV path or download URL configured. Skipping.");
 			return RepeatStatus.FINISHED;
 		};
 		return new StepBuilder("healthImportStep", jobRepository).tasklet(tasklet, transactionManager).build();

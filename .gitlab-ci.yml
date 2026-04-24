@@ -87,9 +87,9 @@ release:rest-api:
 build:webapp:
   extends: .build_base
   rules:
-    - if: $CI_COMMIT_TAG =~ /^webapp-v.*/
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
   script:
-    - VERSION=${CI_COMMIT_TAG#webapp-v}
+    - VERSION=${CI_COMMIT_SHORT_SHA}
     - docker build -t "$CI_REGISTRY_IMAGE/webapp:$VERSION" -t "$CI_REGISTRY_IMAGE/webapp:latest" ./webapp
     - docker push "$CI_REGISTRY_IMAGE/webapp:$VERSION"
     - docker push "$CI_REGISTRY_IMAGE/webapp:latest"
@@ -97,9 +97,9 @@ build:webapp:
 build:rest-api:
   extends: .build_base
   rules:
-    - if: $CI_COMMIT_TAG =~ /^rest-api-v.*/
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
   script:
-    - VERSION=${CI_COMMIT_TAG#rest-api-v}
+    - VERSION=${CI_COMMIT_SHORT_SHA}
     - docker build -t "$CI_REGISTRY_IMAGE/rest-api:$VERSION" -t "$CI_REGISTRY_IMAGE/rest-api:latest" -f backend/rest-api/Dockerfile ./backend
     - docker push "$CI_REGISTRY_IMAGE/rest-api:$VERSION"
     - docker push "$CI_REGISTRY_IMAGE/rest-api:latest"

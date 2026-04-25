@@ -3,6 +3,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/homepedia
     username: homepedia
     password: homepedia
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/homepedia
 
 homepedia:
   dvf:

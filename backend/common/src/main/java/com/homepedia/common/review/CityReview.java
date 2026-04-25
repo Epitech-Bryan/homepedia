@@ -1,23 +1,24 @@
 package com.homepedia.common.review;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.LocalDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import static lombok.AccessLevel.PRIVATE;
 import static lombok.AccessLevel.PROTECTED;
 
-@Entity
-@Table(name = "city_reviews")
+/**
+ * City review stored in MongoDB. Reviews are document-shaped (free text +
+ * sentiment metadata) and are queried mostly by city, so a non-relational store
+ * fits naturally and complements the relational data in PostgreSQL.
+ */
+@Document(collection = "city_reviews")
 @Getter
 @Setter
 @Builder
@@ -26,9 +27,9 @@ import static lombok.AccessLevel.PROTECTED;
 public class CityReview {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	private String id;
 
+	@Indexed
 	private String cityInseeCode;
 
 	private String content;

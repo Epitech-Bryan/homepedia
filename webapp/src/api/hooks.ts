@@ -56,6 +56,14 @@ export function useCities(params?: Record<string, string>) {
   return useQuery({ queryKey: ["cities", params], queryFn: () => api.cities.list(params) });
 }
 
+export function useCitiesForDepartment(departmentCode?: string) {
+  return useQuery({
+    queryKey: ["cities", "byDepartment", departmentCode],
+    queryFn: () => api.cities.list({ departmentCode: departmentCode ?? "", size: "1000" }),
+    enabled: !!departmentCode,
+  });
+}
+
 export function useCity(code: string) {
   return useQuery({
     queryKey: ["cities", code],

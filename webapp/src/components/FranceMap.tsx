@@ -1,5 +1,12 @@
 import { memo, useCallback, useEffect } from "react";
-import { MapContainer, TileLayer, GeoJSON as LeafletGeoJSON, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  GeoJSON as LeafletGeoJSON,
+  CircleMarker,
+  Tooltip,
+  useMap,
+} from "react-leaflet";
 import L from "leaflet";
 import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,32 +22,58 @@ interface FeatureProperties {
   nom?: string;
 }
 
+export interface MapMarker {
+  id: string;
+  lat: number;
+  lon: number;
+  name: string;
+}
+
 interface FranceMapProps {
   geojson: GeoJSON.FeatureCollection | null;
   onFeatureClick?: (code: string, name: string) => void;
+  markers?: MapMarker[];
+  onMarkerClick?: (id: string) => void;
+  activeFeatureCode?: string;
   fillColor?: string;
   height?: string;
 }
 
-function FitBounds({ geojson }: { geojson: GeoJSON.FeatureCollection | null }) {
+function FitBounds({
+  geojson,
+  activeFeatureCode,
+}: {
+  geojson: GeoJSON.FeatureCollection | null;
+  activeFeatureCode?: string;
+}) {
   const map = useMap();
   useEffect(() => {
     if (!geojson || !geojson.features?.length) {
       map.setView(FRANCE_CENTER, FRANCE_ZOOM);
       return;
     }
-    const layer = L.geoJSON(geojson);
+    let features = geojson.features;
+    if (activeFeatureCode) {
+      const filtered = features.filter(
+        (f) => (f.properties as FeatureProperties | null)?.code === activeFeatureCode,
+      );
+      if (filtered.length > 0) features = filtered;
+    }
+    const layer = L.geoJSON({ type: "FeatureCollection", features });
     const bounds = layer.getBounds();
     if (bounds.isValid()) {
       map.flyToBounds(bounds, { padding: [24, 24], duration: 0.6 });
     }
-  }, [geojson, map]);
+  }, [geojson, activeFeatureCode, map]);
   return null;
 }
 
 function FranceMapComponent({
   geojson,
   onFeatureClick,
+  markers,
+  onMarkerClick,
+  activeFeatureCode,
   fillColor = "hsl(221.2 83.2% 53.3%)",
   height = "500px",
 }: FranceMapProps) {
@@ -52,17 +85,34 @@ function FranceMapComponent({
     opacity: 0.8,
   };
 
+  const activeStyle: PathOptions = {
+    fillColor,
+    fillOpacity: 0.55,
+    color: fillColor,
+    weight: 2.5,
+    opacity: 1,
+  };
+
   const highlightStyle: PathOptions = {
-    fillOpacity: 0.6,
+    fillOpacity: 0.65,
     weight: 3,
     opacity: 1,
   };
+
+  const styleFor = useCallback(
+    (feature?: GeoJSON.Feature<GeoJSON.Geometry, FeatureProperties>): PathOptions => {
+      const code = feature?.properties?.code;
+      return activeFeatureCode && code === activeFeatureCode ? activeStyle : defaultStyle;
+    },
+    [activeFeatureCode, fillColor],
+  );
 
   const onEachFeature = useCallback(
     (feature: GeoJSON.Feature<GeoJSON.Geometry, FeatureProperties>, layer: Layer) => {
       const props = feature.properties;
       const name = props?.name ?? props?.nom ?? "";
       const code = props?.code ?? "";
+      const isActive = activeFeatureCode && code === activeFeatureCode;
 
       if (name) {
         layer.bindTooltip(name, { sticky: true });
@@ -76,7 +126,7 @@ function FranceMapComponent({
         },
         mouseout: (e: LeafletMouseEvent) => {
           const target = e.target as L.Path;
-          target.setStyle(defaultStyle);
+          target.setStyle(isActive ? activeStyle : defaultStyle);
         },
         click: () => {
           if (onFeatureClick && code) {
@@ -85,7 +135,7 @@ function FranceMapComponent({
         },
       });
     },
-    [onFeatureClick, fillColor],
+    [onFeatureClick, fillColor, activeFeatureCode],
   );
 
   return (
@@ -108,10 +158,28 @@ function FranceMapComponent({
               <LeafletGeoJSON
                 key={JSON.stringify(geojson).slice(0, 100)}
                 data={geojson}
-                style={defaultStyle}
+                style={styleFor}
                 onEachFeature={onEachFeature}
               />
-              <FitBounds geojson={geojson} />
+              {markers?.map((m) => (
+                <CircleMarker
+                  key={m.id}
+                  center={[m.lat, m.lon]}
+                  radius={4}
+                  pathOptions={{
+                    fillColor: "hsl(0 72% 51%)",
+                    color: "hsl(0 72% 51%)",
+                    fillOpacity: 0.85,
+                    weight: 1,
+                  }}
+                  eventHandlers={{
+                    click: () => onMarkerClick?.(m.id),
+                  }}
+                >
+                  <Tooltip sticky>{m.name}</Tooltip>
+                </CircleMarker>
+              ))}
+              <FitBounds geojson={geojson} activeFeatureCode={activeFeatureCode} />
             </MapContainer>
           )}
         </div>

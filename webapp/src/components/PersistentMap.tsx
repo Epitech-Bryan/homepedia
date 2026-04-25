@@ -1,7 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
-import { FranceMap } from "@/components/FranceMap";
-import { useDepartment, useGeoDepartments, useGeoRegions } from "@/api/hooks";
+import { FranceMap, type MapMarker } from "@/components/FranceMap";
+import {
+  useCitiesForDepartment,
+  useDepartment,
+  useGeoDepartments,
+  useGeoRegions,
+} from "@/api/hooks";
 
 const HIDDEN_PATHS = ["/explorer"];
 
@@ -21,9 +26,28 @@ export function PersistentMap() {
 
   const { data: geoRegions } = useGeoRegions();
   const { data: geoDepartments } = useGeoDepartments(activeRegionCode);
+  const { data: citiesPage } = useCitiesForDepartment(departmentCode);
 
   const showDepartments = Boolean(activeRegionCode);
   const geojson = showDepartments ? (geoDepartments ?? null) : (geoRegions ?? null);
+
+  const markers: MapMarker[] = useMemo(() => {
+    if (!departmentCode || !citiesPage?._embedded) return [];
+    const cities = Object.values(citiesPage._embedded).flat() as Array<{
+      inseeCode: string;
+      name: string;
+      latitude: number;
+      longitude: number;
+    }>;
+    return cities
+      .filter((c) => Number.isFinite(c.latitude) && Number.isFinite(c.longitude))
+      .map((c) => ({
+        id: c.inseeCode,
+        name: c.name,
+        lat: c.latitude,
+        lon: c.longitude,
+      }));
+  }, [departmentCode, citiesPage]);
 
   const onFeatureClick = useCallback(
     (code: string) => {
@@ -36,10 +60,25 @@ export function PersistentMap() {
     [navigate, showDepartments],
   );
 
+  const onMarkerClick = useCallback(
+    (inseeCode: string) => {
+      navigate(`/cities/${inseeCode}`);
+    },
+    [navigate],
+  );
+
   // Hide the map on routes where it doesn't make sense
-  const isHidden =
-    HIDDEN_PATHS.some((p) => pathname.startsWith(p)) || pathname.startsWith("/cities/");
+  const isHidden = HIDDEN_PATHS.some((p) => pathname.startsWith(p));
   if (isHidden) return null;
 
-  return <FranceMap geojson={geojson} onFeatureClick={onFeatureClick} height="450px" />;
+  return (
+    <FranceMap
+      geojson={geojson}
+      onFeatureClick={onFeatureClick}
+      markers={markers}
+      onMarkerClick={onMarkerClick}
+      activeFeatureCode={departmentCode}
+      height="450px"
+    />
+  );
 }

@@ -1,5 +1,18 @@
 # app
 
+## [0.4.0] - 2026-04-25
+
+### Features
+
+- feat(webapp): add async dropdown autocomplete on region search
+- feat(api): aggregate population and area on regions and departments from communes
+
+### Bug Fixes
+
+- perf(webapp): memoize FranceMap and stabilize click handlers
+- fix(batch): paginate INSEE communes import per department to avoid timeout
+- fix(batch): use dedicated flag for startup runner to avoid clashing with spring boot auto-runner
+
 ## [0.3.0] - 2026-04-25
 
 ### Features

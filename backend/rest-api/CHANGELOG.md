@@ -5,6 +5,18 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.10.0] - 2026-04-25
+
+### Features
+
+- feat(webapp): add async dropdown autocomplete on region search
+- feat(api): aggregate population and area on regions and departments from communes
+
+### Bug Fixes
+
+- perf(webapp): memoize FranceMap and stabilize click handlers
+- fix(batch): paginate INSEE communes import per department to avoid timeout
+
 ## [3.9.1] - 2026-04-25
 
 ### Bug Fixes

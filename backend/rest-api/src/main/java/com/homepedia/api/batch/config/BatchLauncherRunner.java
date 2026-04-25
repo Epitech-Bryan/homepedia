@@ -24,6 +24,10 @@ public class BatchLauncherRunner implements CommandLineRunner {
 	private final Job reviewImportJob;
 	private final Job healthImportJob;
 	private final Job dpeImportJob;
+	private final Job economyImportJob;
+	private final Job educationImportJob;
+	private final Job environmentImportJob;
+	private final Job infrastructureImportJob;
 
 	@Value("${homepedia.insee.import-enabled:false}")
 	private boolean inseeEnabled;
@@ -39,6 +43,18 @@ public class BatchLauncherRunner implements CommandLineRunner {
 
 	@Value("${homepedia.import.reviews.enabled:false}")
 	private boolean reviewsEnabled;
+
+	@Value("${homepedia.economy.import-enabled:false}")
+	private boolean economyEnabled;
+
+	@Value("${homepedia.education.import-enabled:false}")
+	private boolean educationEnabled;
+
+	@Value("${homepedia.environment.import-enabled:false}")
+	private boolean environmentEnabled;
+
+	@Value("${homepedia.infrastructure.import-enabled:false}")
+	private boolean infrastructureEnabled;
 
 	@Value("${homepedia.dvf.zip-path:}")
 	private String dvfZipPath;
@@ -64,6 +80,18 @@ public class BatchLauncherRunner implements CommandLineRunner {
 		}
 		if (reviewsEnabled) {
 			jobsToRun.add(reviewImportJob);
+		}
+		if (economyEnabled) {
+			jobsToRun.add(economyImportJob);
+		}
+		if (educationEnabled) {
+			jobsToRun.add(educationImportJob);
+		}
+		if (environmentEnabled) {
+			jobsToRun.add(environmentImportJob);
+		}
+		if (infrastructureEnabled) {
+			jobsToRun.add(infrastructureImportJob);
 		}
 
 		if (jobsToRun.isEmpty()) {

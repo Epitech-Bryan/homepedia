@@ -29,6 +29,18 @@ homepedia:
   health:
     import-enabled: ${HOMEPEDIA_HEALTH_ENABLED:false}
     csv-path: ${HOMEPEDIA_HEALTH_CSV_PATH:}
+  economy:
+    import-enabled: ${HOMEPEDIA_ECONOMY_ENABLED:false}
+    csv-path: ${HOMEPEDIA_ECONOMY_CSV_PATH:}
+  education:
+    import-enabled: ${HOMEPEDIA_EDUCATION_ENABLED:false}
+    csv-path: ${HOMEPEDIA_EDUCATION_CSV_PATH:}
+  environment:
+    import-enabled: ${HOMEPEDIA_ENVIRONMENT_ENABLED:false}
+    csv-path: ${HOMEPEDIA_ENVIRONMENT_CSV_PATH:}
+  infrastructure:
+    import-enabled: ${HOMEPEDIA_INFRASTRUCTURE_ENABLED:false}
+    csv-path: ${HOMEPEDIA_INFRASTRUCTURE_CSV_PATH:}
   dvf:
     zip-path: ${HOMEPEDIA_DVF_ZIP_PATH:}
   import:
@@ -49,6 +61,14 @@ homepedia:
       cron: ${HOMEPEDIA_SCHEDULER_HEALTH_CRON:-}
     reviews:
       cron: ${HOMEPEDIA_SCHEDULER_REVIEWS_CRON:-}
+    economy:
+      cron: ${HOMEPEDIA_SCHEDULER_ECONOMY_CRON:-}
+    education:
+      cron: ${HOMEPEDIA_SCHEDULER_EDUCATION_CRON:-}
+    environment:
+      cron: ${HOMEPEDIA_SCHEDULER_ENVIRONMENT_CRON:-}
+    infrastructure:
+      cron: ${HOMEPEDIA_SCHEDULER_INFRASTRUCTURE_CRON:-}
 
 logging:
   level:

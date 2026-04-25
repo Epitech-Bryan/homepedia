@@ -10,6 +10,12 @@ public interface HomepediaConstant {
 		String TRANSACTIONS = "/transactions";
 		String INDICATORS = "/indicators";
 		String GEO = "/geo";
+		String STATS = "/stats";
+
+		interface Stats {
+			String REGIONS = "/regions";
+			String DEPARTMENTS = "/departments";
+		}
 
 		interface Region {
 			String BY_CODE = "/{code}";

@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.11.1] - 2026-04-25
+
+### Bug Fixes
+
+- fix(build): pin springdoc to 2.8.17 (v3 requires spring boot 3.6+)
+
 ## [3.11.0] - 2026-04-25
 
 ### Features

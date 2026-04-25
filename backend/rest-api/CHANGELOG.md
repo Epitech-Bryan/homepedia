@@ -5,6 +5,19 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.12.0] - 2026-04-25
+
+### Features
+
+- feat(api): server-sent events for real-time batch progress + frontend banner
+- feat(spark): add spark-jobs module with DVF aggregation job + cluster in compose
+- feat(api): migrate city reviews to MongoDB (relational + non-relational mix)
+- feat(webapp): add heatmap layer alongside choropleth and bubbles
+
+### Bug Fixes
+
+- fix(build): drop shade transformer + make leaflet.heat type augment instead of replace
+
 ## [3.11.1] - 2026-04-25
 
 ### Bug Fixes

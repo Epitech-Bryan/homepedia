@@ -1,5 +1,19 @@
 # app
 
+## [0.6.0] - 2026-04-25
+
+### Features
+
+- feat(api): server-sent events for real-time batch progress + frontend banner
+- feat(spark): add spark-jobs module with DVF aggregation job + cluster in compose
+- feat(api): migrate city reviews to MongoDB (relational + non-relational mix)
+- feat(webapp): add heatmap layer alongside choropleth and bubbles
+
+### Bug Fixes
+
+- fix(build): drop shade transformer + make leaflet.heat type augment instead of replace
+- fix(build): pin springdoc to 2.8.17 (v3 requires spring boot 3.6+)
+
 ## [0.5.0] - 2026-04-25
 
 ### Features

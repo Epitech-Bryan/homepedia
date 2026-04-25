@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -59,6 +59,20 @@ interface FranceMapProps {
   metricLabel?: string;
   mapStyle?: MapStyle;
   height?: string;
+  onZoomChange?: (zoom: number) => void;
+}
+
+function ZoomReporter({ onChange }: { onChange: (z: number) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    onChange(map.getZoom());
+    const update = () => onChange(map.getZoom());
+    map.on("zoomend", update);
+    return () => {
+      map.off("zoomend", update);
+    };
+  }, [map, onChange]);
+  return null;
 }
 
 // Cities only become visible past this zoom level so they don't hide the
@@ -143,23 +157,31 @@ function FitBounds({
   activeFeatureCode?: string;
 }) {
   const map = useMap();
+  // Track the last fit target so a zoom-driven geojson swap doesn't yank
+  // the viewport back to "all France" each time the layer changes.
+  const lastFitRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!geojson || !geojson.features?.length) {
-      map.setView(FRANCE_CENTER, FRANCE_ZOOM);
-      return;
-    }
+    if (!geojson || !geojson.features?.length) return;
+
+    const key = activeFeatureCode ?? "__all__";
+    if (lastFitRef.current === key) return;
+
     let features = geojson.features;
     if (activeFeatureCode) {
       const filtered = features.filter(
         (f) => (f.properties as FeatureProperties | null)?.code === activeFeatureCode,
       );
-      if (filtered.length > 0) features = filtered;
+      if (filtered.length === 0) return; // active code not in this layer; skip
+      features = filtered;
     }
+
     const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features };
     const layer = L.geoJSON(fc);
     const bounds = layer.getBounds();
     if (bounds.isValid()) {
       map.flyToBounds(bounds, { padding: [32, 32], duration: 0.7 });
+      lastFitRef.current = key;
     }
   }, [geojson, activeFeatureCode, map]);
   return null;
@@ -195,6 +217,7 @@ function FranceMapComponent({
   metricLabel,
   mapStyle = "choropleth",
   height = "500px",
+  onZoomChange,
 }: FranceMapProps) {
   const showChoropleth = mapStyle === "choropleth" || mapStyle === "all";
   const showBubbles = mapStyle === "bubbles" || mapStyle === "all";
@@ -409,6 +432,7 @@ function FranceMapComponent({
                   <ZoomAwareCityMarkers markers={markers} onMarkerClick={onMarkerClick} />
                 )}
                 {showHeat && <HeatLayer points={heatPoints} />}
+                {onZoomChange && <ZoomReporter onChange={onZoomChange} />}
                 <FitBounds geojson={geojson} activeFeatureCode={activeFeatureCode} />
               </MapContainer>
               {showChoropleth && choroplethRange && (

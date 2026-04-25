@@ -8,6 +8,7 @@ import {
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
+import "leaflet.heat";
 import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,7 +32,7 @@ export interface MapMarker {
   name: string;
 }
 
-export type MapStyle = "choropleth" | "bubbles" | "both";
+export type MapStyle = "choropleth" | "bubbles" | "heat" | "all";
 
 interface FranceMapProps {
   geojson: GeoJSON.FeatureCollection | null;
@@ -43,6 +44,25 @@ interface FranceMapProps {
   mapStyle?: MapStyle;
   fillColor?: string;
   height?: string;
+}
+
+function HeatLayer({ points }: { points: L.HeatLatLngTuple[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!points || points.length === 0) return;
+    const layer = L.heatLayer(points, {
+      radius: 22,
+      blur: 18,
+      maxZoom: 12,
+      minOpacity: 0.25,
+      gradient: { 0.2: "#0f5fc1", 0.5: "#22c55e", 0.7: "#facc15", 0.9: "#ef4444" },
+    });
+    layer.addTo(map);
+    return () => {
+      layer.remove();
+    };
+  }, [map, points]);
+  return null;
 }
 
 function FitBounds({
@@ -86,8 +106,9 @@ function FranceMapComponent({
   fillColor = "hsl(221.2 83.2% 53.3%)",
   height = "500px",
 }: FranceMapProps) {
-  const showChoropleth = mapStyle === "choropleth" || mapStyle === "both";
-  const showBubbles = mapStyle === "bubbles" || mapStyle === "both";
+  const showChoropleth = mapStyle === "choropleth" || mapStyle === "all";
+  const showBubbles = mapStyle === "bubbles" || mapStyle === "all";
+  const showHeat = mapStyle === "heat" || mapStyle === "all";
   const choroplethRange = useMemo(() => {
     if (!metricByCode) return null;
     const values = Object.values(metricByCode).filter(
@@ -115,15 +136,15 @@ function FranceMapComponent({
     [metricByCode, choroplethRange, fillColor, showChoropleth],
   );
 
-  const bubbles = useMemo(() => {
-    if (!showBubbles || !geojson || !metricByCode || !choroplethRange) return [];
+  const polygonCenters = useMemo(() => {
+    if (!geojson || !metricByCode || !choroplethRange) return [];
     const result: Array<{
       code: string;
       name: string;
       lat: number;
       lng: number;
       value: number;
-      radius: number;
+      ratio: number;
     }> = [];
     for (const feature of geojson.features) {
       const props = feature.properties as FeatureProperties | null;
@@ -134,18 +155,32 @@ function FranceMapComponent({
       const layer = L.geoJSON(feature);
       const center = layer.getBounds().getCenter();
       const ratio = (value - choroplethRange.min) / (choroplethRange.max - choroplethRange.min);
-      const radius = 6 + ratio * 22;
       result.push({
         code,
         name: props?.name ?? props?.nom ?? "",
         lat: center.lat,
         lng: center.lng,
         value,
-        radius,
+        ratio,
       });
     }
     return result;
-  }, [geojson, metricByCode, choroplethRange, showBubbles]);
+  }, [geojson, metricByCode, choroplethRange]);
+
+  const bubbles = useMemo(() => {
+    if (!showBubbles) return [];
+    return polygonCenters.map((p) => ({ ...p, radius: 6 + p.ratio * 22 }));
+  }, [polygonCenters, showBubbles]);
+
+  const heatPoints = useMemo<L.HeatLatLngTuple[]>(() => {
+    if (!showHeat) return [];
+    if (markers && markers.length > 0) {
+      // Use city markers as heat points (intensity = 1 unless we have richer data)
+      return markers.map((m) => [m.lat, m.lon, 1] as L.HeatLatLngTuple);
+    }
+    // Fallback: heat polygon centroids weighted by metric ratio
+    return polygonCenters.map((p) => [p.lat, p.lng, p.ratio] as L.HeatLatLngTuple);
+  }, [showHeat, markers, polygonCenters]);
 
   const baseStyle = useCallback(
     (feature?: GeoJSON.Feature<GeoJSON.Geometry, FeatureProperties>): PathOptions => {
@@ -271,6 +306,7 @@ function FranceMapComponent({
                   <Tooltip sticky>{m.name}</Tooltip>
                 </CircleMarker>
               ))}
+              {showHeat && <HeatLayer points={heatPoints} />}
               <FitBounds geojson={geojson} activeFeatureCode={activeFeatureCode} />
             </MapContainer>
           )}

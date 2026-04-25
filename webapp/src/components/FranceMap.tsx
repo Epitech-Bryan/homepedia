@@ -308,6 +308,7 @@ function FranceMapComponent({
       const name = props?.name ?? props?.nom ?? "";
       const code = props?.code ?? "";
       const value = metricByCode?.[code];
+      const hasChoropleth = colorForCode(code) !== null;
 
       const tooltipText =
         value != null && Number.isFinite(value)
@@ -315,16 +316,25 @@ function FranceMapComponent({
           : `<strong>${name}</strong>`;
       layer.bindTooltip(tooltipText, { sticky: true, direction: "top", offset: [0, -8] });
 
+      const resetStyle = () => (layer as L.Path).setStyle(baseStyle(feature));
+
       layer.on({
         mouseover: (e: LeafletMouseEvent) => {
           const target = e.target as L.Path;
-          target.setStyle({ fillOpacity: 0.95, weight: 2.5, color: ACTIVE_RING });
+          if (hasChoropleth) {
+            // Choropleth mode: bump fill opacity + darken stroke.
+            target.setStyle({ fillOpacity: 0.95, weight: 2.5, color: ACTIVE_RING });
+          } else {
+            // Default mode: just thicken the stroke, keep fill almost
+            // transparent so hover doesn't flood the polygon with orange.
+            target.setStyle({ fillOpacity: 0.14, weight: 2, color: ACTIVE_RING, opacity: 1 });
+          }
           target.bringToFront();
         },
-        mouseout: (e: LeafletMouseEvent) => {
-          const target = e.target as L.Path;
-          target.setStyle(baseStyle(feature));
-        },
+        mouseout: resetStyle,
+        // Leaflet sometimes drops mouseout when the cursor stays still during
+        // a zoom; resetting on zoomstart guarantees no stale hover state.
+        zoomstart: resetStyle,
         click: () => {
           if (onFeatureClick && code) {
             onFeatureClick(code, name);
@@ -334,7 +344,7 @@ function FranceMapComponent({
 
       (layer as L.Path).setStyle(baseStyle(feature));
     },
-    [onFeatureClick, metricByCode, metricLabel, baseStyle],
+    [onFeatureClick, metricByCode, metricLabel, baseStyle, colorForCode],
   );
 
   const layerKey = useMemo(() => {

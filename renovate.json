@@ -27,6 +27,20 @@
         "major"
       ],
       "automerge": false
+    },
+    {
+      "matchPackageNames": [
+        "org.springdoc:springdoc-openapi-starter-webmvc-ui"
+      ],
+      "allowedVersions": "<3.0.0",
+      "description": "Pinned to v2.x: v3 requires Spring Boot 3.6+ (we target 3.5.x)"
+    },
+    {
+      "matchPackageNames": [
+        "org.springframework.boot:spring-boot-starter-parent"
+      ],
+      "allowedVersions": "<3.6.0",
+      "description": "Pinned to 3.5.x: 3.6+ has not yet been validated against the rest of the dependency tree"
     }
   ],
   "prConcurrentLimit": 10,

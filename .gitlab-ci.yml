@@ -11,9 +11,14 @@ variables:
 
 workflow:
   rules:
-    # Tag pipelines bypass any [skip ci] filter so manually triggered or
-    # legacy tag pushes can still build images.
+    # Tag pipelines always run so publish fires on FerrFlow's release tags,
+    # even though those tags point at chore(release): commits.
     - if: $CI_COMMIT_TAG
+    # Skip the branch pipeline for FerrFlow's release commits — the tag
+    # pipeline already covers everything that matters (publish), and
+    # re-running lint/build/release on a pure version bump is wasted CI.
+    - if: $CI_COMMIT_MESSAGE =~ /^chore\(release\):/
+      when: never
     - if: $CI_COMMIT_MESSAGE =~ /\[skip ci\]/
       when: never
     - when: always

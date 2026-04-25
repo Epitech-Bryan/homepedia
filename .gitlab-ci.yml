@@ -29,7 +29,6 @@ variables:
     key:
       files:
         - backend/pom.xml
-        - backend/common/pom.xml
         - backend/rest-api/pom.xml
     paths:
       - .m2/repository/

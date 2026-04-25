@@ -4,7 +4,8 @@
     "versioning": "semver",
     "tagTemplate": "{name}-v{version}",
     "recoverMissedReleases": true,
-    "commitPerPackage": false
+    "commitPerPackage": false,
+    "skipCi": false
   },
   "package": [
     {

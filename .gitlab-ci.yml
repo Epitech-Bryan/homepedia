@@ -11,8 +11,8 @@ variables:
 
 workflow:
   rules:
-    # Tag pipelines must run even if the tagged commit message has [skip ci]
-    # (FerrFlow's release commit carries [skip ci] and is the one being tagged).
+    # Tag pipelines bypass any [skip ci] filter so manually triggered or
+    # legacy tag pushes can still build images.
     - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_MESSAGE =~ /\[skip ci\]/
       when: never

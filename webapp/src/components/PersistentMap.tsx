@@ -153,7 +153,8 @@ export function PersistentMap() {
               <SelectContent>
                 <SelectItem value="choropleth">Choropleth</SelectItem>
                 <SelectItem value="bubbles">Bubbles</SelectItem>
-                <SelectItem value="both">Both</SelectItem>
+                <SelectItem value="heat">Heatmap</SelectItem>
+                <SelectItem value="all">All</SelectItem>
               </SelectContent>
             </Select>
           </>

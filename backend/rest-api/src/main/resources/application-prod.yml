@@ -32,6 +32,21 @@ homepedia:
   import:
     reviews:
       enabled: ${IMPORT_REVIEWS_ENABLED:false}
+  scheduler:
+    enabled: ${HOMEPEDIA_SCHEDULER_ENABLED:false}
+    zone: ${HOMEPEDIA_SCHEDULER_ZONE:Europe/Paris}
+    insee:
+      cron: ${HOMEPEDIA_SCHEDULER_INSEE_CRON:-}
+    geo:
+      cron: ${HOMEPEDIA_SCHEDULER_GEO_CRON:-}
+    dvf:
+      cron: ${HOMEPEDIA_SCHEDULER_DVF_CRON:-}
+    dpe:
+      cron: ${HOMEPEDIA_SCHEDULER_DPE_CRON:-}
+    health:
+      cron: ${HOMEPEDIA_SCHEDULER_HEALTH_CRON:-}
+    reviews:
+      cron: ${HOMEPEDIA_SCHEDULER_REVIEWS_CRON:-}
 
 logging:
   level:

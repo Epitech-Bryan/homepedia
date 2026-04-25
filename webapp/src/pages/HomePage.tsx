@@ -14,10 +14,7 @@ export function HomePage() {
   const { data: regions, isLoading, error } = useRegions();
   const { data: geoRegions } = useGeoRegions();
 
-  const onRegionClick = useCallback(
-    (code: string) => navigate(`/regions/${code}`),
-    [navigate],
-  );
+  const onRegionClick = useCallback((code: string) => navigate(`/regions/${code}`), [navigate]);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;

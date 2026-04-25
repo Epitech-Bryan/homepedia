@@ -22,9 +22,7 @@ export function RegionSearch({
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return regions
-      .filter((r) => r.name.toLowerCase().includes(q))
-      .slice(0, maxResults);
+    return regions.filter((r) => r.name.toLowerCase().includes(q)).slice(0, maxResults);
   }, [query, regions, maxResults]);
 
   useEffect(() => {

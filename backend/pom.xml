@@ -21,6 +21,7 @@
     <modules>
         <module>common</module>
         <module>rest-api</module>
+        <module>spark-jobs</module>
     </modules>
 
     <properties>

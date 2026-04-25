@@ -75,6 +75,35 @@ services:
       - mongo-data:/data/db
     restart: unless-stopped
 
+  spark-master:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+    ports:
+      - "7077:7077"
+      - "8088:8080"
+    volumes:
+      - ./backend/spark-jobs/target:/jobs:ro
+      - spark-data:/data
+    restart: unless-stopped
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_WORKER_CORES=2
+    volumes:
+      - ./backend/spark-jobs/target:/jobs:ro
+      - spark-data:/data
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   mongo-data:
+  spark-data:

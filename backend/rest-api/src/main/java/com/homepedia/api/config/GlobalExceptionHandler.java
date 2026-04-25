@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -17,6 +18,14 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(AsyncRequestNotUsableException.class)
 	public void handleClientDisconnect(AsyncRequestNotUsableException ex) {
 		log.debug("Client disconnected before response was fully sent: {}", ex.getMessage());
+	}
+
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ErrorResponse> handleNotFound(NoResourceFoundException ex) {
+		log.debug("No resource found: {}", ex.getResourcePath());
+		final var error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), "Not Found",
+				"Resource not found: " + ex.getResourcePath(), Instant.now());
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
 	}
 
 	@ExceptionHandler(MethodArgumentTypeMismatchException.class)

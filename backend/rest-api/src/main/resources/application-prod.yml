@@ -17,6 +17,8 @@ management:
       show-details: always
 
 homepedia:
+  batch:
+    startup-enabled: ${HOMEPEDIA_BATCH_STARTUP_ENABLED:false}
   insee:
     import-enabled: true
   geo:

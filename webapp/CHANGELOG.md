@@ -1,5 +1,22 @@
 # app
 
+## [0.9.0] - 2026-04-25
+
+### Features
+
+- feat(webapp): always show aggregated metric on map (drop uniform orange default)
+- feat(webapp): zoom-driven map layers (regions <7, departments >=7) with appropriate aggregation
+- feat(webapp): redesign map (carto voyager, sunset palette, legend, zoom-aware city markers)
+
+### Bug Fixes
+
+- fix(webapp): subtle hover on default polygons (no orange flood) + reset on zoomstart
+- fix(api): enable mongo repositories scan in com.homepedia.common
+- fix: update spark.version to v3.5.8
+- fix: update spark.version to v3.5.8
+- fix(build): align spark-jobs parent version with root + register module in ferrflow
+- fix(build): copy spark-jobs pom into rest-api docker build context
+
 ## [0.8.0] - 2026-04-25
 
 ### Features

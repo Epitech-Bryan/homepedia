@@ -1,0 +1,70 @@
+package com.homepedia.api.batch.config;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+@ConditionalOnProperty(name = "homepedia.scheduler.enabled", havingValue = "true")
+public class BatchScheduler {
+
+	private static final String DISABLED = "-";
+
+	private final JobLauncher jobLauncher;
+	private final Job inseeImportJob;
+	private final Job geoJsonImportJob;
+	private final Job dvfImportJob;
+	private final Job dpeImportJob;
+	private final Job healthImportJob;
+	private final Job reviewImportJob;
+
+	@Scheduled(cron = "${homepedia.scheduler.insee.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	public void runInseeImport() {
+		runJob(inseeImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.geo.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	public void runGeoJsonImport() {
+		runJob(geoJsonImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.dvf.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	public void runDvfImport() {
+		runJob(dvfImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.dpe.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	public void runDpeImport() {
+		runJob(dpeImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.health.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	public void runHealthImport() {
+		runJob(healthImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.reviews.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	public void runReviewImport() {
+		runJob(reviewImportJob);
+	}
+
+	private void runJob(Job job) {
+		final var name = job.getName();
+		try {
+			log.info("Scheduled launch of {}", name);
+			final var params = new JobParametersBuilder().addLong("timestamp", System.currentTimeMillis())
+					.toJobParameters();
+			final var execution = jobLauncher.run(job, params);
+			log.info("Scheduled job {} finished with status {}", name, execution.getStatus());
+		} catch (Exception e) {
+			log.error("Scheduled job {} failed: {}", name, e.getMessage(), e);
+		}
+	}
+}

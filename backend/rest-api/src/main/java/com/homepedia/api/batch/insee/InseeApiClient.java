@@ -31,11 +31,11 @@ public class InseeApiClient {
 				});
 	}
 
-	public List<InseeCommuneDto> fetchCommunes() {
-		log.info("Fetching communes from {}", apiUrl);
+	public List<InseeCommuneDto> fetchCommunesForDepartment(String departmentCode) {
+		log.debug("Fetching communes for department {}", departmentCode);
 		return restClient.get()
-				.uri(apiUrl
-						+ "/communes?fields=nom,code,codesPostaux,codeDepartement,population,surface,centre&limit=0")
+				.uri(apiUrl + "/departements/" + departmentCode
+						+ "/communes?fields=nom,code,codesPostaux,codeDepartement,population,surface,centre")
 				.retrieve().body(new ParameterizedTypeReference<>() {
 				});
 	}

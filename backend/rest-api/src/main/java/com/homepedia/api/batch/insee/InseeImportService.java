@@ -98,9 +98,6 @@ public class InseeImportService {
 
 	@Transactional
 	public void importCommunes() {
-		final var dtos = inseeApiClient.fetchCommunes();
-		log.info("Fetched {} communes from INSEE API", CollectionUtils.emptyIfNull(dtos).size());
-
 		final var existingDepartments = departmentRepository.findAll().stream()
 				.collect(Collectors.toMap(Department::getCode, Function.identity()));
 
@@ -110,39 +107,42 @@ public class InseeImportService {
 		final var batch = new ArrayList<City>(BATCH_SIZE);
 		var count = 0;
 
-		for (final var dto : CollectionUtils.emptyIfNull(dtos)) {
-			if (StringUtils.isBlank(dto.code()) || StringUtils.isBlank(dto.nom())) {
-				continue;
-			}
-			final var department = existingDepartments.get(dto.codeDepartement());
-			if (department == null) {
-				continue;
-			}
+		for (final var department : existingDepartments.values()) {
+			final var dtos = inseeApiClient.fetchCommunesForDepartment(department.getCode());
+			final var dtoList = CollectionUtils.emptyIfNull(dtos);
+			log.info("Fetched {} communes for department {}", dtoList.size(), department.getCode());
 
-			final var postalCode = CollectionUtils.emptyIfNull(dto.codesPostaux()).stream().findFirst().orElse(null);
+			for (final var dto : dtoList) {
+				if (StringUtils.isBlank(dto.code()) || StringUtils.isBlank(dto.nom())) {
+					continue;
+				}
 
-			final var existing = existingCities.get(dto.code());
-			final City city;
-			if (existing != null) {
-				existing.setName(dto.nom());
-				existing.setPostalCode(postalCode);
-				existing.setPopulation(dto.population());
-				existing.setArea(dto.surface());
-				setCoordinates(existing, dto);
-				city = existing;
-			} else {
-				city = City.builder().inseeCode(dto.code()).name(dto.nom()).postalCode(postalCode)
-						.department(department).population(dto.population()).area(dto.surface()).build();
-				setCoordinates(city, dto);
-			}
+				final var postalCode = CollectionUtils.emptyIfNull(dto.codesPostaux()).stream().findFirst()
+						.orElse(null);
 
-			batch.add(city);
+				final var existing = existingCities.get(dto.code());
+				final City city;
+				if (existing != null) {
+					existing.setName(dto.nom());
+					existing.setPostalCode(postalCode);
+					existing.setPopulation(dto.population());
+					existing.setArea(dto.surface());
+					setCoordinates(existing, dto);
+					city = existing;
+				} else {
+					city = City.builder().inseeCode(dto.code()).name(dto.nom()).postalCode(postalCode)
+							.department(department).population(dto.population()).area(dto.surface()).build();
+					setCoordinates(city, dto);
+				}
 
-			if (batch.size() >= BATCH_SIZE) {
-				cityRepository.saveAll(batch);
-				count += batch.size();
-				batch.clear();
-				log.info("Imported {} communes...", count);
+				batch.add(city);
+
+				if (batch.size() >= BATCH_SIZE) {
+					cityRepository.saveAll(batch);
+					count += batch.size();
+					batch.clear();
+					log.info("Imported {} communes...", count);
+				}
 			}
 		}
 
@@ -152,6 +152,14 @@ public class InseeImportService {
 		}
 
 		log.info("Imported {} communes total", count);
+		updateAggregateStats();
+	}
+
+	private void updateAggregateStats() {
+		log.info("Recomputing aggregate population/area on departments and regions...");
+		departmentRepository.recomputeAggregates();
+		regionRepository.recomputeAggregates();
+		log.info("Aggregate stats updated.");
 	}
 
 	private void setCoordinates(City city, InseeCommuneDto dto) {

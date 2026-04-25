@@ -96,3 +96,14 @@ export function useGeoDepartments(regionCode?: string) {
     queryFn: () => api.geo.departments(regionCode),
   });
 }
+
+export function useRegionStats() {
+  return useQuery({ queryKey: ["stats", "regions"], queryFn: () => api.stats.regions() });
+}
+
+export function useDepartmentStats(regionCode?: string) {
+  return useQuery({
+    queryKey: ["stats", "departments", regionCode],
+    queryFn: () => api.stats.departments(regionCode),
+  });
+}

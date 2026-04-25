@@ -1,7 +1,5 @@
-import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useRegions, useGeoRegions } from "@/api/hooks";
-import { FranceMap } from "@/components/FranceMap";
+import { useRegions } from "@/api/hooks";
 import { RegionSearch } from "@/components/RegionSearch";
 import { StatCard } from "@/components/StatCard";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -12,9 +10,6 @@ import { Badge } from "@/components/ui/badge";
 export function HomePage() {
   const navigate = useNavigate();
   const { data: regions, isLoading, error } = useRegions();
-  const { data: geoRegions } = useGeoRegions();
-
-  const onRegionClick = useCallback((code: string) => navigate(`/regions/${code}`), [navigate]);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
@@ -39,8 +34,6 @@ export function HomePage() {
         <StatCard label="Total Population" value={totalPopulation} />
         <StatCard label="Total Area" value={totalArea} unit="km²" />
       </div>
-
-      <FranceMap geojson={geoRegions ?? null} onFeatureClick={onRegionClick} height="550px" />
 
       <div>
         <h2 className="text-xl font-semibold mb-4">All Regions</h2>

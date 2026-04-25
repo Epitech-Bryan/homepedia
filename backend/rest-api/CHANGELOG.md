@@ -5,6 +5,16 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.9.0] - 2026-04-25
+
+### Features
+
+- feat(batch): log scheduled job duration on completion and failure
+
+### Bug Fixes
+
+- fix(webapp): set page title to HomePedia
+
 ## [3.8.0] - 2026-04-25
 
 ### Features

@@ -24,7 +24,6 @@ const HIDDEN_PATHS = ["/explorer"];
 const DEPARTMENT_ZOOM_THRESHOLD = 7;
 
 type MapMetric =
-  | "none"
   | "population"
   | "density"
   | "averagePrice"
@@ -32,7 +31,6 @@ type MapMetric =
   | "transactionCount";
 
 const METRIC_LABELS: Record<MapMetric, string> = {
-  none: "Default (uniform)",
   population: "Population",
   density: "Density (hab/km²)",
   averagePrice: "Avg. price (€)",
@@ -52,15 +50,13 @@ function extractValue(s: RegionStats | DepartmentStats, metric: MapMetric): numb
       return s.averagePricePerSqm ?? null;
     case "transactionCount":
       return s.transactionCount ?? null;
-    default:
-      return null;
   }
 }
 
 export function PersistentMap() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const [metric, setMetric] = useState<MapMetric>("none");
+  const [metric, setMetric] = useState<MapMetric>("population");
   const [style, setStyle] = useState<MapStyle>("choropleth");
   const [zoom, setZoom] = useState(6);
 
@@ -84,7 +80,6 @@ export function PersistentMap() {
   const geojson = showDepartments ? (geoDepartments ?? null) : (geoRegions ?? null);
 
   const metricByCode = useMemo(() => {
-    if (metric === "none") return undefined;
     const stats = showDepartments ? (allDepartmentStats ?? []) : (regionStats ?? []);
     const map: Record<string, number | null> = {};
     for (const s of stats) {
@@ -140,8 +135,6 @@ export function PersistentMap() {
   // zoom, otherwise the URL-selected region.
   const activeFeatureCode = showDepartments ? departmentCode : (activeRegionCode ?? undefined);
 
-  const showStyleSelector = metric !== "none";
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-end gap-3 flex-wrap">
@@ -158,22 +151,18 @@ export function PersistentMap() {
             ))}
           </SelectContent>
         </Select>
-        {showStyleSelector && (
-          <>
-            <label className="text-sm font-medium text-muted-foreground">Style</label>
-            <Select value={style} onValueChange={(v) => setStyle(v as MapStyle)}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="choropleth">Choropleth</SelectItem>
-                <SelectItem value="bubbles">Bubbles</SelectItem>
-                <SelectItem value="heat">Heatmap</SelectItem>
-                <SelectItem value="all">All</SelectItem>
-              </SelectContent>
-            </Select>
-          </>
-        )}
+        <label className="text-sm font-medium text-muted-foreground">Style</label>
+        <Select value={style} onValueChange={(v) => setStyle(v as MapStyle)}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="choropleth">Choropleth</SelectItem>
+            <SelectItem value="bubbles">Bubbles</SelectItem>
+            <SelectItem value="heat">Heatmap</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
       <FranceMap
         geojson={geojson}
@@ -182,7 +171,7 @@ export function PersistentMap() {
         onMarkerClick={onMarkerClick}
         activeFeatureCode={activeFeatureCode}
         metricByCode={metricByCode}
-        metricLabel={metric === "none" ? undefined : METRIC_LABELS[metric]}
+        metricLabel={METRIC_LABELS[metric]}
         mapStyle={style}
         height="450px"
         onZoomChange={setZoom}

@@ -29,10 +29,15 @@ const CHOROPLETH_SCALE = [
   "#990000",
 ];
 
-// Hue used for default polygons + bubbles (warm orange to match the palette).
+// Hue used for bubbles overlay (warm orange to match the palette).
 const ACCENT = "#fc8d59";
 const ACCENT_DARK = "#b3502c";
+// Stroke colors: dark for active feature, neutral mid-gray for the rest.
 const ACTIVE_RING = "#1f2937";
+const NEUTRAL_RING = "#7c2d12";
+// Fallback fill for polygons that don't have a value for the active metric.
+const NO_DATA_FILL = "#e5e7eb";
+const NO_DATA_RING = "#9ca3af";
 
 interface FeatureProperties {
   code?: string;
@@ -299,26 +304,13 @@ function FranceMapComponent({
       const code = feature?.properties?.code;
       const choroplethColor = colorForCode(code);
       const isActive = !!activeFeatureCode && code === activeFeatureCode;
+      const hasData = !!choroplethColor;
 
-      // Default style: virtually no fill, just thin stroke. Lets the basemap
-      // breathe and keeps the UI uncluttered when no metric is selected.
-      if (!choroplethColor) {
-        return {
-          fillColor: ACCENT,
-          fillOpacity: isActive ? 0.18 : 0.06,
-          color: isActive ? ACTIVE_RING : ACCENT_DARK,
-          weight: isActive ? 2.5 : 1,
-          opacity: isActive ? 1 : 0.55,
-          dashArray: isActive ? undefined : "1 0",
-        };
-      }
-
-      // Choropleth style: full fill + dark border for active feature.
       return {
-        fillColor: choroplethColor,
-        fillOpacity: isActive ? 0.9 : 0.78,
-        color: isActive ? ACTIVE_RING : "#7c2d12",
-        weight: isActive ? 2.5 : 0.8,
+        fillColor: choroplethColor ?? NO_DATA_FILL,
+        fillOpacity: isActive ? 0.92 : hasData ? 0.78 : 0.5,
+        color: isActive ? ACTIVE_RING : hasData ? NEUTRAL_RING : NO_DATA_RING,
+        weight: isActive ? 2.5 : 0.9,
         opacity: 1,
       };
     },
@@ -344,14 +336,11 @@ function FranceMapComponent({
       layer.on({
         mouseover: (e: LeafletMouseEvent) => {
           const target = e.target as L.Path;
-          if (hasChoropleth) {
-            // Choropleth mode: bump fill opacity + darken stroke.
-            target.setStyle({ fillOpacity: 0.95, weight: 2.5, color: ACTIVE_RING });
-          } else {
-            // Default mode: just thicken the stroke, keep fill almost
-            // transparent so hover doesn't flood the polygon with orange.
-            target.setStyle({ fillOpacity: 0.14, weight: 2, color: ACTIVE_RING, opacity: 1 });
-          }
+          target.setStyle({
+            fillOpacity: hasChoropleth ? 0.95 : 0.7,
+            weight: 2.5,
+            color: ACTIVE_RING,
+          });
           target.bringToFront();
         },
         mouseout: resetStyle,

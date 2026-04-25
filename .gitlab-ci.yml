@@ -8,6 +8,31 @@ stages:
 variables:
   GIT_DEPTH: 0
   GIT_STRATEGY: clone
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  PNPM_STORE_DIR: $CI_PROJECT_DIR/.pnpm-store
+
+# -----------------------------------------------------------------------------
+# Reusable cache templates. Keys are derived from lockfiles so the cache
+# auto-invalidates when dependencies change.
+# -----------------------------------------------------------------------------
+
+.cache_pnpm:
+  cache:
+    key:
+      files:
+        - webapp/pnpm-lock.yaml
+    paths:
+      - .pnpm-store/
+
+.cache_maven:
+  cache:
+    key:
+      files:
+        - backend/pom.xml
+        - backend/common/pom.xml
+        - backend/rest-api/pom.xml
+    paths:
+      - .m2/repository/
 
 workflow:
   rules:
@@ -28,6 +53,7 @@ workflow:
 # -----------------------------------------------------------------------------
 
 lint:backend:
+  extends: .cache_maven
   stage: lint
   image: eclipse-temurin:21-jdk-alpine
   before_script:
@@ -39,10 +65,12 @@ lint:backend:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 lint:webapp:
+  extends: .cache_pnpm
   stage: lint
   image: node:22-alpine
   before_script:
     - npm install -g pnpm
+    - pnpm config set store-dir "$PNPM_STORE_DIR"
     - cd webapp && pnpm install --frozen-lockfile
   script:
     - pnpm lint && pnpm format:check
@@ -56,6 +84,7 @@ lint:webapp:
 # -----------------------------------------------------------------------------
 
 build:backend:
+  extends: .cache_maven
   stage: build
   image: eclipse-temurin:21-jdk-alpine
   before_script:
@@ -67,10 +96,12 @@ build:backend:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 build:webapp:
+  extends: .cache_pnpm
   stage: build
   image: node:22-alpine
   before_script:
     - npm install -g pnpm
+    - pnpm config set store-dir "$PNPM_STORE_DIR"
     - cd webapp && pnpm install --frozen-lockfile
   script:
     - pnpm build

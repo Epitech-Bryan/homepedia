@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home, Compass, Map } from "lucide-react";
 import { PersistentMap } from "@/components/PersistentMap";
+import { BatchEventsBanner } from "@/components/BatchEventsBanner";
 
 const NAV_ITEMS = [
   { to: "/", label: "Home", icon: Home },
@@ -35,6 +36,7 @@ export function Layout() {
         </div>
       </header>
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+        <BatchEventsBanner />
         <PersistentMap />
         <Outlet />
       </main>

@@ -1,5 +1,7 @@
 package com.homepedia.api.batch.config;
 
+import com.homepedia.api.events.BatchEvent;
+import com.homepedia.api.events.BatchEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -18,6 +20,7 @@ public class BatchScheduler {
 	private static final String ZONE = "${homepedia.scheduler.zone:Europe/Paris}";
 
 	private final JobLauncher jobLauncher;
+	private final BatchEventPublisher eventPublisher;
 	private final Job inseeImportJob;
 	private final Job geoJsonImportJob;
 	private final Job dvfImportJob;
@@ -82,15 +85,18 @@ public class BatchScheduler {
 	private void runJob(Job job) {
 		final var name = job.getName();
 		final var start = System.currentTimeMillis();
+		eventPublisher.publish(BatchEvent.starting(name, "Scheduled launch"));
 		try {
 			log.info("Scheduled launch of {}", name);
 			final var params = new JobParametersBuilder().addLong("timestamp", start).toJobParameters();
 			final var execution = jobLauncher.run(job, params);
-			log.info("Scheduled job {} finished with status {} in {} ms", name, execution.getStatus(),
-					System.currentTimeMillis() - start);
+			final var elapsed = System.currentTimeMillis() - start;
+			log.info("Scheduled job {} finished with status {} in {} ms", name, execution.getStatus(), elapsed);
+			eventPublisher.publish(BatchEvent.completed(name, execution.getStatus() + " in " + elapsed + " ms"));
 		} catch (Exception e) {
-			log.error("Scheduled job {} failed after {} ms: {}", name, System.currentTimeMillis() - start,
-					e.getMessage(), e);
+			final var elapsed = System.currentTimeMillis() - start;
+			log.error("Scheduled job {} failed after {} ms: {}", name, elapsed, e.getMessage(), e);
+			eventPublisher.publish(BatchEvent.failed(name, e.getMessage()));
 		}
 	}
 }

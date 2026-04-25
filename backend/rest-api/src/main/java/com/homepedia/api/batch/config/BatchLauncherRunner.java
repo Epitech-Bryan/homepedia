@@ -1,5 +1,7 @@
 package com.homepedia.api.batch.config;
 
+import com.homepedia.api.events.BatchEvent;
+import com.homepedia.api.events.BatchEventPublisher;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Component;
 public class BatchLauncherRunner implements CommandLineRunner {
 
 	private final JobLauncher jobLauncher;
+	private final BatchEventPublisher eventPublisher;
 	private final Job inseeImportJob;
 	private final Job dvfImportJob;
 	private final Job geoJsonImportJob;
@@ -106,8 +109,16 @@ public class BatchLauncherRunner implements CommandLineRunner {
 
 		for (final var job : jobsToRun) {
 			log.info("Launching job: {}", job.getName());
-			jobLauncher.run(job, params);
-			log.info("Job {} completed", job.getName());
+			eventPublisher.publish(BatchEvent.starting(job.getName(), "Boot-time launch"));
+			try {
+				final var execution = jobLauncher.run(job, params);
+				log.info("Job {} completed", job.getName());
+				eventPublisher.publish(BatchEvent.completed(job.getName(), execution.getStatus().toString()));
+			} catch (Exception e) {
+				log.error("Job {} failed: {}", job.getName(), e.getMessage(), e);
+				eventPublisher.publish(BatchEvent.failed(job.getName(), e.getMessage()));
+				throw e;
+			}
 		}
 
 		log.info("All batch jobs finished.");

@@ -1,19 +1,23 @@
-import { useState } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRegions, useGeoRegions } from "@/api/hooks";
 import { FranceMap } from "@/components/FranceMap";
+import { RegionSearch } from "@/components/RegionSearch";
 import { StatCard } from "@/components/StatCard";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
 export function HomePage() {
   const navigate = useNavigate();
   const { data: regions, isLoading, error } = useRegions();
   const { data: geoRegions } = useGeoRegions();
-  const [search, setSearch] = useState("");
+
+  const onRegionClick = useCallback(
+    (code: string) => navigate(`/regions/${code}`),
+    [navigate],
+  );
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
@@ -21,10 +25,6 @@ export function HomePage() {
   const regionList = regions ?? [];
   const totalPopulation = regionList.reduce((sum, r) => sum + (r.population ?? 0), 0);
   const totalArea = regionList.reduce((sum, r) => sum + (r.area ?? 0), 0);
-
-  const filteredRegions = search
-    ? regionList.filter((r) => r.name.toLowerCase().includes(search.toLowerCase()))
-    : regionList;
 
   return (
     <div className="space-y-8">
@@ -35,14 +35,7 @@ export function HomePage() {
         </p>
       </div>
 
-      <div className="max-w-md mx-auto">
-        <Input
-          type="text"
-          placeholder="Search regions..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      <RegionSearch regions={regionList} />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Regions" value={regionList.length} />
@@ -50,16 +43,12 @@ export function HomePage() {
         <StatCard label="Total Area" value={totalArea} unit="km²" />
       </div>
 
-      <FranceMap
-        geojson={geoRegions ?? null}
-        onFeatureClick={(code) => navigate(`/regions/${code}`)}
-        height="550px"
-      />
+      <FranceMap geojson={geoRegions ?? null} onFeatureClick={onRegionClick} height="550px" />
 
       <div>
         <h2 className="text-xl font-semibold mb-4">All Regions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRegions.map((region) => (
+          {regionList.map((region) => (
             <Card
               key={region.code}
               className="cursor-pointer hover:shadow-md transition-shadow"

@@ -43,6 +43,11 @@ export const api = {
         regionCode ? { regionCode } : undefined,
       ),
   },
+  stats: {
+    regions: () => fetchJson<RegionStats[]>("/stats/regions"),
+    departments: (regionCode?: string) =>
+      fetchJson<DepartmentStats[]>("/stats/departments", regionCode ? { regionCode } : undefined),
+  },
   indicators: {
     byLevelAndCode: (level: string, code: string, params?: Record<string, string>) =>
       fetchJson<IndicatorSummary[]>(`/indicators/${level}/${code}`, params),
@@ -71,6 +76,27 @@ export interface DepartmentSummary {
   regionCode: string;
   population: number;
   area: number;
+}
+
+export interface RegionStats {
+  code: string;
+  name: string;
+  population: number | null;
+  area: number | null;
+  transactionCount: number;
+  averagePrice: number | null;
+  averagePricePerSqm: number | null;
+}
+
+export interface DepartmentStats {
+  code: string;
+  name: string;
+  regionCode: string;
+  population: number | null;
+  area: number | null;
+  transactionCount: number;
+  averagePrice: number | null;
+  averagePricePerSqm: number | null;
 }
 
 export interface CitySummary {

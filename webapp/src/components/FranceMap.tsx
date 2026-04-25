@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -16,6 +16,8 @@ import "leaflet/dist/leaflet.css";
 const FRANCE_CENTER: [number, number] = [46.6, 2.5];
 const FRANCE_ZOOM = 6;
 
+const CHOROPLETH_SCALE = ["#eff6ff", "#bfdbfe", "#60a5fa", "#2563eb", "#1e3a8a"];
+
 interface FeatureProperties {
   code?: string;
   name?: string;
@@ -29,12 +31,16 @@ export interface MapMarker {
   name: string;
 }
 
+export type MapStyle = "choropleth" | "bubbles" | "both";
+
 interface FranceMapProps {
   geojson: GeoJSON.FeatureCollection | null;
   onFeatureClick?: (code: string, name: string) => void;
   markers?: MapMarker[];
   onMarkerClick?: (id: string) => void;
   activeFeatureCode?: string;
+  metricByCode?: Record<string, number | null | undefined>;
+  mapStyle?: MapStyle;
   fillColor?: string;
   height?: string;
 }
@@ -59,7 +65,8 @@ function FitBounds({
       );
       if (filtered.length > 0) features = filtered;
     }
-    const layer = L.geoJSON({ type: "FeatureCollection", features });
+    const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features };
+    const layer = L.geoJSON(fc);
     const bounds = layer.getBounds();
     if (bounds.isValid()) {
       map.flyToBounds(bounds, { padding: [24, 24], duration: 0.6 });
@@ -74,37 +81,86 @@ function FranceMapComponent({
   markers,
   onMarkerClick,
   activeFeatureCode,
+  metricByCode,
+  mapStyle = "choropleth",
   fillColor = "hsl(221.2 83.2% 53.3%)",
   height = "500px",
 }: FranceMapProps) {
-  const defaultStyle: PathOptions = {
-    fillColor,
-    fillOpacity: 0.35,
-    color: fillColor,
-    weight: 1.5,
-    opacity: 0.8,
-  };
+  const showChoropleth = mapStyle === "choropleth" || mapStyle === "both";
+  const showBubbles = mapStyle === "bubbles" || mapStyle === "both";
+  const choroplethRange = useMemo(() => {
+    if (!metricByCode) return null;
+    const values = Object.values(metricByCode).filter(
+      (v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0,
+    );
+    if (values.length === 0) return null;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    if (min === max) return null;
+    return { min, max };
+  }, [metricByCode]);
 
-  const activeStyle: PathOptions = {
-    fillColor,
-    fillOpacity: 0.55,
-    color: fillColor,
-    weight: 2.5,
-    opacity: 1,
-  };
+  const colorForCode = useCallback(
+    (code: string | undefined): string => {
+      if (!code || !metricByCode || !choroplethRange || !showChoropleth) return fillColor;
+      const value = metricByCode[code];
+      if (value == null || !Number.isFinite(value) || value <= 0) return "#e5e7eb";
+      const ratio = (value - choroplethRange.min) / (choroplethRange.max - choroplethRange.min);
+      const idx = Math.min(
+        CHOROPLETH_SCALE.length - 1,
+        Math.floor(ratio * CHOROPLETH_SCALE.length),
+      );
+      return CHOROPLETH_SCALE[idx];
+    },
+    [metricByCode, choroplethRange, fillColor, showChoropleth],
+  );
 
-  const highlightStyle: PathOptions = {
-    fillOpacity: 0.65,
-    weight: 3,
-    opacity: 1,
-  };
+  const bubbles = useMemo(() => {
+    if (!showBubbles || !geojson || !metricByCode || !choroplethRange) return [];
+    const result: Array<{
+      code: string;
+      name: string;
+      lat: number;
+      lng: number;
+      value: number;
+      radius: number;
+    }> = [];
+    for (const feature of geojson.features) {
+      const props = feature.properties as FeatureProperties | null;
+      const code = props?.code;
+      if (!code) continue;
+      const value = metricByCode[code];
+      if (value == null || !Number.isFinite(value) || value <= 0) continue;
+      const layer = L.geoJSON(feature);
+      const center = layer.getBounds().getCenter();
+      const ratio = (value - choroplethRange.min) / (choroplethRange.max - choroplethRange.min);
+      const radius = 6 + ratio * 22;
+      result.push({
+        code,
+        name: props?.name ?? props?.nom ?? "",
+        lat: center.lat,
+        lng: center.lng,
+        value,
+        radius,
+      });
+    }
+    return result;
+  }, [geojson, metricByCode, choroplethRange, showBubbles]);
 
-  const styleFor = useCallback(
+  const baseStyle = useCallback(
     (feature?: GeoJSON.Feature<GeoJSON.Geometry, FeatureProperties>): PathOptions => {
       const code = feature?.properties?.code;
-      return activeFeatureCode && code === activeFeatureCode ? activeStyle : defaultStyle;
+      const color = colorForCode(code);
+      const isActive = activeFeatureCode && code === activeFeatureCode;
+      return {
+        fillColor: color,
+        fillOpacity: isActive ? 0.7 : 0.55,
+        color: color,
+        weight: isActive ? 2.5 : 1.2,
+        opacity: 0.9,
+      };
     },
-    [activeFeatureCode, fillColor],
+    [colorForCode, activeFeatureCode],
   );
 
   const onEachFeature = useCallback(
@@ -113,20 +169,25 @@ function FranceMapComponent({
       const name = props?.name ?? props?.nom ?? "";
       const code = props?.code ?? "";
       const isActive = activeFeatureCode && code === activeFeatureCode;
+      const value = metricByCode?.[code];
 
-      if (name) {
-        layer.bindTooltip(name, { sticky: true });
+      const tooltip =
+        value != null && Number.isFinite(value)
+          ? `${name} — ${value.toLocaleString("fr-FR")}`
+          : name;
+      if (tooltip) {
+        layer.bindTooltip(tooltip, { sticky: true });
       }
 
       layer.on({
         mouseover: (e: LeafletMouseEvent) => {
           const target = e.target as L.Path;
-          target.setStyle(highlightStyle);
+          target.setStyle({ fillOpacity: 0.85, weight: 3 });
           target.bringToFront();
         },
         mouseout: (e: LeafletMouseEvent) => {
           const target = e.target as L.Path;
-          target.setStyle(isActive ? activeStyle : defaultStyle);
+          target.setStyle(baseStyle(feature));
         },
         click: () => {
           if (onFeatureClick && code) {
@@ -134,9 +195,20 @@ function FranceMapComponent({
           }
         },
       });
+
+      // Force initial style
+      (layer as L.Path).setStyle(isActive ? baseStyle(feature) : baseStyle(feature));
     },
-    [onFeatureClick, fillColor, activeFeatureCode],
+    [onFeatureClick, activeFeatureCode, metricByCode, baseStyle],
   );
+
+  const layerKey = useMemo(() => {
+    const sample = geojson ? JSON.stringify(geojson).slice(0, 80) : "";
+    const metricKey = metricByCode
+      ? Object.keys(metricByCode).length + ":" + JSON.stringify(choroplethRange)
+      : "no-metric";
+    return `${sample}|${metricKey}`;
+  }, [geojson, metricByCode, choroplethRange]);
 
   return (
     <Card className="overflow-hidden">
@@ -156,11 +228,31 @@ function FranceMapComponent({
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               <LeafletGeoJSON
-                key={JSON.stringify(geojson).slice(0, 100)}
+                key={layerKey}
                 data={geojson}
-                style={styleFor}
+                style={baseStyle}
                 onEachFeature={onEachFeature}
               />
+              {bubbles.map((b) => (
+                <CircleMarker
+                  key={`bubble-${b.code}`}
+                  center={[b.lat, b.lng]}
+                  radius={b.radius}
+                  pathOptions={{
+                    fillColor: "hsl(221.2 83.2% 53.3%)",
+                    color: "hsl(221.2 83.2% 33%)",
+                    fillOpacity: 0.55,
+                    weight: 1.5,
+                  }}
+                  eventHandlers={{
+                    click: () => onFeatureClick?.(b.code, b.name),
+                  }}
+                >
+                  <Tooltip sticky>
+                    {b.name} — {b.value.toLocaleString("fr-FR")}
+                  </Tooltip>
+                </CircleMarker>
+              ))}
               {markers?.map((m) => (
                 <CircleMarker
                   key={m.id}

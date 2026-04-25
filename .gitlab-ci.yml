@@ -40,7 +40,7 @@ lint:webapp:
     - npm install -g pnpm
     - cd webapp && pnpm install --frozen-lockfile
   script:
-    - cd webapp && pnpm lint && pnpm format:check
+    - pnpm lint && pnpm format:check
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -68,7 +68,7 @@ build:webapp:
     - npm install -g pnpm
     - cd webapp && pnpm install --frozen-lockfile
   script:
-    - cd webapp && pnpm build
+    - pnpm build
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

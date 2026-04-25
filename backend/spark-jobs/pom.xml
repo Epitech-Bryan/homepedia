@@ -15,7 +15,7 @@
     <description>Spark batch jobs for heavy DVF aggregations</description>
 
     <properties>
-        <spark.version>3.5.3</spark.version>
+        <spark.version>3.5.8</spark.version>
         <scala.version>2.13</scala.version>
     </properties>
 

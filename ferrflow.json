@@ -24,7 +24,8 @@
       "versionedFiles": [
         { "path": "backend/pom.xml", "format": "xml" },
         { "path": "backend/common/pom.xml", "format": "xml" },
-        { "path": "backend/rest-api/pom.xml", "format": "xml" }
+        { "path": "backend/rest-api/pom.xml", "format": "xml" },
+        { "path": "backend/spark-jobs/pom.xml", "format": "xml" }
       ]
     }
   ]

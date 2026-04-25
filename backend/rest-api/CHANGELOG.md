@@ -5,6 +5,19 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.8.0] - 2026-04-25
+
+### Features
+
+- feat(batch): provision spring batch schema via liquibase changeset
+
+### Bug Fixes
+
+- fix(build): align root pom version with child modules (3.7.0)
+- fix(build): reorder root pom + pin spring-boot 3.5.14 to work around ferrflow xml selector
+- fix(ci): drop redundant cd webapp from script (pwd already set by before_script)
+- fix(batch): remove @EnableBatchProcessing so spring boot creates metadata tables
+
 ## [3.7.0] - 2026-04-25
 
 ### Features

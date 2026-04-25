@@ -57,14 +57,16 @@ public class BatchScheduler {
 
 	private void runJob(Job job) {
 		final var name = job.getName();
+		final var start = System.currentTimeMillis();
 		try {
 			log.info("Scheduled launch of {}", name);
-			final var params = new JobParametersBuilder().addLong("timestamp", System.currentTimeMillis())
-					.toJobParameters();
+			final var params = new JobParametersBuilder().addLong("timestamp", start).toJobParameters();
 			final var execution = jobLauncher.run(job, params);
-			log.info("Scheduled job {} finished with status {}", name, execution.getStatus());
+			log.info("Scheduled job {} finished with status {} in {} ms", name, execution.getStatus(),
+					System.currentTimeMillis() - start);
 		} catch (Exception e) {
-			log.error("Scheduled job {} failed: {}", name, e.getMessage(), e);
+			log.error("Scheduled job {} failed after {} ms: {}", name, System.currentTimeMillis() - start,
+					e.getMessage(), e);
 		}
 	}
 }

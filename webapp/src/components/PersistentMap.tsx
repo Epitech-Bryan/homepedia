@@ -20,6 +20,9 @@ import type { DepartmentStats, RegionStats } from "@/api/client";
 
 const HIDDEN_PATHS = ["/explorer"];
 
+// Below this zoom, we show regions; at or above, we switch to departments.
+const DEPARTMENT_ZOOM_THRESHOLD = 7;
+
 type MapMetric =
   | "none"
   | "population"
@@ -59,33 +62,39 @@ export function PersistentMap() {
   const { pathname } = useLocation();
   const [metric, setMetric] = useState<MapMetric>("none");
   const [style, setStyle] = useState<MapStyle>("choropleth");
+  const [zoom, setZoom] = useState(6);
 
+  // URL drives the active feature highlight + cards below the map.
+  // The MAP CONTENT (which layer to show) is purely zoom-driven.
   const regionMatch = matchPath("/regions/:code", pathname);
   const departmentMatch = matchPath("/departments/:code", pathname);
-
-  const departmentCode = departmentMatch?.params.code;
-  const { data: department } = useDepartment(departmentCode ?? "");
+  const { data: department } = useDepartment(departmentMatch?.params.code ?? "");
   const activeRegionCode = regionMatch?.params.code ?? department?.regionCode;
+  const departmentCode = departmentMatch?.params.code;
 
+  const showDepartments = zoom >= DEPARTMENT_ZOOM_THRESHOLD;
+
+  // Pre-fetch BOTH layers so zoom-driven switching is instant.
   const { data: geoRegions } = useGeoRegions();
-  const { data: geoDepartments } = useGeoDepartments(activeRegionCode);
-  const { data: citiesPage } = useCitiesForDepartment(departmentCode);
+  const { data: geoDepartments } = useGeoDepartments(); // no filter = all 101
   const { data: regionStats } = useRegionStats();
-  const { data: departmentStats } = useDepartmentStats(activeRegionCode);
+  const { data: allDepartmentStats } = useDepartmentStats(); // all
+  const { data: citiesPage } = useCitiesForDepartment(departmentCode);
 
-  const showDepartments = Boolean(activeRegionCode);
   const geojson = showDepartments ? (geoDepartments ?? null) : (geoRegions ?? null);
 
   const metricByCode = useMemo(() => {
     if (metric === "none") return undefined;
-    const stats = showDepartments ? (departmentStats ?? []) : (regionStats ?? []);
+    const stats = showDepartments ? (allDepartmentStats ?? []) : (regionStats ?? []);
     const map: Record<string, number | null> = {};
     for (const s of stats) {
       map[s.code] = extractValue(s, metric);
     }
     return map;
-  }, [metric, showDepartments, regionStats, departmentStats]);
+  }, [metric, showDepartments, regionStats, allDepartmentStats]);
 
+  // City markers visible only when there's a URL-selected department AND
+  // we're zoomed in enough; the FranceMap also gates them by zoom.
   const markers: MapMarker[] = useMemo(() => {
     if (!departmentCode || !citiesPage?._embedded) return [];
     const cities = Object.values(citiesPage._embedded).flat() as Array<{
@@ -106,6 +115,8 @@ export function PersistentMap() {
 
   const onFeatureClick = useCallback(
     (code: string) => {
+      // Navigate so cards below sync; the zoom listener on FranceMap will
+      // auto-switch the layer once flyToBounds lands at the new zoom.
       if (showDepartments) {
         navigate(`/departments/${code}`);
       } else {
@@ -124,6 +135,10 @@ export function PersistentMap() {
 
   const isHidden = HIDDEN_PATHS.some((p) => pathname.startsWith(p));
   if (isHidden) return null;
+
+  // Active feature: prefer the URL-selected department when at department
+  // zoom, otherwise the URL-selected region.
+  const activeFeatureCode = showDepartments ? departmentCode : (activeRegionCode ?? undefined);
 
   const showStyleSelector = metric !== "none";
 
@@ -165,11 +180,12 @@ export function PersistentMap() {
         onFeatureClick={onFeatureClick}
         markers={markers}
         onMarkerClick={onMarkerClick}
-        activeFeatureCode={departmentCode}
+        activeFeatureCode={activeFeatureCode}
         metricByCode={metricByCode}
         metricLabel={metric === "none" ? undefined : METRIC_LABELS[metric]}
         mapStyle={style}
         height="450px"
+        onZoomChange={setZoom}
       />
     </div>
   );

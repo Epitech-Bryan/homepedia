@@ -5,6 +5,25 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.11.0] - 2026-04-25
+
+### Features
+
+- feat(batch): generic indicator import for economy, education, environment, infrastructure
+- feat(webapp): choropleth + bubble layers with metric/style selectors
+- feat(api): aggregate stats endpoints for region/department choropleth
+- feat(webapp): show city markers on department map and highlight active feature
+- feat(webapp): persistent URL-driven map with auto-zoom on selection
+
+### Bug Fixes
+
+- fix(webapp): bump select dropdown z-index above leaflet map controls
+- fix(api): silence 404 logs (NoResourceFoundException) in exception handler
+- fix(ci): drop common pom from cache key (gitlab limits to 2 files)
+- fix: update dependency org.springdoc:springdoc-openapi-starter-webmvc-ui to v3
+- fix(api): silence client disconnect noise in exception handler
+- fix: update dependency org.springdoc:springdoc-openapi-starter-webmvc-ui to v3
+
 ## [3.10.0] - 2026-04-25
 
 ### Features

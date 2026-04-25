@@ -15,11 +15,13 @@ import org.apache.spark.sql.types.DataTypes;
  * department codes, then writes the aggregated dataset to PostgreSQL table
  * {@code dept_dvf_stats} (overwrite mode).
  *
- * <p>This is the "Big Data" path of the project: it lets us reprocess the
+ * <p>
+ * This is the "Big Data" path of the project: it lets us reprocess the
  * full DVF (~10M rows, ~3 GB uncompressed) in parallel via a Spark cluster
  * (master + workers) instead of loading it row-by-row through Hibernate.
  *
- * <p>Submit with:
+ * <p>
+ * Submit with:
  * <pre>
  * spark-submit \
  *   --class com.homepedia.spark.DvfAggregateJob \

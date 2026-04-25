@@ -5,11 +5,15 @@ import java.time.Instant;
 /**
  * Server-Sent Event payload for batch progress.
  *
- * @param type job lifecycle event ({@code STARTING}, {@code RUNNING},
- *             {@code COMPLETED}, {@code FAILED})
- * @param job  Spring Batch job name
- * @param message human-readable message
- * @param at server timestamp
+ * @param type
+ *            job lifecycle event ({@code STARTING}, {@code RUNNING},
+ *            {@code COMPLETED}, {@code FAILED})
+ * @param job
+ *            Spring Batch job name
+ * @param message
+ *            human-readable message
+ * @param at
+ *            server timestamp
  */
 public record BatchEvent(String type, String job, String message, Instant at) {
 

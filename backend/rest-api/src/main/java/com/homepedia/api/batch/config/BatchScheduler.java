@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "homepedia.scheduler.enabled", havingValue = "true")
 public class BatchScheduler {
 
-	private static final String DISABLED = "-";
+	private static final String ZONE = "${homepedia.scheduler.zone:Europe/Paris}";
 
 	private final JobLauncher jobLauncher;
 	private final Job inseeImportJob;
@@ -25,32 +25,32 @@ public class BatchScheduler {
 	private final Job healthImportJob;
 	private final Job reviewImportJob;
 
-	@Scheduled(cron = "${homepedia.scheduler.insee.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	@Scheduled(cron = "${homepedia.scheduler.insee.cron:-}", zone = ZONE)
 	public void runInseeImport() {
 		runJob(inseeImportJob);
 	}
 
-	@Scheduled(cron = "${homepedia.scheduler.geo.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	@Scheduled(cron = "${homepedia.scheduler.geo.cron:-}", zone = ZONE)
 	public void runGeoJsonImport() {
 		runJob(geoJsonImportJob);
 	}
 
-	@Scheduled(cron = "${homepedia.scheduler.dvf.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	@Scheduled(cron = "${homepedia.scheduler.dvf.cron:-}", zone = ZONE)
 	public void runDvfImport() {
 		runJob(dvfImportJob);
 	}
 
-	@Scheduled(cron = "${homepedia.scheduler.dpe.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	@Scheduled(cron = "${homepedia.scheduler.dpe.cron:-}", zone = ZONE)
 	public void runDpeImport() {
 		runJob(dpeImportJob);
 	}
 
-	@Scheduled(cron = "${homepedia.scheduler.health.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	@Scheduled(cron = "${homepedia.scheduler.health.cron:-}", zone = ZONE)
 	public void runHealthImport() {
 		runJob(healthImportJob);
 	}
 
-	@Scheduled(cron = "${homepedia.scheduler.reviews.cron:" + DISABLED + "}", zone = "${homepedia.scheduler.zone:Europe/Paris}")
+	@Scheduled(cron = "${homepedia.scheduler.reviews.cron:-}", zone = ZONE)
 	public void runReviewImport() {
 		runJob(reviewImportJob);
 	}

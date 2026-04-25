@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home, Compass, Map } from "lucide-react";
+import { PersistentMap } from "@/components/PersistentMap";
 
 const NAV_ITEMS = [
   { to: "/", label: "Home", icon: Home },
@@ -33,7 +34,8 @@ export function Layout() {
           </nav>
         </div>
       </header>
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8">
+        <PersistentMap />
         <Outlet />
       </main>
       <footer className="border-t bg-muted/40">

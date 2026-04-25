@@ -1,7 +1,5 @@
-import { useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useRegion, useDepartments, useGeoDepartments, useTransactionStats } from "@/api/hooks";
-import { FranceMap } from "@/components/FranceMap";
+import { useRegion, useDepartments, useTransactionStats } from "@/api/hooks";
 import { StatCard } from "@/components/StatCard";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
@@ -22,13 +20,7 @@ export function RegionPage() {
   const navigate = useNavigate();
   const { data: region, isLoading, error } = useRegion(code);
   const { data: deptPage } = useDepartments(code ? { regionCode: code } : undefined);
-  const { data: geoDepts } = useGeoDepartments(code);
   const { data: stats } = useTransactionStats(code ? { regionCode: code } : undefined);
-
-  const onDepartmentClick = useCallback(
-    (deptCode: string) => navigate(`/departments/${deptCode}`),
-    [navigate],
-  );
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
@@ -65,8 +57,6 @@ export function RegionPage() {
           <StatCard label="Avg. Transaction" value={stats.averagePrice} unit="€" />
         )}
       </div>
-
-      <FranceMap geojson={geoDepts ?? null} onFeatureClick={onDepartmentClick} height="450px" />
 
       <div>
         <h2 className="text-xl font-semibold mb-4">Departments ({departments.length})</h2>

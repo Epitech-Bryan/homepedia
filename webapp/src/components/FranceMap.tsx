@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { memo, useCallback, useRef } from "react";
 import { MapContainer, TileLayer, GeoJSON as LeafletGeoJSON } from "react-leaflet";
 import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +21,7 @@ interface FranceMapProps {
   height?: string;
 }
 
-export function FranceMap({
+function FranceMapComponent({
   geojson,
   onFeatureClick,
   fillColor = "hsl(221.2 83.2% 53.3%)",
@@ -104,3 +104,5 @@ export function FranceMap({
     </Card>
   );
 }
+
+export const FranceMap = memo(FranceMapComponent);

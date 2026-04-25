@@ -1,0 +1,12 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 002-spring-batch-schema
+      author: homepedia
+      comment: Spring Batch metadata tables (loaded from spring-batch-core jar)
+      changes:
+        - sqlFile:
+            path: org/springframework/batch/core/schema-postgresql.sql
+            relativeToChangelogFile: false
+            stripComments: true
+            splitStatements: true

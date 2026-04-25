@@ -11,7 +11,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * Subscribers register through {@link #subscribe()} and receive a heartbeat
  * plus every {@link BatchEvent} broadcast via {@link #publish(BatchEvent)}.
  *
- * <p>This is a deliberately simple implementation — fine for a single-pod
+ * <p>
+ * This is a deliberately simple implementation — fine for a single-pod
  * deployment. For multi-pod, a Redis pub/sub or a message broker would be
  * needed to share the event stream across instances.
  */

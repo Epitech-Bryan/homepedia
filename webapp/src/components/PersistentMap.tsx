@@ -167,6 +167,7 @@ export function PersistentMap() {
         onMarkerClick={onMarkerClick}
         activeFeatureCode={departmentCode}
         metricByCode={metricByCode}
+        metricLabel={metric === "none" ? undefined : METRIC_LABELS[metric]}
         mapStyle={style}
         height="450px"
       />

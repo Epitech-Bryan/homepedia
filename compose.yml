@@ -41,8 +41,10 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/homepedia
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-homepedia}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-homepedia}
+      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/homepedia
     depends_on:
       - db
+      - mongo
     labels:
       - traefik.enable=true
       - traefik.http.routers.backend.rule=Host(`homepedia.localhost`) && PathPrefix(`/api`)
@@ -65,5 +67,14 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD:-homepedia}
     restart: unless-stopped
 
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
 volumes:
   postgres-data:
+  mongo-data:

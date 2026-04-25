@@ -142,7 +142,7 @@ export interface IndicatorSummary {
 }
 
 export interface ReviewSummary {
-  id: number;
+  id: string;
   content: string;
   sentimentScore: number;
   sentimentLabel: string;

@@ -1,3 +1,7 @@
+// Side-effect import: makes this file a module so the `declare module` blocks
+// below augment the existing leaflet types instead of replacing them.
+import "leaflet";
+
 declare module "leaflet.heat" {}
 
 declare module "leaflet" {
@@ -12,7 +16,7 @@ declare module "leaflet" {
     gradient?: Record<number, string>;
   }
 
-  interface HeatLayer extends L.Layer {
+  interface HeatLayer extends Layer {
     setLatLngs(latlngs: HeatLatLngTuple[]): this;
     addLatLng(latlng: HeatLatLngTuple): this;
     setOptions(options: HeatMapOptions): this;

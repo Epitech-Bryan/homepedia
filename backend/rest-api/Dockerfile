@@ -4,6 +4,9 @@ WORKDIR /app
 COPY pom.xml .
 COPY common/pom.xml common/
 COPY rest-api/pom.xml rest-api/
+# spark-jobs is listed in the parent's <modules> so its pom.xml must exist
+# for Maven to parse the reactor, even though we don't build it here.
+COPY spark-jobs/pom.xml spark-jobs/
 RUN mvn dependency:go-offline -B -pl rest-api --am
 COPY common/src common/src
 COPY rest-api/src rest-api/src

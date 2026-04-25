@@ -24,6 +24,10 @@ public class BatchScheduler {
 	private final Job dpeImportJob;
 	private final Job healthImportJob;
 	private final Job reviewImportJob;
+	private final Job economyImportJob;
+	private final Job educationImportJob;
+	private final Job environmentImportJob;
+	private final Job infrastructureImportJob;
 
 	@Scheduled(cron = "${homepedia.scheduler.insee.cron:-}", zone = ZONE)
 	public void runInseeImport() {
@@ -53,6 +57,26 @@ public class BatchScheduler {
 	@Scheduled(cron = "${homepedia.scheduler.reviews.cron:-}", zone = ZONE)
 	public void runReviewImport() {
 		runJob(reviewImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.economy.cron:-}", zone = ZONE)
+	public void runEconomyImport() {
+		runJob(economyImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.education.cron:-}", zone = ZONE)
+	public void runEducationImport() {
+		runJob(educationImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.environment.cron:-}", zone = ZONE)
+	public void runEnvironmentImport() {
+		runJob(environmentImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.infrastructure.cron:-}", zone = ZONE)
+	public void runInfrastructureImport() {
+		runJob(infrastructureImportJob);
 	}
 
 	private void runJob(Job job) {

@@ -5,6 +5,17 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.7.0] - 2026-04-25
+
+### Features
+
+- feat(batch): add cron scheduler for periodic data imports
+
+### Bug Fixes
+
+- fix(build): align root pom version with child modules (3.6.0)
+- fix(build): revert spring-boot parent to 3.5.14 (3.6.0 not on maven central)
+
 ## [3.6.0] - 2026-04-24
 
 ### Features

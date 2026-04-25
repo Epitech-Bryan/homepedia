@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "spring.batch.job.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "homepedia.batch.startup-enabled", havingValue = "true")
 public class BatchLauncherRunner implements CommandLineRunner {
 
 	private final JobLauncher jobLauncher;

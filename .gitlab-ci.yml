@@ -1,7 +1,8 @@
 stages:
   - lint
-  - release
   - build
+  - release
+  - publish
   - mirror
 
 variables:
@@ -10,9 +11,16 @@ variables:
 
 workflow:
   rules:
+    # Tag pipelines must run even if the tagged commit message has [skip ci]
+    # (FerrFlow's release commit carries [skip ci] and is the one being tagged).
+    - if: $CI_COMMIT_TAG
     - if: $CI_COMMIT_MESSAGE =~ /\[skip ci\]/
       when: never
     - when: always
+
+# -----------------------------------------------------------------------------
+# Lint — formatting and static checks. Runs on MR and main pushes.
+# -----------------------------------------------------------------------------
 
 lint:backend:
   stage: lint
@@ -32,7 +40,35 @@ lint:webapp:
     - npm install -g pnpm
     - cd webapp && pnpm install --frozen-lockfile
   script:
-    - pnpm lint && pnpm format:check
+    - cd webapp && pnpm lint && pnpm format:check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# -----------------------------------------------------------------------------
+# Build — compile and test. Validates the code before FerrFlow releases it.
+# Runs on MR and main pushes. No artifacts are published here.
+# -----------------------------------------------------------------------------
+
+build:backend:
+  stage: build
+  image: eclipse-temurin:21-jdk-alpine
+  before_script:
+    - apk add --no-cache maven
+  script:
+    - cd backend && mvn -B package
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+build:webapp:
+  stage: build
+  image: node:22-alpine
+  before_script:
+    - npm install -g pnpm
+    - cd webapp && pnpm install --frozen-lockfile
+  script:
+    - cd webapp && pnpm build
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -61,51 +97,44 @@ release:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
 
-.build_base:
-  stage: build
+# -----------------------------------------------------------------------------
+# Publish — build and push Docker images. Runs only on tags created by
+# FerrFlow ($CI_COMMIT_TAG matches webapp-v* or rest-api-v*).
+# -----------------------------------------------------------------------------
+
+.publish_base:
+  stage: publish
   image: quay.io/buildah/stable
   variables:
     STORAGE_DRIVER: vfs
   before_script:
-    - dnf install -y git
-    - git fetch --tags --force
     - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
 
-build:webapp:
-  extends: .build_base
-  needs:
-    - job: release
-      optional: true
+publish:webapp:
+  extends: .publish_base
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
-      changes:
-        - webapp/**/*
+    - if: $CI_COMMIT_TAG =~ /^webapp-v/
   script:
-    - VERSION=$(git tag -l 'webapp-v*' --sort=-v:refname | head -1 | sed 's/^webapp-v//')
-    - if [ -z "$VERSION" ]; then echo "No webapp-v* tag yet — skipping image build"; exit 0; fi
-    - echo "Building webapp $VERSION"
+    - VERSION="${CI_COMMIT_TAG#webapp-v}"
+    - echo "Publishing webapp $VERSION"
     - buildah bud -t "$CI_REGISTRY_IMAGE/webapp:$VERSION" -t "$CI_REGISTRY_IMAGE/webapp:latest" -f webapp/Dockerfile .
     - buildah push "$CI_REGISTRY_IMAGE/webapp:$VERSION"
     - buildah push "$CI_REGISTRY_IMAGE/webapp:latest"
 
-build:rest-api:
-  extends: .build_base
-  needs:
-    - job: release
-      optional: true
+publish:rest-api:
+  extends: .publish_base
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
-      changes:
-        - backend/rest-api/**/*
-        - backend/common/**/*
-        - backend/pom.xml
+    - if: $CI_COMMIT_TAG =~ /^rest-api-v/
   script:
-    - VERSION=$(git tag -l 'rest-api-v*' --sort=-v:refname | head -1 | sed 's/^rest-api-v//')
-    - if [ -z "$VERSION" ]; then echo "No rest-api-v* tag yet — skipping image build"; exit 0; fi
-    - echo "Building rest-api $VERSION"
+    - VERSION="${CI_COMMIT_TAG#rest-api-v}"
+    - echo "Publishing rest-api $VERSION"
     - buildah bud -t "$CI_REGISTRY_IMAGE/rest-api:$VERSION" -t "$CI_REGISTRY_IMAGE/rest-api:latest" -f backend/rest-api/Dockerfile ./backend
     - buildah push "$CI_REGISTRY_IMAGE/rest-api:$VERSION"
     - buildah push "$CI_REGISTRY_IMAGE/rest-api:latest"
+
+# -----------------------------------------------------------------------------
+# Mirror — push the repo (branches + tags) to the GitHub mirror.
+# -----------------------------------------------------------------------------
 
 mirror:
   stage: mirror

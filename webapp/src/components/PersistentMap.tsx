@@ -17,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Maximize2, Minimize2 } from "lucide-react";
 import type { DepartmentStats, RegionStats } from "@/api/client";
 
 const HIDDEN_PATHS = ["/explorer"];
@@ -124,6 +126,7 @@ export function PersistentMap() {
   const [style, setStyle] = useState<MapStyle>("choropleth");
   const [zoom, setZoom] = useState(6);
   const [center, setCenter] = useState<[number, number]>([46.6, 2.5]);
+  const [expanded, setExpanded] = useState(false);
   // Visible map bounds: [south, west, north, east]. Used to fetch commune
   // polygons for every department that intersects the viewport, so cells
   // along the edge don't appear truncated.
@@ -289,7 +292,7 @@ export function PersistentMap() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 flex-wrap">
         <div className="text-xs text-muted-foreground">
           <span className="font-medium uppercase tracking-wide">Showing</span>{" "}
           <span className="text-foreground">{layerName}</span>{" "}
@@ -321,22 +324,33 @@ export function PersistentMap() {
               <SelectItem value="all">All</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExpanded((v) => !v)}
+            aria-label={expanded ? "Shrink map" : "Expand map"}
+          >
+            {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
-      <FranceMap
-        geojson={geojson}
-        onFeatureClick={onFeatureClick}
-        markers={markers}
-        onMarkerClick={onMarkerClick}
-        activeFeatureCode={activeFeatureCode}
-        metricByCode={metricByCode}
-        metricLabel={METRIC_LABELS[metric]}
-        mapStyle={style}
-        height="450px"
-        onZoomChange={setZoom}
-        onCenterChange={onCenterChange}
-        onBoundsChange={onBoundsChange}
-      />
+      <div className={expanded ? "" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"}>
+        <FranceMap
+          geojson={geojson}
+          onFeatureClick={onFeatureClick}
+          markers={markers}
+          onMarkerClick={onMarkerClick}
+          activeFeatureCode={activeFeatureCode}
+          metricByCode={metricByCode}
+          metricLabel={METRIC_LABELS[metric]}
+          mapStyle={style}
+          height={expanded ? "78vh" : "500px"}
+          onZoomChange={setZoom}
+          onCenterChange={onCenterChange}
+          onBoundsChange={onBoundsChange}
+          bleed={expanded}
+        />
+      </div>
     </div>
   );
 }

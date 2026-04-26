@@ -5,6 +5,25 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.13.0] - 2026-04-26
+
+### Features
+
+- feat(api): add Redis cache for geo/refdata/stats/reviews + invalidate after batch imports
+- feat(webapp): merge commune polygons across all visible departments + drop redundant city markers
+- feat(webapp): commune polygons (real INSEE borders) at zoom>=9 with city-level metric
+- feat(webapp): show current layer/zoom indicator + listen on zoom (not just zoomend)
+- feat(webapp): auto-detect department under center at zoom>=9 + city markers sized by population
+- feat(webapp): polygon clicks fly into the feature locally without URL change
+- feat(webapp): always show aggregated metric on map (drop uniform orange default)
+- feat(webapp): zoom-driven map layers (regions <7, departments >=7) with appropriate aggregation
+- feat(webapp): redesign map (carto voyager, sunset palette, legend, zoom-aware city markers)
+
+### Bug Fixes
+
+- fix(webapp): satisfy eslint (no non-null assertion, set-state-in-effect, useless assignment)
+- fix(webapp): subtle hover on default polygons (no orange flood) + reset on zoomstart
+
 ## [3.12.2] - 2026-04-25
 
 ### Bug Fixes

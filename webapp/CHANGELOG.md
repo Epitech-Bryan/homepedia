@@ -1,5 +1,20 @@
 # app
 
+## [0.10.0] - 2026-04-26
+
+### Features
+
+- feat(api): add Redis cache for geo/refdata/stats/reviews + invalidate after batch imports
+- feat(webapp): merge commune polygons across all visible departments + drop redundant city markers
+- feat(webapp): commune polygons (real INSEE borders) at zoom>=9 with city-level metric
+- feat(webapp): show current layer/zoom indicator + listen on zoom (not just zoomend)
+- feat(webapp): auto-detect department under center at zoom>=9 + city markers sized by population
+- feat(webapp): polygon clicks fly into the feature locally without URL change
+
+### Bug Fixes
+
+- fix(webapp): satisfy eslint (no non-null assertion, set-state-in-effect, useless assignment)
+
 ## [0.9.0] - 2026-04-25
 
 ### Features

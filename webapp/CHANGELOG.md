@@ -1,5 +1,15 @@
 # app
 
+## [0.12.0] - 2026-04-26
+
+### Features
+
+- feat: per-city stats endpoint + arrondissements drilldown at zoom >= 12
+
+### Bug Fixes
+
+- fix: format
+
 ## [0.11.1] - 2026-04-26
 
 ### Bug Fixes

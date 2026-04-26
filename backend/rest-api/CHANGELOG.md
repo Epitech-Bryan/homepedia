@@ -5,6 +5,17 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.15.0] - 2026-04-26
+
+### Features
+
+- feat: per-city stats endpoint + arrondissements drilldown at zoom >= 12
+
+### Bug Fixes
+
+- fix: format
+- fix: changed zoom level
+
 ## [3.14.0] - 2026-04-26
 
 ### Features

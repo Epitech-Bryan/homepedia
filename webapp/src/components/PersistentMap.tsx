@@ -5,7 +5,7 @@ import {
   useCitiesForDepartment,
   useDepartment,
   useDepartmentStats,
-  useGeoCities,
+  useGeoCitiesForDepartments,
   useGeoDepartments,
   useGeoRegions,
   useRegionStats,
@@ -60,6 +60,33 @@ function findFeatureCodeAt(
   return null;
 }
 
+function featureBbox(feature: GeoJSON.Feature): [number, number, number, number] {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  const visit = (coords: unknown): void => {
+    if (Array.isArray(coords) && typeof coords[0] === "number") {
+      const [x, y] = coords as [number, number];
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    } else if (Array.isArray(coords)) {
+      for (const c of coords) visit(c);
+    }
+  };
+  visit((feature.geometry as { coordinates: unknown }).coordinates);
+  return [minX, minY, maxX, maxY];
+}
+
+function bboxesOverlap(
+  a: [number, number, number, number],
+  b: [number, number, number, number],
+): boolean {
+  return a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
+}
+
 type MapMetric =
   | "population"
   | "density"
@@ -97,6 +124,10 @@ export function PersistentMap() {
   const [style, setStyle] = useState<MapStyle>("choropleth");
   const [zoom, setZoom] = useState(6);
   const [center, setCenter] = useState<[number, number]>([46.6, 2.5]);
+  // Visible map bounds: [south, west, north, east]. Used to fetch commune
+  // polygons for every department that intersects the viewport, so cells
+  // along the edge don't appear truncated.
+  const [bounds, setBounds] = useState<[number, number, number, number]>([41, -5, 51, 10]);
   // Local target for in-map clicks (no URL change). Reset whenever the
   // browser URL changes so deep-links (/regions/X, /departments/X) take over.
   const [clickedFeatureCode, setClickedFeatureCode] = useState<string | undefined>(undefined);
@@ -107,6 +138,10 @@ export function PersistentMap() {
 
   const onCenterChange = useCallback((lat: number, lng: number) => {
     setCenter([lat, lng]);
+  }, []);
+
+  const onBoundsChange = useCallback((south: number, west: number, north: number, east: number) => {
+    setBounds([south, west, north, east]);
   }, []);
 
   // URL drives the active feature highlight + cards below the map.
@@ -135,7 +170,24 @@ export function PersistentMap() {
 
   const cityFetchDeptCode = autoDeptCode ?? departmentCode;
   const { data: citiesPage } = useCitiesForDepartment(cityFetchDeptCode);
-  const { data: geoCities } = useGeoCities(showCityDetail ? cityFetchDeptCode : undefined);
+
+  // At city zoom, load commune polygons for every department whose bbox
+  // intersects the viewport — neighbours included so the borders look natural.
+  const visibleDeptCodes = useMemo(() => {
+    if (!showCityDetail || !geoDepartments) return [];
+    const viewBbox: [number, number, number, number] = [bounds[1], bounds[0], bounds[3], bounds[2]];
+    const codes: string[] = [];
+    for (const f of geoDepartments.features) {
+      const code = (f.properties as { code?: string } | null)?.code;
+      if (!code) continue;
+      if (bboxesOverlap(featureBbox(f), viewBbox)) {
+        codes.push(code);
+      }
+    }
+    return codes.sort();
+  }, [showCityDetail, geoDepartments, bounds]);
+
+  const geoCities = useGeoCitiesForDepartments(visibleDeptCodes);
 
   // 3-tier zoom: regions → departments → city polygons.
   const geojson = showCityDetail
@@ -181,10 +233,11 @@ export function PersistentMap() {
     return map;
   }, [metric, showCityDetail, showDepartments, geoCities, regionStats, allDepartmentStats]);
 
-  // City markers — derived from whichever department code we resolved
-  // (auto-detected at high zoom, or URL-selected). FranceMap gates them by
-  // a zoom threshold so they don't pollute the choropleth at low zoom.
+  // City markers are only useful when we DON'T have commune polygons yet;
+  // once polygons load they tell the same story more cleanly. So we drop
+  // markers as soon as we're at city zoom.
   const markers: MapMarker[] = useMemo(() => {
+    if (showCityDetail) return [];
     if (!cityFetchDeptCode || !citiesPage?._embedded) return [];
     const cities = Object.values(citiesPage._embedded).flat() as Array<{
       inseeCode: string;
@@ -202,7 +255,7 @@ export function PersistentMap() {
         lon: c.longitude,
         value: c.population ?? undefined,
       }));
-  }, [cityFetchDeptCode, citiesPage]);
+  }, [showCityDetail, cityFetchDeptCode, citiesPage]);
 
   const onFeatureClick = useCallback(
     (code: string) => {
@@ -281,6 +334,7 @@ export function PersistentMap() {
         height="450px"
         onZoomChange={setZoom}
         onCenterChange={onCenterChange}
+        onBoundsChange={onBoundsChange}
       />
     </div>
   );

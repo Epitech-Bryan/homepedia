@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { FranceMap, type MapMarker, type MapStyle } from "@/components/FranceMap";
 import {
@@ -59,6 +59,13 @@ export function PersistentMap() {
   const [metric, setMetric] = useState<MapMetric>("population");
   const [style, setStyle] = useState<MapStyle>("choropleth");
   const [zoom, setZoom] = useState(6);
+  // Local target for in-map clicks (no URL change). Reset whenever the
+  // browser URL changes so deep-links (/regions/X, /departments/X) take over.
+  const [clickedFeatureCode, setClickedFeatureCode] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    setClickedFeatureCode(undefined);
+  }, [pathname]);
 
   // URL drives the active feature highlight + cards below the map.
   // The MAP CONTENT (which layer to show) is purely zoom-driven.
@@ -108,18 +115,11 @@ export function PersistentMap() {
       }));
   }, [departmentCode, citiesPage]);
 
-  const onFeatureClick = useCallback(
-    (code: string) => {
-      // Navigate so cards below sync; the zoom listener on FranceMap will
-      // auto-switch the layer once flyToBounds lands at the new zoom.
-      if (showDepartments) {
-        navigate(`/departments/${code}`);
-      } else {
-        navigate(`/regions/${code}`);
-      }
-    },
-    [navigate, showDepartments],
-  );
+  const onFeatureClick = useCallback((code: string) => {
+    // No URL change — just trigger a fly-to via FitBounds. The zoom listener
+    // will then auto-switch the layer once we land at the new zoom level.
+    setClickedFeatureCode(code);
+  }, []);
 
   const onMarkerClick = useCallback(
     (inseeCode: string) => {
@@ -131,9 +131,9 @@ export function PersistentMap() {
   const isHidden = HIDDEN_PATHS.some((p) => pathname.startsWith(p));
   if (isHidden) return null;
 
-  // Active feature: prefer the URL-selected department when at department
-  // zoom, otherwise the URL-selected region.
-  const activeFeatureCode = showDepartments ? departmentCode : (activeRegionCode ?? undefined);
+  // Active feature priority: in-map click > URL match > none.
+  const urlActive = showDepartments ? departmentCode : (activeRegionCode ?? undefined);
+  const activeFeatureCode = clickedFeatureCode ?? urlActive;
 
   return (
     <div className="space-y-3">

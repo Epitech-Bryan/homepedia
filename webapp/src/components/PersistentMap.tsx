@@ -5,6 +5,7 @@ import {
   useCitiesForDepartment,
   useDepartment,
   useDepartmentStats,
+  useGeoCities,
   useGeoDepartments,
   useGeoRegions,
   useRegionStats,
@@ -134,17 +135,51 @@ export function PersistentMap() {
 
   const cityFetchDeptCode = autoDeptCode ?? departmentCode;
   const { data: citiesPage } = useCitiesForDepartment(cityFetchDeptCode);
+  const { data: geoCities } = useGeoCities(showCityDetail ? cityFetchDeptCode : undefined);
 
-  const geojson = showDepartments ? (geoDepartments ?? null) : (geoRegions ?? null);
+  // 3-tier zoom: regions → departments → city polygons.
+  const geojson = showCityDetail
+    ? (geoCities ?? geoDepartments ?? null)
+    : showDepartments
+      ? (geoDepartments ?? null)
+      : (geoRegions ?? null);
 
   const metricByCode = useMemo(() => {
-    const stats = showDepartments ? (allDepartmentStats ?? []) : (regionStats ?? []);
     const map: Record<string, number | null> = {};
+    if (showCityDetail && geoCities) {
+      // City-level: derive metric from commune geojson properties (population /
+      // surface in hectares from geo.api.gouv.fr).
+      for (const f of geoCities.features) {
+        const props = f.properties as {
+          code?: string;
+          population?: number;
+          surface?: number;
+        } | null;
+        if (!props?.code) continue;
+        const pop = props.population ?? null;
+        const areaKm2 = props.surface ? props.surface / 100 : null;
+        let value: number | null = null;
+        switch (metric) {
+          case "population":
+            value = pop;
+            break;
+          case "density":
+            value = pop && areaKm2 ? pop / areaKm2 : null;
+            break;
+          default:
+            // Other metrics not available at city level (no per-city stats yet)
+            value = null;
+        }
+        map[props.code] = value;
+      }
+      return map;
+    }
+    const stats = showDepartments ? (allDepartmentStats ?? []) : (regionStats ?? []);
     for (const s of stats) {
       map[s.code] = extractValue(s, metric);
     }
     return map;
-  }, [metric, showDepartments, regionStats, allDepartmentStats]);
+  }, [metric, showCityDetail, showDepartments, geoCities, regionStats, allDepartmentStats]);
 
   // City markers — derived from whichever department code we resolved
   // (auto-detected at high zoom, or URL-selected). FranceMap gates them by
@@ -169,11 +204,18 @@ export function PersistentMap() {
       }));
   }, [cityFetchDeptCode, citiesPage]);
 
-  const onFeatureClick = useCallback((code: string) => {
-    // No URL change — just trigger a fly-to via FitBounds. The zoom listener
-    // will then auto-switch the layer once we land at the new zoom level.
-    setClickedFeatureCode(code);
-  }, []);
+  const onFeatureClick = useCallback(
+    (code: string) => {
+      // At city zoom, polygons are commune outlines — clicking them goes to
+      // the city detail page (same as marker click). Otherwise just zoom.
+      if (showCityDetail) {
+        navigate(`/cities/${code}`);
+      } else {
+        setClickedFeatureCode(code);
+      }
+    },
+    [showCityDetail, navigate],
+  );
 
   const onMarkerClick = useCallback(
     (inseeCode: string) => {

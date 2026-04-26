@@ -19,7 +19,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * volatile the underlying data is:
  * <ul>
  * <li><code>geo</code>: GeoJSON polygons — almost never change</li>
- * <li><code>refdata</code>: regions/departments lists — change once a year max</li>
+ * <li><code>refdata</code>: regions/departments lists — change once a year
+ * max</li>
  * <li><code>stats</code>: aggregates rebuilt by batch jobs — invalidated on
  * import via {@code @CacheEvict}</li>
  * <li><code>reviews</code>: word clouds, sentiment aggregates — moderate
@@ -47,7 +48,8 @@ public class CacheConfig {
 		final var jsonSerializer = new GenericJackson2JsonRedisSerializer(jsonMapper);
 
 		final var defaults = RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(1))
-				.serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+				.serializeKeysWith(
+						RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
 				.serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
 				.disableCachingNullValues();
 
@@ -55,7 +57,7 @@ public class CacheConfig {
 				defaults.entryTtl(Duration.ofHours(12)), CACHE_STATS, defaults.entryTtl(Duration.ofMinutes(30)),
 				CACHE_REVIEWS, defaults.entryTtl(Duration.ofMinutes(15)));
 
-		return RedisCacheManager.builder(connectionFactory).cacheDefaults(defaults).withInitialCacheConfigurations(perCache)
-				.transactionAware().build();
+		return RedisCacheManager.builder(connectionFactory).cacheDefaults(defaults)
+				.withInitialCacheConfigurations(perCache).transactionAware().build();
 	}
 }

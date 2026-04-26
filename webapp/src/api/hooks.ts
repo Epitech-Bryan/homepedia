@@ -97,6 +97,33 @@ export function useGeoDepartments(regionCode?: string) {
   });
 }
 
+export function useGeoCities(departmentCode?: string) {
+  return useQuery({
+    queryKey: ["geo", "cities", departmentCode],
+    queryFn: async (): Promise<GeoJSON.FeatureCollection | null> => {
+      if (!departmentCode) return null;
+      const url = `https://geo.api.gouv.fr/departements/${departmentCode}/communes?fields=nom,code,population,surface&format=geojson&geometry=contour`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Failed to fetch commune geojson: ${res.status}`);
+      const raw = (await res.json()) as GeoJSON.FeatureCollection<
+        GeoJSON.Geometry,
+        { code: string; nom: string; population?: number; surface?: number }
+      >;
+      // Normalize property names to match the rest of our app (`name`, `code`).
+      raw.features = raw.features.map((f) => ({
+        ...f,
+        properties: {
+          ...f.properties,
+          name: f.properties.nom,
+        },
+      })) as typeof raw.features;
+      return raw;
+    },
+    enabled: !!departmentCode,
+    staleTime: Infinity, // commune borders are stable
+  });
+}
+
 export function useRegionStats() {
   return useQuery({ queryKey: ["stats", "regions"], queryFn: () => api.stats.regions() });
 }

@@ -1,5 +1,11 @@
 # app
 
+## [0.11.1] - 2026-04-26
+
+### Bug Fixes
+
+- fix: changed zoom level
+
 ## [0.11.0] - 2026-04-26
 
 ### Features

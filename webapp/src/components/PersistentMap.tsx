@@ -189,34 +189,43 @@ export function PersistentMap() {
   const urlActive = showDepartments ? departmentCode : (activeRegionCode ?? undefined);
   const activeFeatureCode = clickedFeatureCode ?? urlActive;
 
+  const layerName = showCityDetail ? "Cities" : showDepartments ? "Departments" : "Regions";
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end gap-3 flex-wrap">
-        <label className="text-sm font-medium text-muted-foreground">Color by</label>
-        <Select value={metric} onValueChange={(v) => setMetric(v as MapMetric)}>
-          <SelectTrigger className="w-56">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(METRIC_LABELS).map(([key, label]) => (
-              <SelectItem key={key} value={key}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <label className="text-sm font-medium text-muted-foreground">Style</label>
-        <Select value={style} onValueChange={(v) => setStyle(v as MapStyle)}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="choropleth">Choropleth</SelectItem>
-            <SelectItem value="bubbles">Bubbles</SelectItem>
-            <SelectItem value="heat">Heatmap</SelectItem>
-            <SelectItem value="all">All</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-xs text-muted-foreground">
+          <span className="font-medium uppercase tracking-wide">Showing</span>{" "}
+          <span className="text-foreground">{layerName}</span>{" "}
+          <span className="text-muted-foreground/60">· zoom {zoom.toFixed(1)}</span>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="text-sm font-medium text-muted-foreground">Color by</label>
+          <Select value={metric} onValueChange={(v) => setMetric(v as MapMetric)}>
+            <SelectTrigger className="w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(METRIC_LABELS).map(([key, label]) => (
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <label className="text-sm font-medium text-muted-foreground">Style</label>
+          <Select value={style} onValueChange={(v) => setStyle(v as MapStyle)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="choropleth">Choropleth</SelectItem>
+              <SelectItem value="bubbles">Bubbles</SelectItem>
+              <SelectItem value="heat">Heatmap</SelectItem>
+              <SelectItem value="all">All</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <FranceMap
         geojson={geojson}

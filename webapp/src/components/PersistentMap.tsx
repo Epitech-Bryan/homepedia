@@ -133,6 +133,7 @@ export function PersistentMap() {
   const [clickedFeatureCode, setClickedFeatureCode] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setClickedFeatureCode(undefined);
   }, [pathname]);
 
@@ -210,7 +211,7 @@ export function PersistentMap() {
         if (!props?.code) continue;
         const pop = props.population ?? null;
         const areaKm2 = props.surface ? props.surface / 100 : null;
-        let value: number | null = null;
+        let value: number | null;
         switch (metric) {
           case "population":
             value = pop;

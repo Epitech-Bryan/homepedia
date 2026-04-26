@@ -118,7 +118,10 @@ export function useGeoDepartments(regionCode?: string) {
 export function useGeoCities(departmentCode?: string) {
   return useQuery({
     queryKey: ["geo", "cities", departmentCode],
-    queryFn: () => fetchCommuneGeojson(departmentCode!),
+    queryFn: () => {
+      if (!departmentCode) throw new Error("departmentCode required");
+      return fetchCommuneGeojson(departmentCode);
+    },
     enabled: !!departmentCode,
     staleTime: Infinity, // commune borders are stable
   });

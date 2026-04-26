@@ -4,7 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import java.time.Duration;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -31,9 +35,10 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * Cache names appear in {@code @Cacheable(value = "...")} on services. Cache
  * keys are generated from method arguments by Spring's default key generator.
  */
+@Slf4j
 @Configuration
 @EnableCaching
-public class CacheConfig {
+public class CacheConfig implements CachingConfigurer {
 
 	public static final String CACHE_GEO = "geo";
 	public static final String CACHE_REFDATA = "refdata";
@@ -59,5 +64,35 @@ public class CacheConfig {
 
 		return RedisCacheManager.builder(connectionFactory).cacheDefaults(defaults)
 				.withInitialCacheConfigurations(perCache).transactionAware().build();
+	}
+
+	/**
+	 * Swallow Redis errors so a Redis outage degrades to direct method
+	 * execution instead of HTTP 500. The first failure logs at WARN; further
+	 * failures are silent.
+	 */
+	@Override
+	public CacheErrorHandler errorHandler() {
+		return new CacheErrorHandler() {
+			@Override
+			public void handleCacheGetError(RuntimeException ex, Cache cache, Object key) {
+				log.warn("Redis GET failed for cache={} key={}: {}", cache.getName(), key, ex.getMessage());
+			}
+
+			@Override
+			public void handleCachePutError(RuntimeException ex, Cache cache, Object key, Object value) {
+				log.warn("Redis PUT failed for cache={} key={}: {}", cache.getName(), key, ex.getMessage());
+			}
+
+			@Override
+			public void handleCacheEvictError(RuntimeException ex, Cache cache, Object key) {
+				log.warn("Redis EVICT failed for cache={} key={}: {}", cache.getName(), key, ex.getMessage());
+			}
+
+			@Override
+			public void handleCacheClearError(RuntimeException ex, Cache cache) {
+				log.warn("Redis CLEAR failed for cache={}: {}", cache.getName(), ex.getMessage());
+			}
+		};
 	}
 }

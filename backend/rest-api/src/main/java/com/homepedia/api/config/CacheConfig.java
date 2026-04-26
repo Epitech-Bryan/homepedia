@@ -1,7 +1,5 @@
 package com.homepedia.api.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import java.time.Duration;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -32,8 +30,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * </ul>
  *
  * <p>
- * Cache names appear in {@code @Cacheable(value = "...")} on services. Cache
- * keys are generated from method arguments by Spring's default key generator.
+ * All keys are prefixed with {@code homepedia:} so this app can safely share a
+ * Redis instance with unrelated services.
  */
 @Slf4j
 @Configuration
@@ -45,14 +43,17 @@ public class CacheConfig implements CachingConfigurer {
 	public static final String CACHE_STATS = "stats";
 	public static final String CACHE_REVIEWS = "reviews";
 
+	private static final String KEY_PREFIX = "homepedia:";
+
 	@Bean
-	public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
-		final var jsonMapper = objectMapper.copy().activateDefaultTyping(
-				BasicPolymorphicTypeValidator.builder().allowIfBaseType(Object.class).build(),
-				ObjectMapper.DefaultTyping.NON_FINAL);
-		final var jsonSerializer = new GenericJackson2JsonRedisSerializer(jsonMapper);
+	public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+		// Default GenericJackson2JsonRedisSerializer uses an "@class" property
+		// embedded in each JSON document for type recovery — friendlier with
+		// shared Redis instances than the WRAPPER_ARRAY default-typing format.
+		final var jsonSerializer = new GenericJackson2JsonRedisSerializer();
 
 		final var defaults = RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(1))
+				.prefixCacheNameWith(KEY_PREFIX)
 				.serializeKeysWith(
 						RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
 				.serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))

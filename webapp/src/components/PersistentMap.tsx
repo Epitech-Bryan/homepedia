@@ -22,6 +22,42 @@ const HIDDEN_PATHS = ["/explorer"];
 
 // Below this zoom, we show regions; at or above, we switch to departments.
 const DEPARTMENT_ZOOM_THRESHOLD = 7;
+// Above this zoom, we auto-detect the department under the map center and
+// show its cities as sized markers.
+const CITY_DETAIL_ZOOM_THRESHOLD = 9;
+
+function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersect = yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function findFeatureCodeAt(
+  geojson: GeoJSON.FeatureCollection | undefined | null,
+  lng: number,
+  lat: number,
+): string | null {
+  if (!geojson) return null;
+  for (const f of geojson.features) {
+    const code = (f.properties as { code?: string } | null)?.code;
+    if (!code) continue;
+    const geo = f.geometry;
+    if (geo.type === "Polygon" && pointInRing(lng, lat, geo.coordinates[0])) {
+      return code;
+    }
+    if (geo.type === "MultiPolygon") {
+      for (const poly of geo.coordinates) {
+        if (pointInRing(lng, lat, poly[0])) return code;
+      }
+    }
+  }
+  return null;
+}
 
 type MapMetric =
   | "population"
@@ -59,6 +95,7 @@ export function PersistentMap() {
   const [metric, setMetric] = useState<MapMetric>("population");
   const [style, setStyle] = useState<MapStyle>("choropleth");
   const [zoom, setZoom] = useState(6);
+  const [center, setCenter] = useState<[number, number]>([46.6, 2.5]);
   // Local target for in-map clicks (no URL change). Reset whenever the
   // browser URL changes so deep-links (/regions/X, /departments/X) take over.
   const [clickedFeatureCode, setClickedFeatureCode] = useState<string | undefined>(undefined);
@@ -66,6 +103,10 @@ export function PersistentMap() {
   useEffect(() => {
     setClickedFeatureCode(undefined);
   }, [pathname]);
+
+  const onCenterChange = useCallback((lat: number, lng: number) => {
+    setCenter([lat, lng]);
+  }, []);
 
   // URL drives the active feature highlight + cards below the map.
   // The MAP CONTENT (which layer to show) is purely zoom-driven.
@@ -76,13 +117,23 @@ export function PersistentMap() {
   const departmentCode = departmentMatch?.params.code;
 
   const showDepartments = zoom >= DEPARTMENT_ZOOM_THRESHOLD;
+  const showCityDetail = zoom >= CITY_DETAIL_ZOOM_THRESHOLD;
 
   // Pre-fetch BOTH layers so zoom-driven switching is instant.
   const { data: geoRegions } = useGeoRegions();
   const { data: geoDepartments } = useGeoDepartments(); // no filter = all 101
   const { data: regionStats } = useRegionStats();
   const { data: allDepartmentStats } = useDepartmentStats(); // all
-  const { data: citiesPage } = useCitiesForDepartment(departmentCode);
+
+  // At high zoom, auto-detect the department under the map center via PIP and
+  // load its cities. Falls back to the URL-selected department if any.
+  const autoDeptCode = useMemo(() => {
+    if (!showCityDetail) return undefined;
+    return findFeatureCodeAt(geoDepartments, center[1], center[0]) ?? undefined;
+  }, [showCityDetail, geoDepartments, center]);
+
+  const cityFetchDeptCode = autoDeptCode ?? departmentCode;
+  const { data: citiesPage } = useCitiesForDepartment(cityFetchDeptCode);
 
   const geojson = showDepartments ? (geoDepartments ?? null) : (geoRegions ?? null);
 
@@ -95,15 +146,17 @@ export function PersistentMap() {
     return map;
   }, [metric, showDepartments, regionStats, allDepartmentStats]);
 
-  // City markers visible only when there's a URL-selected department AND
-  // we're zoomed in enough; the FranceMap also gates them by zoom.
+  // City markers — derived from whichever department code we resolved
+  // (auto-detected at high zoom, or URL-selected). FranceMap gates them by
+  // a zoom threshold so they don't pollute the choropleth at low zoom.
   const markers: MapMarker[] = useMemo(() => {
-    if (!departmentCode || !citiesPage?._embedded) return [];
+    if (!cityFetchDeptCode || !citiesPage?._embedded) return [];
     const cities = Object.values(citiesPage._embedded).flat() as Array<{
       inseeCode: string;
       name: string;
       latitude: number;
       longitude: number;
+      population: number | null;
     }>;
     return cities
       .filter((c) => Number.isFinite(c.latitude) && Number.isFinite(c.longitude))
@@ -112,8 +165,9 @@ export function PersistentMap() {
         name: c.name,
         lat: c.latitude,
         lon: c.longitude,
+        value: c.population ?? undefined,
       }));
-  }, [departmentCode, citiesPage]);
+  }, [cityFetchDeptCode, citiesPage]);
 
   const onFeatureClick = useCallback((code: string) => {
     // No URL change — just trigger a fly-to via FitBounds. The zoom listener
@@ -175,6 +229,7 @@ export function PersistentMap() {
         mapStyle={style}
         height="450px"
         onZoomChange={setZoom}
+        onCenterChange={onCenterChange}
       />
     </div>
   );

@@ -42,9 +42,11 @@ services:
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME:-homepedia}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD:-homepedia}
       - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/homepedia
+      - SPRING_DATA_REDIS_URL=redis://redis:6379
     depends_on:
       - db
       - mongo
+      - redis
     labels:
       - traefik.enable=true
       - traefik.http.routers.backend.rule=Host(`homepedia.localhost`) && PathPrefix(`/api`)
@@ -73,6 +75,15 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
     restart: unless-stopped
 
   spark-master:
@@ -106,4 +117,5 @@ services:
 volumes:
   postgres-data:
   mongo-data:
+  redis-data:
   spark-data:

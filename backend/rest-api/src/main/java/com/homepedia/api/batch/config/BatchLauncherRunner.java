@@ -2,6 +2,7 @@ package com.homepedia.api.batch.config;
 
 import com.homepedia.api.events.BatchEvent;
 import com.homepedia.api.events.BatchEventPublisher;
+import com.homepedia.api.service.CacheInvalidationService;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class BatchLauncherRunner implements CommandLineRunner {
 
 	private final JobLauncher jobLauncher;
 	private final BatchEventPublisher eventPublisher;
+	private final CacheInvalidationService cacheInvalidation;
 	private final Job inseeImportJob;
 	private final Job dvfImportJob;
 	private final Job geoJsonImportJob;
@@ -122,5 +124,7 @@ public class BatchLauncherRunner implements CommandLineRunner {
 		}
 
 		log.info("All batch jobs finished.");
+		cacheInvalidation.evictGeoAndRefdataAndStats();
+		cacheInvalidation.evictReviews();
 	}
 }

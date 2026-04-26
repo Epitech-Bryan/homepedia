@@ -42,9 +42,9 @@ public class StatsService {
 	}
 
 	/**
-	 * Aggregate stats for a set of communes. Caching key sorts and joins the
-	 * codes so the same viewport hits the same Redis entry regardless of the
-	 * frontend's iteration order.
+	 * Aggregate stats for a set of communes. Caching key sorts and joins the codes
+	 * so the same viewport hits the same Redis entry regardless of the frontend's
+	 * iteration order.
 	 */
 	@Cacheable(value = CacheConfig.CACHE_STATS, key = "'cities:' + #codes.stream().sorted().toList().toString()")
 	public List<CityStats> cityStats(Collection<String> codes) {
@@ -53,8 +53,8 @@ public class StatsService {
 		}
 		final var bounded = codes.stream().distinct().limit(MAX_CITY_CODES).toList();
 		return statsRepository.aggregateCityStats(bounded).stream()
-				.map(p -> new CityStats(p.getCode(), p.getName(), p.getDepartmentCode(), p.getPopulation(),
-						p.getArea(), p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm()))
+				.map(p -> new CityStats(p.getCode(), p.getName(), p.getDepartmentCode(), p.getPopulation(), p.getArea(),
+						p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm()))
 				.toList();
 	}
 }

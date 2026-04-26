@@ -164,7 +164,7 @@ function DragTooltipHandler() {
 
 // Cities only become visible past this zoom level so they don't hide the
 // choropleth at department/region scale.
-const CITY_MARKER_MIN_ZOOM = 9;
+const CITY_MARKER_MIN_ZOOM = 10;
 
 function ZoomAwareCityMarkers({
   markers,
@@ -494,7 +494,7 @@ function FranceMapComponent({
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
                   url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
                   subdomains="abcd"
-                  maxZoom={19}
+                  maxZoom={20}
                 />
                 <LeafletGeoJSON
                   key={layerKey}

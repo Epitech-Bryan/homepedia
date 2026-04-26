@@ -27,7 +27,7 @@ const HIDDEN_PATHS = ["/explorer"];
 const DEPARTMENT_ZOOM_THRESHOLD = 7;
 // Above this zoom, we auto-detect the department under the map center and
 // show its cities as sized markers.
-const CITY_DETAIL_ZOOM_THRESHOLD = 9;
+const CITY_DETAIL_ZOOM_THRESHOLD = 10;
 
 function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
   let inside = false;

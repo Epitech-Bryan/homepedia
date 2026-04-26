@@ -14,6 +14,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Hide leaflet tooltips while the user is panning so they don't stack
+   across polygons crossed during the drag. */
+.leaflet-container.leaflet-grabbing .leaflet-tooltip {
+  display: none;
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;

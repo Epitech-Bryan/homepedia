@@ -137,6 +137,31 @@ function MapResizer({ trigger }: { trigger: unknown }) {
   return null;
 }
 
+/**
+ * Closes any sticky tooltip when the user starts panning. Without this,
+ * polygons crossed during a drag stack their tooltips on top of each other
+ * because mouseover fires on the new polygon before mouseout reaches the
+ * previous one.
+ */
+function DragTooltipHandler() {
+  const map = useMap();
+  useEffect(() => {
+    const closeAll = () => {
+      map.eachLayer((layer) => {
+        const l = layer as L.Layer & { closeTooltip?: () => void };
+        if (typeof l.closeTooltip === "function") {
+          l.closeTooltip();
+        }
+      });
+    };
+    map.on("dragstart movestart zoomstart", closeAll);
+    return () => {
+      map.off("dragstart movestart zoomstart", closeAll);
+    };
+  }, [map]);
+  return null;
+}
+
 // Cities only become visible past this zoom level so they don't hide the
 // choropleth at department/region scale.
 const CITY_MARKER_MIN_ZOOM = 9;
@@ -508,6 +533,7 @@ function FranceMapComponent({
                 {onCenterChange && <CenterReporter onChange={onCenterChange} />}
                 {onBoundsChange && <BoundsReporter onChange={onBoundsChange} />}
                 <MapResizer trigger={height} />
+                <DragTooltipHandler />
                 <FitBounds geojson={geojson} activeFeatureCode={activeFeatureCode} />
               </MapContainer>
               {showChoropleth && choroplethRange && (

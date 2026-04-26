@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { FranceMap, type MapMarker, type MapStyle } from "@/components/FranceMap";
 import {
+  useArrondissementsForCities,
   useCitiesForDepartment,
+  useCityStats,
   useDepartment,
   useDepartmentStats,
   useGeoCitiesForDepartments,
@@ -19,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Maximize2, Minimize2 } from "lucide-react";
-import type { DepartmentStats, RegionStats } from "@/api/client";
+import type { CityStats, DepartmentStats, RegionStats } from "@/api/client";
 
 const HIDDEN_PATHS = ["/explorer"];
 
@@ -28,6 +30,11 @@ const DEPARTMENT_ZOOM_THRESHOLD = 7;
 // Above this zoom, we auto-detect the department under the map center and
 // show its cities as sized markers.
 const CITY_DETAIL_ZOOM_THRESHOLD = 10;
+// Above this zoom, big cities split into their municipal arrondissements.
+const ARRONDISSEMENT_ZOOM_THRESHOLD = 12;
+// INSEE codes of the only three communes that publish municipal
+// arrondissements via geo.api.gouv.fr: Paris, Marseille, Lyon.
+const DRILLDOWN_CITY_CODES = new Set(["75056", "13055", "69123"]);
 
 function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
   let inside = false;
@@ -104,7 +111,10 @@ const METRIC_LABELS: Record<MapMetric, string> = {
   transactionCount: "Transactions",
 };
 
-function extractValue(s: RegionStats | DepartmentStats, metric: MapMetric): number | null {
+function extractValue(
+  s: RegionStats | DepartmentStats | CityStats,
+  metric: MapMetric,
+): number | null {
   switch (metric) {
     case "population":
       return s.population ?? null;
@@ -158,6 +168,7 @@ export function PersistentMap() {
 
   const showDepartments = zoom >= DEPARTMENT_ZOOM_THRESHOLD;
   const showCityDetail = zoom >= CITY_DETAIL_ZOOM_THRESHOLD;
+  const showArrondissements = zoom >= ARRONDISSEMENT_ZOOM_THRESHOLD;
 
   // Pre-fetch BOTH layers so zoom-driven switching is instant.
   const { data: geoRegions } = useGeoRegions();
@@ -193,25 +204,85 @@ export function PersistentMap() {
 
   const geoCities = useGeoCitiesForDepartments(visibleDeptCodes);
 
-  // 3-tier zoom: regions → departments → city polygons.
+  // At arrondissement zoom, only fetch for the drilldown communes whose bbox
+  // intersects the viewport. Outside Paris/Lyon/Marseille this is a no-op.
+  const drilldownCityCodes = useMemo(() => {
+    if (!showArrondissements || !geoCities) return [];
+    const viewBbox: [number, number, number, number] = [bounds[1], bounds[0], bounds[3], bounds[2]];
+    const codes: string[] = [];
+    for (const f of geoCities.features) {
+      const code = (f.properties as { code?: string } | null)?.code;
+      if (!code || !DRILLDOWN_CITY_CODES.has(code)) continue;
+      if (bboxesOverlap(featureBbox(f), viewBbox)) codes.push(code);
+    }
+    return codes.sort();
+  }, [showArrondissements, geoCities, bounds]);
+
+  const geoArrondissements = useArrondissementsForCities(drilldownCityCodes);
+
+  // City-level geojson: start from communes, then at arrondissement zoom swap
+  // out drilldown parent communes for their arrondissement polygons.
+  const cityLevelGeojson = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!geoCities) return null;
+    if (!showArrondissements || !geoArrondissements) return geoCities;
+    const drilldownSet = new Set(drilldownCityCodes);
+    const filtered = geoCities.features.filter((f) => {
+      const code = (f.properties as { code?: string } | null)?.code;
+      return !code || !drilldownSet.has(code);
+    });
+    return {
+      type: "FeatureCollection",
+      features: [...filtered, ...geoArrondissements.features],
+    };
+  }, [geoCities, showArrondissements, geoArrondissements, drilldownCityCodes]);
+
+  // 3-tier zoom: regions → departments → city/arrondissement polygons.
   const geojson = showCityDetail
-    ? (geoCities ?? geoDepartments ?? null)
+    ? (cityLevelGeojson ?? geoDepartments ?? null)
     : showDepartments
       ? (geoDepartments ?? null)
       : (geoRegions ?? null);
 
+  // Backend stats for every commune code visible on screen — used to colour
+  // the choropleth by averagePrice / €m² / transactionCount at city zoom.
+  const cityStatCodes = useMemo(() => {
+    if (!showCityDetail || !cityLevelGeojson) return [];
+    const codes: string[] = [];
+    for (const f of cityLevelGeojson.features) {
+      const code = (f.properties as { code?: string } | null)?.code;
+      if (code) codes.push(code);
+    }
+    return codes;
+  }, [showCityDetail, cityLevelGeojson]);
+
+  const { data: cityStats } = useCityStats(cityStatCodes);
+  const cityStatsByCode = useMemo(() => {
+    const map: Record<string, CityStats> = {};
+    if (!cityStats) return map;
+    for (const s of cityStats) map[s.code] = s;
+    return map;
+  }, [cityStats]);
+
   const metricByCode = useMemo(() => {
     const map: Record<string, number | null> = {};
-    if (showCityDetail && geoCities) {
-      // City-level: derive metric from commune geojson properties (population /
-      // surface in hectares from geo.api.gouv.fr).
-      for (const f of geoCities.features) {
+    if (showCityDetail && cityLevelGeojson) {
+      // City-level: prefer backend aggregate stats (price metrics, real
+      // population/area) — fall back to geo.api.gouv.fr properties for
+      // population/density when the backend has no row (e.g. arrondissements,
+      // not yet ingested).
+      for (const f of cityLevelGeojson.features) {
         const props = f.properties as {
           code?: string;
           population?: number;
           surface?: number;
         } | null;
         if (!props?.code) continue;
+        const backend = cityStatsByCode[props.code];
+        if (backend) {
+          map[props.code] = extractValue(backend, metric);
+          continue;
+        }
+        // Geo-API fallback. `surface` is in hectares — divide by 100 for km².
         const pop = props.population ?? null;
         const areaKm2 = props.surface ? props.surface / 100 : null;
         let value: number | null;
@@ -223,7 +294,6 @@ export function PersistentMap() {
             value = pop && areaKm2 ? pop / areaKm2 : null;
             break;
           default:
-            // Other metrics not available at city level (no per-city stats yet)
             value = null;
         }
         map[props.code] = value;
@@ -235,7 +305,15 @@ export function PersistentMap() {
       map[s.code] = extractValue(s, metric);
     }
     return map;
-  }, [metric, showCityDetail, showDepartments, geoCities, regionStats, allDepartmentStats]);
+  }, [
+    metric,
+    showCityDetail,
+    showDepartments,
+    cityLevelGeojson,
+    cityStatsByCode,
+    regionStats,
+    allDepartmentStats,
+  ]);
 
   // City markers are only useful when we DON'T have commune polygons yet;
   // once polygons load they tell the same story more cleanly. So we drop
@@ -288,7 +366,14 @@ export function PersistentMap() {
   const urlActive = showDepartments ? departmentCode : (activeRegionCode ?? undefined);
   const activeFeatureCode = clickedFeatureCode ?? urlActive;
 
-  const layerName = showCityDetail ? "Cities" : showDepartments ? "Departments" : "Regions";
+  const hasArrondissements = showArrondissements && (geoArrondissements?.features.length ?? 0) > 0;
+  const layerName = hasArrondissements
+    ? "Arrondissements"
+    : showCityDetail
+      ? "Cities"
+      : showDepartments
+        ? "Departments"
+        : "Regions";
 
   return (
     <div className="space-y-3">

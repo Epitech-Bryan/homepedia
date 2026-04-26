@@ -1,6 +1,7 @@
 package com.homepedia.common.stats;
 
 import com.homepedia.common.region.Region;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -45,6 +46,24 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 			""", nativeQuery = true)
 	List<DepartmentStatsProjection> aggregateDepartmentStats(@Param("regionCode") String regionCode);
 
+	@Query(value = """
+			SELECT
+			  c.insee_code AS code,
+			  c.name AS name,
+			  c.department_code AS departmentCode,
+			  c.population AS population,
+			  c.area AS area,
+			  COUNT(t.id) AS transactionCount,
+			  AVG(t.property_value) AS averagePrice,
+			  AVG(CASE WHEN t.built_surface > 0 THEN t.property_value / t.built_surface END) AS averagePricePerSqm
+			FROM cities c
+			LEFT JOIN transactions t ON t.city_insee_code = c.insee_code
+			WHERE c.insee_code IN (:codes)
+			GROUP BY c.insee_code, c.name, c.department_code, c.population, c.area
+			ORDER BY c.insee_code
+			""", nativeQuery = true)
+	List<CityStatsProjection> aggregateCityStats(@Param("codes") Collection<String> codes);
+
 	interface RegionStatsProjection {
 		String getCode();
 
@@ -67,6 +86,24 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 		String getName();
 
 		String getRegionCode();
+
+		Long getPopulation();
+
+		Double getArea();
+
+		Long getTransactionCount();
+
+		Double getAveragePrice();
+
+		Double getAveragePricePerSqm();
+	}
+
+	interface CityStatsProjection {
+		String getCode();
+
+		String getName();
+
+		String getDepartmentCode();
 
 		Long getPopulation();
 

@@ -19,6 +19,29 @@ async function fetchCommuneGeojson(departmentCode: string): Promise<GeoJSON.Feat
   return raw;
 }
 
+async function fetchArrondissementsGeojson(
+  communeCode: string,
+): Promise<GeoJSON.FeatureCollection> {
+  // geo.api.gouv.fr exposes municipal arrondissements only for Paris (75056),
+  // Lyon (69123) and Marseille (13055). The endpoint returns FeatureCollection
+  // with `nom`, `code` (75101..75120, etc.), `population`, `surface`.
+  const url = `https://geo.api.gouv.fr/communes/${communeCode}/arrondissements-municipaux?fields=nom,code,population,surface&format=geojson&geometry=contour`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch arrondissements geojson: ${res.status}`);
+  const raw = (await res.json()) as GeoJSON.FeatureCollection<
+    GeoJSON.Geometry,
+    { code: string; nom: string; population?: number; surface?: number }
+  >;
+  raw.features = raw.features.map((f) => ({
+    ...f,
+    properties: {
+      ...f.properties,
+      name: f.properties.nom,
+    },
+  })) as typeof raw.features;
+  return raw;
+}
+
 export function useReviews(inseeCode: string, params?: Record<string, string>) {
   return useQuery({
     queryKey: ["reviews", inseeCode, params],
@@ -159,4 +182,42 @@ export function useDepartmentStats(regionCode?: string) {
     queryKey: ["stats", "departments", regionCode],
     queryFn: () => api.stats.departments(regionCode),
   });
+}
+
+/**
+ * Per-commune stats for the given INSEE codes. Codes are sorted before being
+ * sent so panning the map within the same set hits the same TanStack Query
+ * cache entry. Empty input short-circuits — no network call.
+ */
+export function useCityStats(codes: string[]) {
+  const sorted = [...codes].sort();
+  return useQuery({
+    queryKey: ["stats", "cities", sorted],
+    queryFn: () => api.stats.cities(sorted),
+    enabled: sorted.length > 0,
+    staleTime: 60_000,
+  });
+}
+
+/**
+ * Fetches arrondissements municipaux polygons in parallel for several parent
+ * communes (only Paris/Lyon/Marseille have any) and merges them into a single
+ * FeatureCollection.
+ */
+export function useArrondissementsForCities(
+  communeCodes: string[],
+): GeoJSON.FeatureCollection | null {
+  const queries = useQueries({
+    queries: communeCodes.map((code) => ({
+      queryKey: ["geo", "arrondissements", code],
+      queryFn: () => fetchArrondissementsGeojson(code),
+      staleTime: Infinity,
+    })),
+  });
+  const features: GeoJSON.Feature[] = [];
+  for (const q of queries) {
+    if (q.data?.features) features.push(...q.data.features);
+  }
+  if (features.length === 0) return null;
+  return { type: "FeatureCollection", features };
 }

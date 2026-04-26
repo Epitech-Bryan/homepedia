@@ -68,6 +68,7 @@ interface FranceMapProps {
   height?: string;
   onZoomChange?: (zoom: number) => void;
   onCenterChange?: (lat: number, lng: number) => void;
+  onBoundsChange?: (south: number, west: number, north: number, east: number) => void;
 }
 
 function ZoomReporter({ onChange }: { onChange: (z: number) => void }) {
@@ -96,6 +97,26 @@ function CenterReporter({ onChange }: { onChange: (lat: number, lng: number) => 
     map.on("moveend", update);
     return () => {
       map.off("moveend", update);
+    };
+  }, [map, onChange]);
+  return null;
+}
+
+function BoundsReporter({
+  onChange,
+}: {
+  onChange: (south: number, west: number, north: number, east: number) => void;
+}) {
+  const map = useMap();
+  useEffect(() => {
+    const report = () => {
+      const b = map.getBounds();
+      onChange(b.getSouth(), b.getWest(), b.getNorth(), b.getEast());
+    };
+    report();
+    map.on("moveend zoomend", report);
+    return () => {
+      map.off("moveend zoomend", report);
     };
   }, [map, onChange]);
   return null;
@@ -262,6 +283,7 @@ function FranceMapComponent({
   height = "500px",
   onZoomChange,
   onCenterChange,
+  onBoundsChange,
 }: FranceMapProps) {
   const showChoropleth = mapStyle === "choropleth" || mapStyle === "all";
   const showBubbles = mapStyle === "bubbles" || mapStyle === "all";
@@ -462,6 +484,7 @@ function FranceMapComponent({
                 {showHeat && <HeatLayer points={heatPoints} />}
                 {onZoomChange && <ZoomReporter onChange={onZoomChange} />}
                 {onCenterChange && <CenterReporter onChange={onCenterChange} />}
+                {onBoundsChange && <BoundsReporter onChange={onBoundsChange} />}
                 <FitBounds geojson={geojson} activeFeatureCode={activeFeatureCode} />
               </MapContainer>
               {showChoropleth && choroplethRange && (

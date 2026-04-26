@@ -1,5 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
+
+async function fetchCommuneGeojson(departmentCode: string): Promise<GeoJSON.FeatureCollection> {
+  const url = `https://geo.api.gouv.fr/departements/${departmentCode}/communes?fields=nom,code,population,surface&format=geojson&geometry=contour`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch commune geojson: ${res.status}`);
+  const raw = (await res.json()) as GeoJSON.FeatureCollection<
+    GeoJSON.Geometry,
+    { code: string; nom: string; population?: number; surface?: number }
+  >;
+  raw.features = raw.features.map((f) => ({
+    ...f,
+    properties: {
+      ...f.properties,
+      name: f.properties.nom,
+    },
+  })) as typeof raw.features;
+  return raw;
+}
 
 export function useReviews(inseeCode: string, params?: Record<string, string>) {
   return useQuery({
@@ -100,28 +118,33 @@ export function useGeoDepartments(regionCode?: string) {
 export function useGeoCities(departmentCode?: string) {
   return useQuery({
     queryKey: ["geo", "cities", departmentCode],
-    queryFn: async (): Promise<GeoJSON.FeatureCollection | null> => {
-      if (!departmentCode) return null;
-      const url = `https://geo.api.gouv.fr/departements/${departmentCode}/communes?fields=nom,code,population,surface&format=geojson&geometry=contour`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Failed to fetch commune geojson: ${res.status}`);
-      const raw = (await res.json()) as GeoJSON.FeatureCollection<
-        GeoJSON.Geometry,
-        { code: string; nom: string; population?: number; surface?: number }
-      >;
-      // Normalize property names to match the rest of our app (`name`, `code`).
-      raw.features = raw.features.map((f) => ({
-        ...f,
-        properties: {
-          ...f.properties,
-          name: f.properties.nom,
-        },
-      })) as typeof raw.features;
-      return raw;
-    },
+    queryFn: () => fetchCommuneGeojson(departmentCode!),
     enabled: !!departmentCode,
     staleTime: Infinity, // commune borders are stable
   });
+}
+
+/**
+ * Fetch commune polygons for several departments at once and merge them into
+ * a single FeatureCollection. Each individual fetch is cached so panning
+ * across the map only fires requests for newly visible departments.
+ */
+export function useGeoCitiesForDepartments(
+  departmentCodes: string[],
+): GeoJSON.FeatureCollection | null {
+  const queries = useQueries({
+    queries: departmentCodes.map((code) => ({
+      queryKey: ["geo", "cities", code],
+      queryFn: () => fetchCommuneGeojson(code),
+      staleTime: Infinity,
+    })),
+  });
+  const features: GeoJSON.Feature[] = [];
+  for (const q of queries) {
+    if (q.data?.features) features.push(...q.data.features);
+  }
+  if (features.length === 0) return null;
+  return { type: "FeatureCollection", features };
 }
 
 export function useRegionStats() {

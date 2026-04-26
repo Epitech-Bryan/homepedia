@@ -1,5 +1,6 @@
 package com.homepedia.api.service;
 
+import com.homepedia.api.config.CacheConfig;
 import com.homepedia.api.mapper.ReviewMapper;
 import com.homepedia.common.review.ReviewRepository;
 import com.homepedia.common.review.ReviewSummary;
@@ -11,6 +12,7 @@ import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ public class ReviewService {
 				.map(ReviewMapper.INSTANCE::convertToSummary);
 	}
 
+	@Cacheable(value = CacheConfig.CACHE_REVIEWS, key = "'wordcloud:' + #cityInseeCode")
 	public Map<String, Integer> getWordFrequencies(final String cityInseeCode) {
 		final var reviews = reviewRepository.findByCityInseeCode(cityInseeCode);
 		final var frequencies = new HashMap<String, Integer>();
@@ -51,6 +54,7 @@ public class ReviewService {
 		return frequencies;
 	}
 
+	@Cacheable(value = CacheConfig.CACHE_REVIEWS, key = "'sentiment:' + #cityInseeCode")
 	public SentimentStats getSentimentStats(final String cityInseeCode) {
 		final var reviews = reviewRepository.findByCityInseeCode(cityInseeCode);
 

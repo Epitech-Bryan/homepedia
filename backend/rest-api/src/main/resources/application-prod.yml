@@ -6,6 +6,8 @@ spring:
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/homepedia}
+    redis:
+      url: ${SPRING_DATA_REDIS_URL:redis://localhost:6379}
   jpa:
     properties:
       hibernate:

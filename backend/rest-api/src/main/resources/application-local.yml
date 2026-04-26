@@ -6,6 +6,8 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/homepedia
+    redis:
+      url: redis://localhost:6379
 
 homepedia:
   dvf:

@@ -2,6 +2,7 @@ package com.homepedia.api.batch.config;
 
 import com.homepedia.api.events.BatchEvent;
 import com.homepedia.api.events.BatchEventPublisher;
+import com.homepedia.api.service.CacheInvalidationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -21,6 +22,7 @@ public class BatchScheduler {
 
 	private final JobLauncher jobLauncher;
 	private final BatchEventPublisher eventPublisher;
+	private final CacheInvalidationService cacheInvalidation;
 	private final Job inseeImportJob;
 	private final Job geoJsonImportJob;
 	private final Job dvfImportJob;
@@ -93,6 +95,8 @@ public class BatchScheduler {
 			final var elapsed = System.currentTimeMillis() - start;
 			log.info("Scheduled job {} finished with status {} in {} ms", name, execution.getStatus(), elapsed);
 			eventPublisher.publish(BatchEvent.completed(name, execution.getStatus() + " in " + elapsed + " ms"));
+			cacheInvalidation.evictGeoAndRefdataAndStats();
+			cacheInvalidation.evictReviews();
 		} catch (Exception e) {
 			final var elapsed = System.currentTimeMillis() - start;
 			log.error("Scheduled job {} failed after {} ms: {}", name, elapsed, e.getMessage(), e);

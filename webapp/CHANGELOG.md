@@ -1,5 +1,17 @@
 # app
 
+## [0.11.0] - 2026-04-26
+
+### Features
+
+- feat(webapp): expand button on map (toggle 500px <-> 78vh) and remove side padding when expanded
+
+### Bug Fixes
+
+- fix: format
+- fix: use @class json typing + homepedia: key prefix to safely share redis; close tooltips on map drag
+- fix(api): swallow Redis errors in cache layer to degrade gracefully
+
 ## [0.10.0] - 2026-04-26
 
 ### Features

@@ -5,6 +5,18 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.14.0] - 2026-04-26
+
+### Features
+
+- feat(webapp): expand button on map (toggle 500px <-> 78vh) and remove side padding when expanded
+
+### Bug Fixes
+
+- fix: format
+- fix: use @class json typing + homepedia: key prefix to safely share redis; close tooltips on map drag
+- fix(api): swallow Redis errors in cache layer to degrade gracefully
+
 ## [3.13.0] - 2026-04-26
 
 ### Features

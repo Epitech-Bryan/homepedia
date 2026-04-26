@@ -50,6 +50,8 @@ export interface MapMarker {
   lat: number;
   lon: number;
   name: string;
+  /** Optional weight (e.g. population) used to scale the marker radius. */
+  value?: number;
 }
 
 export type MapStyle = "choropleth" | "bubbles" | "heat" | "all";
@@ -65,6 +67,7 @@ interface FranceMapProps {
   mapStyle?: MapStyle;
   height?: string;
   onZoomChange?: (zoom: number) => void;
+  onCenterChange?: (lat: number, lng: number) => void;
 }
 
 function ZoomReporter({ onChange }: { onChange: (z: number) => void }) {
@@ -80,9 +83,26 @@ function ZoomReporter({ onChange }: { onChange: (z: number) => void }) {
   return null;
 }
 
+function CenterReporter({ onChange }: { onChange: (lat: number, lng: number) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    const c = map.getCenter();
+    onChange(c.lat, c.lng);
+    const update = () => {
+      const cc = map.getCenter();
+      onChange(cc.lat, cc.lng);
+    };
+    map.on("moveend", update);
+    return () => {
+      map.off("moveend", update);
+    };
+  }, [map, onChange]);
+  return null;
+}
+
 // Cities only become visible past this zoom level so they don't hide the
 // choropleth at department/region scale.
-const CITY_MARKER_MIN_ZOOM = 8;
+const CITY_MARKER_MIN_ZOOM = 9;
 
 function ZoomAwareCityMarkers({
   markers,
@@ -102,35 +122,52 @@ function ZoomAwareCityMarkers({
     };
   }, [map]);
 
-  if (zoom < CITY_MARKER_MIN_ZOOM) return null;
+  // Compute the population range across the visible markers so we can scale
+  // each circle proportionally (log scale to handle Paris vs. tiny villages).
+  const popRange = useMemo(() => {
+    const pops = markers.map((m) => m.value ?? 0).filter((v) => v > 0);
+    if (pops.length === 0) return null;
+    return { min: Math.log10(Math.min(...pops)), max: Math.log10(Math.max(...pops)) };
+  }, [markers]);
 
-  // Smooth fade-in: bigger and more opaque as the user zooms in further.
-  const t = Math.min(1, (zoom - CITY_MARKER_MIN_ZOOM) / 3);
-  const radius = 2.5 + t * 2.5;
-  const opacity = 0.4 + t * 0.5;
+  if (zoom < CITY_MARKER_MIN_ZOOM) return null;
 
   return (
     <>
-      {markers.map((m) => (
-        <CircleMarker
-          key={m.id}
-          center={[m.lat, m.lon]}
-          radius={radius}
-          pathOptions={{
-            fillColor: "#1f2937",
-            color: "#1f2937",
-            fillOpacity: opacity,
-            weight: 0,
-          }}
-          eventHandlers={{
-            click: () => onMarkerClick?.(m.id),
-          }}
-        >
-          <Tooltip sticky direction="top" offset={[0, -4]}>
-            {m.name}
-          </Tooltip>
-        </CircleMarker>
-      ))}
+      {markers.map((m) => {
+        const pop = m.value ?? 0;
+        let radius = 2.5;
+        if (popRange && pop > 0) {
+          const ratio = (Math.log10(pop) - popRange.min) / (popRange.max - popRange.min || 1);
+          radius = 3 + ratio * 9;
+        }
+        return (
+          <CircleMarker
+            key={m.id}
+            center={[m.lat, m.lon]}
+            radius={radius}
+            pathOptions={{
+              fillColor: "#1f2937",
+              color: "#1f2937",
+              fillOpacity: 0.65,
+              weight: 0,
+            }}
+            eventHandlers={{
+              click: () => onMarkerClick?.(m.id),
+            }}
+          >
+            <Tooltip sticky direction="top" offset={[0, -4]}>
+              <strong>{m.name}</strong>
+              {pop > 0 ? (
+                <>
+                  <br />
+                  {pop.toLocaleString("fr-FR")} hab.
+                </>
+              ) : null}
+            </Tooltip>
+          </CircleMarker>
+        );
+      })}
     </>
   );
 }
@@ -223,6 +260,7 @@ function FranceMapComponent({
   mapStyle = "choropleth",
   height = "500px",
   onZoomChange,
+  onCenterChange,
 }: FranceMapProps) {
   const showChoropleth = mapStyle === "choropleth" || mapStyle === "all";
   const showBubbles = mapStyle === "bubbles" || mapStyle === "all";
@@ -422,6 +460,7 @@ function FranceMapComponent({
                 )}
                 {showHeat && <HeatLayer points={heatPoints} />}
                 {onZoomChange && <ZoomReporter onChange={onZoomChange} />}
+                {onCenterChange && <CenterReporter onChange={onCenterChange} />}
                 <FitBounds geojson={geojson} activeFeatureCode={activeFeatureCode} />
               </MapContainer>
               {showChoropleth && choroplethRange && (

@@ -75,9 +75,10 @@ function ZoomReporter({ onChange }: { onChange: (z: number) => void }) {
   useEffect(() => {
     onChange(map.getZoom());
     const update = () => onChange(map.getZoom());
-    map.on("zoomend", update);
+    // Listen on `zoom` (fires during zoom) AND `zoomend` for safety.
+    map.on("zoom zoomend", update);
     return () => {
-      map.off("zoomend", update);
+      map.off("zoom zoomend", update);
     };
   }, [map, onChange]);
   return null;

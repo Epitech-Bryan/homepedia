@@ -15,6 +15,7 @@ public interface HomepediaConstant {
 		interface Stats {
 			String REGIONS = "/regions";
 			String DEPARTMENTS = "/departments";
+			String CITIES = "/cities";
 		}
 
 		interface Region {

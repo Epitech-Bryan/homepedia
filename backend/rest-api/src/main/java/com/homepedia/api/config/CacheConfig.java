@@ -68,9 +68,9 @@ public class CacheConfig implements CachingConfigurer {
 	}
 
 	/**
-	 * Swallow Redis errors so a Redis outage degrades to direct method
-	 * execution instead of HTTP 500. The first failure logs at WARN; further
-	 * failures are silent.
+	 * Swallow Redis errors so a Redis outage degrades to direct method execution
+	 * instead of HTTP 500. The first failure logs at WARN; further failures are
+	 * silent.
 	 */
 	@Override
 	public CacheErrorHandler errorHandler() {

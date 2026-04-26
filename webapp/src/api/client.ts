@@ -47,7 +47,8 @@ export const api = {
     regions: () => fetchJson<RegionStats[]>("/stats/regions"),
     departments: (regionCode?: string) =>
       fetchJson<DepartmentStats[]>("/stats/departments", regionCode ? { regionCode } : undefined),
-    cities: (codes: string[]) => fetchJson<CityStats[]>("/stats/cities", { codes: codes.join(",") }),
+    cities: (codes: string[]) =>
+      fetchJson<CityStats[]>("/stats/cities", { codes: codes.join(",") }),
   },
   indicators: {
     byLevelAndCode: (level: string, code: string, params?: Record<string, string>) =>

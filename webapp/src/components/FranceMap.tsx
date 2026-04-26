@@ -10,7 +10,6 @@ import {
 import L from "leaflet";
 import "leaflet.heat";
 import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import "leaflet/dist/leaflet.css";
 
@@ -69,6 +68,8 @@ interface FranceMapProps {
   onZoomChange?: (zoom: number) => void;
   onCenterChange?: (lat: number, lng: number) => void;
   onBoundsChange?: (south: number, west: number, north: number, east: number) => void;
+  /** When true, the map renders edge-to-edge with no rounded corners. */
+  bleed?: boolean;
 }
 
 function ZoomReporter({ onChange }: { onChange: (z: number) => void }) {
@@ -119,6 +120,20 @@ function BoundsReporter({
       map.off("moveend zoomend", report);
     };
   }, [map, onChange]);
+  return null;
+}
+
+/**
+ * Forces Leaflet to remeasure its container when {@code trigger} changes.
+ * Without this, resizing the parent (e.g. via an expand button) leaves grey
+ * bars on the map until the user pans.
+ */
+function MapResizer({ trigger }: { trigger: unknown }) {
+  const map = useMap();
+  useEffect(() => {
+    const id = window.setTimeout(() => map.invalidateSize(), 60);
+    return () => window.clearTimeout(id);
+  }, [trigger, map]);
   return null;
 }
 
@@ -284,6 +299,7 @@ function FranceMapComponent({
   onZoomChange,
   onCenterChange,
   onBoundsChange,
+  bleed = false,
 }: FranceMapProps) {
   const showChoropleth = mapStyle === "choropleth" || mapStyle === "all";
   const showBubbles = mapStyle === "bubbles" || mapStyle === "all";
@@ -429,8 +445,14 @@ function FranceMapComponent({
   }, [geojson, metricByCode, choroplethRange, activeFeatureCode]);
 
   return (
-    <Card className="overflow-hidden border-border/60 shadow-sm">
-      <CardContent className="p-0">
+    <div
+      className={
+        bleed
+          ? "overflow-hidden border-y border-border/60 bg-background"
+          : "overflow-hidden rounded-lg border border-border/60 bg-background shadow-sm"
+      }
+    >
+      <div className="p-0">
         <div className="relative" style={{ height }}>
           {!geojson ? (
             <Skeleton className="h-full w-full" />
@@ -485,6 +507,7 @@ function FranceMapComponent({
                 {onZoomChange && <ZoomReporter onChange={onZoomChange} />}
                 {onCenterChange && <CenterReporter onChange={onCenterChange} />}
                 {onBoundsChange && <BoundsReporter onChange={onBoundsChange} />}
+                <MapResizer trigger={height} />
                 <FitBounds geojson={geojson} activeFeatureCode={activeFeatureCode} />
               </MapContainer>
               {showChoropleth && choroplethRange && (
@@ -493,8 +516,8 @@ function FranceMapComponent({
             </>
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

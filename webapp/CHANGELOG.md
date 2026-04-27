@@ -1,5 +1,11 @@
 # app
 
+## [0.14.5] - 2026-04-27
+
+### Bug Fixes
+
+- fix: DVF insee code bug + departments API type mismatch
+
 ## [0.14.4] - 2026-04-27
 
 ### Bug Fixes

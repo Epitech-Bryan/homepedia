@@ -1,5 +1,11 @@
 # app
 
+## [0.14.2] - 2026-04-27
+
+### Bug Fixes
+
+- fix(map): propagate h-full through FranceMap container chain
+
 ## [0.14.1] - 2026-04-27
 
 ### Bug Fixes

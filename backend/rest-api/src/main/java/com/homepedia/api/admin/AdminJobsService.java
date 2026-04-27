@@ -9,7 +9,6 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobInstance;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.explore.JobExplorer;
@@ -22,8 +21,8 @@ import org.springframework.stereotype.Service;
 public class AdminJobsService {
 
 	/**
-	 * Whitelist of job names exposed to the admin console, in display order.
-	 * Each entry maps the API key (URL slug) to the Spring Batch Job bean name.
+	 * Whitelist of job names exposed to the admin console, in display order. Each
+	 * entry maps the API key (URL slug) to the Spring Batch Job bean name.
 	 */
 	public static final Map<String, String> JOB_NAMES;
 	static {

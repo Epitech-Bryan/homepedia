@@ -473,12 +473,15 @@ function FranceMapComponent({
     <div
       className={
         bleed
-          ? "overflow-hidden border-y border-border/60 bg-background"
-          : "overflow-hidden rounded-lg border border-border/60 bg-background shadow-sm"
+          ? "h-full overflow-hidden border-y border-border/60 bg-background"
+          : "h-full overflow-hidden rounded-lg border border-border/60 bg-background shadow-sm"
       }
     >
-      <div className="p-0">
-        <div className="relative" style={{ height }}>
+      <div className="h-full p-0">
+        <div
+          className="relative h-full"
+          style={{ minHeight: height === "100%" ? undefined : height, height }}
+        >
           {!geojson ? (
             <Skeleton className="h-full w-full" />
           ) : (

@@ -132,7 +132,12 @@ export function Layout() {
           </Button>
         )}
         {user ? (
-          <Button variant="ghost" size="sm" onClick={handleLogout} title={`Déconnecter ${user.username}`}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            title={`Déconnecter ${user.username}`}
+          >
             <LogOut className="h-4 w-4 mr-1.5" />
             {user.username}
           </Button>

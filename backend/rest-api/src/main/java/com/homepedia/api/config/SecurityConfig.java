@@ -57,7 +57,8 @@ public class SecurityConfig {
 
 		return http.csrf(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/admin/**").authenticated().anyRequest().permitAll())
+				.authorizeHttpRequests(
+						auth -> auth.requestMatchers("/admin/**").authenticated().anyRequest().permitAll())
 				.build();
 	}
 }

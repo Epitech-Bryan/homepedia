@@ -196,6 +196,14 @@ export function useDepartmentStats(regionCode?: string) {
   });
 }
 
+export function useDepartmentPrecomputedStats(departmentCode?: string) {
+  return useQuery({
+    queryKey: ["stats", "departments", "precomputed", departmentCode],
+    queryFn: () => api.stats.departmentPrecomputed(departmentCode as string),
+    enabled: !!departmentCode,
+  });
+}
+
 /**
  * Per-commune stats for the given INSEE codes. Codes are sorted before being
  * sent so panning the map within the same set hits the same TanStack Query

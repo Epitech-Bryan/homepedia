@@ -2,11 +2,14 @@ package com.homepedia.api.service;
 
 import com.homepedia.api.config.CacheConfig;
 import com.homepedia.common.stats.CityStats;
+import com.homepedia.common.stats.DepartmentDvfStatsRepository;
+import com.homepedia.common.stats.DepartmentDvfStatsResponse;
 import com.homepedia.common.stats.DepartmentStats;
 import com.homepedia.common.stats.RegionStats;
 import com.homepedia.common.stats.StatsRepository;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -17,13 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class StatsService {
 
-	/**
-	 * Hard cap on a single batched city-stats query — keeps the SQL
-	 * {@code IN (...)} list bounded and avoids accidental table scans.
-	 */
 	private static final int MAX_CITY_CODES = 2000;
 
 	private final StatsRepository statsRepository;
+	private final DepartmentDvfStatsRepository departmentDvfStatsRepository;
 
 	@Cacheable(value = CacheConfig.CACHE_STATS, key = "'regions'")
 	public List<RegionStats> regionStats() {
@@ -56,5 +56,20 @@ public class StatsService {
 				.map(p -> new CityStats(p.getCode(), p.getName(), p.getDepartmentCode(), p.getPopulation(), p.getArea(),
 						p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm()))
 				.toList();
+	}
+
+	@Cacheable(value = CacheConfig.CACHE_STATS, key = "'dvf-departments'")
+	public List<DepartmentDvfStatsResponse> precomputedDepartmentStats() {
+		return departmentDvfStatsRepository.findAllByOrderByDepartmentCodeAsc().stream()
+				.map(s -> new DepartmentDvfStatsResponse(s.getDepartmentCode(), s.getTransactionCount(),
+						s.getAvgPrice(), s.getAvgPricePerSqm(), s.getMedianPrice()))
+				.toList();
+	}
+
+	@Cacheable(value = CacheConfig.CACHE_STATS, key = "'dvf-department:' + #departmentCode")
+	public Optional<DepartmentDvfStatsResponse> precomputedDepartmentStats(String departmentCode) {
+		return departmentDvfStatsRepository.findByDepartmentCode(departmentCode)
+				.map(s -> new DepartmentDvfStatsResponse(s.getDepartmentCode(), s.getTransactionCount(),
+						s.getAvgPrice(), s.getAvgPricePerSqm(), s.getMedianPrice()));
 	}
 }

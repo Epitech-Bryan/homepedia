@@ -56,6 +56,9 @@ lint:backend:
   extends: .cache_maven
   stage: lint
   image: eclipse-temurin:21-jdk-alpine
+  retry:
+    max: 2
+    when: script_failure
   before_script:
     - apk add --no-cache maven
   script:

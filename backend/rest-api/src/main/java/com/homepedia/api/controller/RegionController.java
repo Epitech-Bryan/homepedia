@@ -32,8 +32,6 @@ public class RegionController {
 	@Operation(summary = "Get a region by its code")
 	@GetMapping(BY_CODE)
 	public ResponseEntity<RegionSummary> findByCode(@PathVariable final String code) {
-		return regionService.findByCode(code)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+		return regionService.findByCode(code).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
 	}
 }

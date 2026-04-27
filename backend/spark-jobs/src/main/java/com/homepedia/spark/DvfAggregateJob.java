@@ -8,35 +8,12 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.functions;
 import org.apache.spark.sql.types.DataTypes;
 
-/**
- * Spark job that aggregates DVF transactions per department: total count, mean
- * price, mean €/m². Reads the raw DVF CSV (data.gouv.fr format) from
- * {@code --input-path}, joins with the cities table from PostgreSQL to attach
- * department codes, then writes the aggregated dataset to PostgreSQL table
- * {@code dept_dvf_stats} (overwrite mode).
- *
- * <p>
- * This is the "Big Data" path of the project: it lets us reprocess the full DVF
- * (~10M rows, ~3 GB uncompressed) in parallel via a Spark cluster (master +
- * workers) instead of loading it row-by-row through Hibernate.
- *
- * <p>
- * Submit with:
- *
- * <pre>
- * spark-submit \
- *   --class com.homepedia.spark.DvfAggregateJob \
- *   --master spark://spark-master:7077 \
- *   --jars /opt/spark/jars/postgresql.jar \
- *   spark-jobs-3.11.1-spark.jar \
- *   --input-path /data/dvf.csv \
- *   --jdbc-url jdbc:postgresql://db:5432/homepedia \
- *   --jdbc-user homepedia --jdbc-password homepedia
- * </pre>
- */
 public final class DvfAggregateJob {
 
 	private DvfAggregateJob() {
+	}
+
+	private record Config(String inputPath, String jdbcUrl, String jdbcUser, String jdbcPassword) {
 	}
 
 	public static void main(String[] args) {
@@ -44,62 +21,64 @@ public final class DvfAggregateJob {
 
 		try (final var spark = SparkSession.builder().appName("homepedia-dvf-aggregate").getOrCreate()) {
 			final var jdbcProps = new Properties();
-			jdbcProps.put("user", cfg.jdbcUser);
-			jdbcProps.put("password", cfg.jdbcPassword);
+			jdbcProps.put("user", cfg.jdbcUser());
+			jdbcProps.put("password", cfg.jdbcPassword());
 			jdbcProps.put("driver", "org.postgresql.Driver");
 
-			// 1. Load DVF CSV (header line provided by data.gouv 'full' export).
-			Dataset<Row> dvf = spark.read().option("header", "true").option("inferSchema", "false").csv(cfg.inputPath)
-					.select(functions.col("code_commune").alias("insee_code"),
-							functions.col("valeur_fonciere").cast(DataTypes.DoubleType).alias("price"),
-							functions.col("surface_reelle_bati").cast(DataTypes.DoubleType).alias("surface"),
-							functions.col("date_mutation").alias("date"));
+			final var dvf = loadDvfCsv(spark, cfg.inputPath());
+			final var cities = loadCitiesMapping(spark, cfg.jdbcUrl(), jdbcProps);
+			final var enriched = joinAndEnrich(dvf, cities);
+			final var aggregated = aggregateByDepartment(enriched);
 
-			// 2. Load cities table (only insee_code → department_code mapping).
-			Dataset<Row> cities = spark.read().jdbc(cfg.jdbcUrl, "(SELECT insee_code, department_code FROM cities) c",
-					jdbcProps);
-
-			// 3. Join, drop rows without surface, compute €/m².
-			Dataset<Row> joined = dvf.join(cities, "insee_code")
-					.filter(functions.col("price").isNotNull().and(functions.col("price").gt(0)))
-					.withColumn("price_per_sqm", functions.when(functions.col("surface").gt(0),
-							functions.col("price").divide(functions.col("surface"))).otherwise(null));
-
-			// 4. Aggregate per department.
-			Dataset<Row> aggregated = joined.groupBy("department_code").agg(
-					functions.count("*").alias("transaction_count"), functions.avg("price").alias("avg_price"),
-					functions.avg("price_per_sqm").alias("avg_price_per_sqm"),
-					functions.expr("percentile_approx(price, 0.5)").alias("median_price"));
-
-			// 5. Write back to Postgres.
-			aggregated.write().mode(SaveMode.Overwrite).jdbc(cfg.jdbcUrl, "dept_dvf_stats", jdbcProps);
-
-			System.out.println("DVF aggregate job complete: " + aggregated.count() + " departments processed.");
+			aggregated.write().mode(SaveMode.Overwrite).jdbc(cfg.jdbcUrl(), "dept_dvf_stats", jdbcProps);
 		}
 	}
 
+	private static Dataset<Row> loadDvfCsv(SparkSession spark, String inputPath) {
+		return spark.read().option("header", "true").option("inferSchema", "false").csv(inputPath).select(
+				functions.col("code_commune").alias("insee_code"),
+				functions.col("valeur_fonciere").cast(DataTypes.DoubleType).alias("price"),
+				functions.col("surface_reelle_bati").cast(DataTypes.DoubleType).alias("surface"),
+				functions.col("date_mutation").alias("date"));
+	}
+
+	private static Dataset<Row> loadCitiesMapping(SparkSession spark, String jdbcUrl, Properties jdbcProps) {
+		return spark.read().jdbc(jdbcUrl, "(SELECT insee_code, department_code FROM cities) c", jdbcProps);
+	}
+
+	private static Dataset<Row> joinAndEnrich(Dataset<Row> dvf, Dataset<Row> cities) {
+		return dvf.join(cities, "insee_code")
+				.filter(functions.col("price").isNotNull().and(functions.col("price").gt(0)))
+				.withColumn("price_per_sqm", functions
+						.when(functions.col("surface").gt(0), functions.col("price").divide(functions.col("surface")))
+						.otherwise(null));
+	}
+
+	private static Dataset<Row> aggregateByDepartment(Dataset<Row> enriched) {
+		return enriched.groupBy("department_code").agg(functions.count("*").alias("transaction_count"),
+				functions.avg("price").alias("avg_price"), functions.avg("price_per_sqm").alias("avg_price_per_sqm"),
+				functions.expr("percentile_approx(price, 0.5)").alias("median_price"));
+	}
+
 	private static Config parseArgs(String[] args) {
-		final var cfg = new Config();
+		String inputPath = null;
+		String jdbcUrl = null;
+		String jdbcUser = "homepedia";
+		String jdbcPassword = "homepedia";
+
 		for (int i = 0; i < args.length - 1; i++) {
 			switch (args[i]) {
-				case "--input-path" -> cfg.inputPath = args[++i];
-				case "--jdbc-url" -> cfg.jdbcUrl = args[++i];
-				case "--jdbc-user" -> cfg.jdbcUser = args[++i];
-				case "--jdbc-password" -> cfg.jdbcPassword = args[++i];
+				case "--input-path" -> inputPath = args[++i];
+				case "--jdbc-url" -> jdbcUrl = args[++i];
+				case "--jdbc-user" -> jdbcUser = args[++i];
+				case "--jdbc-password" -> jdbcPassword = args[++i];
 				default -> {
 				}
 			}
 		}
-		if (cfg.inputPath == null || cfg.jdbcUrl == null) {
+		if (inputPath == null || jdbcUrl == null) {
 			throw new IllegalArgumentException("Required: --input-path, --jdbc-url");
 		}
-		return cfg;
-	}
-
-	private static final class Config {
-		String inputPath;
-		String jdbcUrl;
-		String jdbcUser = "homepedia";
-		String jdbcPassword = "homepedia";
+		return new Config(inputPath, jdbcUrl, jdbcUser, jdbcPassword);
 	}
 }

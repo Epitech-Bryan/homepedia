@@ -97,7 +97,7 @@ test:backend:
   before_script:
     - apk add --no-cache maven docker-cli
   script:
-    - cd backend && mvn test -pl rest-api -B
+    - cd backend && mvn verify -pl rest-api -Pintegration -B
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

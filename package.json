@@ -10,5 +10,21 @@
   "overrides": {
     "@types/node": "^24.0.0"
   },
-  "packageManager": "pnpm@10.33.2"
+  "lint-staged": {
+    "webapp/src/**/*.{ts,tsx}": [
+      "pnpm -C webapp exec eslint --fix",
+      "pnpm -C webapp exec prettier --write"
+    ],
+    "webapp/src/**/*.{css,json}": [
+      "pnpm -C webapp exec prettier --write"
+    ]
+  },
+  "packageManager": "pnpm@10.33.2",
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  },
+  "scripts": {
+    "prepare": "husky"
+  }
 }

@@ -22,7 +22,8 @@ import org.springframework.data.jpa.domain.Specification;
  * REGRESSION TEST — DO NOT MODIFY WITH AI AGENTS.
  *
  * Contract tests for transaction stats aggregation. Expected values are locked
- * to known inputs and must not change unless the business logic intentionally changes.
+ * to known inputs and must not change unless the business logic intentionally
+ * changes.
  */
 @ExtendWith(MockitoExtension.class)
 class TransactionStatsRegressionTest {
@@ -35,12 +36,9 @@ class TransactionStatsRegressionTest {
 
 	@Test
 	void computeStats_fiveKnownTransactions_averageIsExact220000() {
-		final var transactions = List.of(
-				transaction(new BigDecimal("100000"), 40.0),
-				transaction(new BigDecimal("150000"), 55.0),
-				transaction(new BigDecimal("200000"), 70.0),
-				transaction(new BigDecimal("250000"), 90.0),
-				transaction(new BigDecimal("400000"), 120.0));
+		final var transactions = List.of(transaction(new BigDecimal("100000"), 40.0),
+				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
+				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
 		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
 
@@ -52,12 +50,9 @@ class TransactionStatsRegressionTest {
 
 	@Test
 	void computeStats_fiveKnownTransactions_medianIsMiddleElement() {
-		final var transactions = List.of(
-				transaction(new BigDecimal("100000"), 40.0),
-				transaction(new BigDecimal("150000"), 55.0),
-				transaction(new BigDecimal("200000"), 70.0),
-				transaction(new BigDecimal("250000"), 90.0),
-				transaction(new BigDecimal("400000"), 120.0));
+		final var transactions = List.of(transaction(new BigDecimal("100000"), 40.0),
+				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
+				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
 		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
 
@@ -68,12 +63,9 @@ class TransactionStatsRegressionTest {
 
 	@Test
 	void computeStats_fiveKnownTransactions_minAndMaxAreExact() {
-		final var transactions = List.of(
-				transaction(new BigDecimal("100000"), 40.0),
-				transaction(new BigDecimal("150000"), 55.0),
-				transaction(new BigDecimal("200000"), 70.0),
-				transaction(new BigDecimal("250000"), 90.0),
-				transaction(new BigDecimal("400000"), 120.0));
+		final var transactions = List.of(transaction(new BigDecimal("100000"), 40.0),
+				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
+				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
 		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
 
@@ -85,12 +77,9 @@ class TransactionStatsRegressionTest {
 
 	@Test
 	void computeStats_fiveKnownTransactions_averageSurfaceIsExact75() {
-		final var transactions = List.of(
-				transaction(new BigDecimal("100000"), 40.0),
-				transaction(new BigDecimal("150000"), 55.0),
-				transaction(new BigDecimal("200000"), 70.0),
-				transaction(new BigDecimal("250000"), 90.0),
-				transaction(new BigDecimal("400000"), 120.0));
+		final var transactions = List.of(transaction(new BigDecimal("100000"), 40.0),
+				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
+				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
 		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
 
@@ -101,12 +90,9 @@ class TransactionStatsRegressionTest {
 
 	@Test
 	void computeStats_fiveKnownTransactions_averagePricePerSqmIsExact() {
-		final var transactions = List.of(
-				transaction(new BigDecimal("100000"), 40.0),
-				transaction(new BigDecimal("150000"), 55.0),
-				transaction(new BigDecimal("200000"), 70.0),
-				transaction(new BigDecimal("250000"), 90.0),
-				transaction(new BigDecimal("400000"), 120.0));
+		final var transactions = List.of(transaction(new BigDecimal("100000"), 40.0),
+				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
+				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
 		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
 
@@ -151,10 +137,8 @@ class TransactionStatsRegressionTest {
 
 	@Test
 	void computeStats_evenNumberOfTransactions_medianIsUpperMiddleElement() {
-		final var transactions = List.of(
-				transaction(new BigDecimal("100000"), 40.0),
-				transaction(new BigDecimal("200000"), 60.0),
-				transaction(new BigDecimal("300000"), 80.0),
+		final var transactions = List.of(transaction(new BigDecimal("100000"), 40.0),
+				transaction(new BigDecimal("200000"), 60.0), transaction(new BigDecimal("300000"), 80.0),
 				transaction(new BigDecimal("400000"), 100.0));
 
 		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
@@ -166,11 +150,8 @@ class TransactionStatsRegressionTest {
 
 	@Test
 	void computeStats_mixedValidAndInvalidPrices_onlyValidPricesContributeToStats() {
-		final var transactions = List.of(
-				transaction(new BigDecimal("100000"), 50.0),
-				transaction(null, 60.0),
-				transaction(BigDecimal.ZERO, 40.0),
-				transaction(new BigDecimal("300000"), 80.0));
+		final var transactions = List.of(transaction(new BigDecimal("100000"), 50.0), transaction(null, 60.0),
+				transaction(BigDecimal.ZERO, 40.0), transaction(new BigDecimal("300000"), 80.0));
 
 		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
 
@@ -185,10 +166,8 @@ class TransactionStatsRegressionTest {
 
 	@Test
 	void computeStats_nullAndZeroSurfaces_excludedFromSurfaceAverageAndPricePerSqm() {
-		final var transactions = List.of(
-				transaction(new BigDecimal("200000"), 80.0),
-				transaction(new BigDecimal("100000"), null),
-				transaction(new BigDecimal("150000"), 0.0));
+		final var transactions = List.of(transaction(new BigDecimal("200000"), 80.0),
+				transaction(new BigDecimal("100000"), null), transaction(new BigDecimal("150000"), 0.0));
 
 		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
 

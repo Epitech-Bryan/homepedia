@@ -23,16 +23,19 @@ management:
 
 homepedia:
   batch:
-    startup-enabled: ${HOMEPEDIA_BATCH_STARTUP_ENABLED:false}
+    startup-enabled: ${HOMEPEDIA_BATCH_STARTUP_ENABLED:true}
   insee:
     import-enabled: true
   geo:
     import-enabled: true
+  dvf:
+    import-enabled: ${HOMEPEDIA_DVF_ENABLED:true}
+    zip-path: ${HOMEPEDIA_DVF_ZIP_PATH:}
   dpe:
-    import-enabled: ${HOMEPEDIA_DPE_ENABLED:false}
+    import-enabled: ${HOMEPEDIA_DPE_ENABLED:true}
     csv-path: ${HOMEPEDIA_DPE_CSV_PATH:}
   health:
-    import-enabled: ${HOMEPEDIA_HEALTH_ENABLED:false}
+    import-enabled: ${HOMEPEDIA_HEALTH_ENABLED:true}
     csv-path: ${HOMEPEDIA_HEALTH_CSV_PATH:}
   economy:
     import-enabled: ${HOMEPEDIA_ECONOMY_ENABLED:false}
@@ -46,11 +49,9 @@ homepedia:
   infrastructure:
     import-enabled: ${HOMEPEDIA_INFRASTRUCTURE_ENABLED:false}
     csv-path: ${HOMEPEDIA_INFRASTRUCTURE_CSV_PATH:}
-  dvf:
-    zip-path: ${HOMEPEDIA_DVF_ZIP_PATH:}
   import:
     reviews:
-      enabled: ${IMPORT_REVIEWS_ENABLED:false}
+      enabled: ${IMPORT_REVIEWS_ENABLED:true}
   scheduler:
     enabled: ${HOMEPEDIA_SCHEDULER_ENABLED:false}
     zone: ${HOMEPEDIA_SCHEDULER_ZONE:Europe/Paris}

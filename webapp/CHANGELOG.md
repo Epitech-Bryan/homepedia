@@ -1,5 +1,11 @@
 # app
 
+## [0.14.6] - 2026-04-27
+
+### Bug Fixes
+
+- fix: price/sqm mismatch, transaction detail endpoint, wider selects, dept cities list
+
 ## [0.14.5] - 2026-04-27
 
 ### Bug Fixes

@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.19.4] - 2026-04-27
+
+### Bug Fixes
+
+- fix: price/sqm mismatch, transaction detail endpoint, wider selects, dept cities list
+
 ## [3.19.3] - 2026-04-27
 
 ### Bug Fixes

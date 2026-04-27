@@ -5,6 +5,20 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.16.0] - 2026-04-27
+
+### Features
+
+- feat: agent-first development improvements
+
+### Bug Fixes
+
+- fix(ci): remove H2 config conflicting with Testcontainers PostgreSQL
+- fix(ci): disable DinD TLS — certs not shared in K8s runner pod
+- fix(ci): add -am flag to build common module before rest-api tests
+- fix(backend): apply spotless formatting to regression tests
+- fix: not checked is present in spring cache
+
 ## [3.15.0] - 2026-04-26
 
 ### Features

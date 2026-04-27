@@ -1,5 +1,13 @@
 # app
 
+## [0.14.3] - 2026-04-27
+
+### Bug Fixes
+
+- fix: raise header z-index above Leaflet map layers
+- fix(cache): configure Jackson ObjectMapper for record deserialization
+- fix(map): propagate h-full through FranceMap container chain
+
 ## [0.14.2] - 2026-04-27
 
 ### Bug Fixes

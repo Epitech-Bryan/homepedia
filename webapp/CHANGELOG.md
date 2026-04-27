@@ -1,5 +1,13 @@
 # app
 
+## [0.14.4] - 2026-04-27
+
+### Bug Fixes
+
+- fix: PropertyType enum values + Leaflet z-index overlay
+- fix: Redis cache serialization for records + ResponseEntity migration
+- fix: DVF import uses per-batch transactions instead of one giant TX
+
 ## [0.14.3] - 2026-04-27
 
 ### Bug Fixes

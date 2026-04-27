@@ -148,3 +148,8 @@ body {
   height: 100% !important;
   width: 100% !important;
 }
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 0 !important;
+}

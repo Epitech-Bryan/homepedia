@@ -27,7 +27,7 @@ vi.mock("@/api/hooks", () => ({
             id: 1,
             mutationDate: "2024-01-15",
             propertyValue: 350000,
-            propertyType: "APARTMENT",
+            propertyType: "APPARTEMENT",
             cityName: "Paris",
             cityInseeCode: "75101",
             builtSurface: 65,
@@ -38,7 +38,7 @@ vi.mock("@/api/hooks", () => ({
             id: 2,
             mutationDate: "2024-02-20",
             propertyValue: 200000,
-            propertyType: "HOUSE",
+            propertyType: "MAISON",
             cityName: "Lyon",
             cityInseeCode: "69123",
             builtSurface: 120,
@@ -100,8 +100,8 @@ describe("ExplorerPage", () => {
     render(<ExplorerPage />);
     expect(screen.getByText("Paris")).toBeInTheDocument();
     expect(screen.getByText("Lyon")).toBeInTheDocument();
-    expect(screen.getByText("APARTMENT")).toBeInTheDocument();
-    expect(screen.getByText("HOUSE")).toBeInTheDocument();
+    expect(screen.getByText("APPARTEMENT")).toBeInTheDocument();
+    expect(screen.getByText("MAISON")).toBeInTheDocument();
   });
 
   it("renders the transactions heading with total count", () => {

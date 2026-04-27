@@ -86,14 +86,14 @@ describe("ExplorerPage", () => {
     expect(screen.getByText("Region")).toBeInTheDocument();
     expect(screen.getByText("Department")).toBeInTheDocument();
     expect(screen.getByText("Year")).toBeInTheDocument();
-    expect(screen.getByText("Property Type")).toBeInTheDocument();
+    expect(screen.getByText("Type")).toBeInTheDocument();
   });
 
   it("renders stat cards with transaction stats", () => {
     render(<ExplorerPage />);
     expect(screen.getByText("Transactions")).toBeInTheDocument();
-    expect(screen.getByText("Average Price")).toBeInTheDocument();
-    expect(screen.getByText("Median Price")).toBeInTheDocument();
+    expect(screen.getByText("Avg. Price")).toBeInTheDocument();
+    expect(screen.getByText("Median")).toBeInTheDocument();
   });
 
   it("renders transaction cards", () => {

@@ -4,7 +4,6 @@ import com.homepedia.api.batch.shared.ParseUtils;
 import com.homepedia.common.city.CityRepository;
 import com.homepedia.common.transaction.PropertyType;
 import com.homepedia.common.transaction.RealEstateTransaction;
-import com.homepedia.common.transaction.TransactionRepository;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -21,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -31,12 +29,12 @@ public class DvfImportService {
 	private static final DateTimeFormatter DVF_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 	private static final int BATCH_SIZE = 1000;
 
-	private final TransactionRepository transactionRepository;
+	private final DvfBatchPersister persister;
 	private final CityRepository cityRepository;
 
-	@Transactional
 	public int importFromZip(Path zipPath) throws IOException {
 		log.info("Starting DVF import from {}", zipPath);
+		persister.clearAll();
 		var totalImported = 0;
 
 		try (final var zis = new ZipInputStream(Files.newInputStream(zipPath), StandardCharsets.UTF_8)) {
@@ -53,9 +51,9 @@ public class DvfImportService {
 		return totalImported;
 	}
 
-	@Transactional
 	public int importFromCsv(Path csvPath) throws IOException {
 		log.info("Starting DVF import from CSV {}", csvPath);
+		persister.clearAll();
 		int totalImported;
 
 		try (final var reader = new BufferedReader(Files.newBufferedReader(csvPath, StandardCharsets.UTF_8))) {
@@ -66,9 +64,9 @@ public class DvfImportService {
 		return totalImported;
 	}
 
-	@Transactional
 	public int importFromGzip(Path gzipPath) throws IOException {
 		log.info("Starting DVF import from gzipped CSV {}", gzipPath);
+		persister.clearAll();
 		int totalImported;
 
 		try (final var gis = new java.util.zip.GZIPInputStream(Files.newInputStream(gzipPath));
@@ -94,7 +92,7 @@ public class DvfImportService {
 			parseLine(line).ifPresent(batch::add);
 
 			if (batch.size() >= BATCH_SIZE) {
-				transactionRepository.saveAll(batch);
+				persister.saveBatch(batch);
 				count += batch.size();
 				batch.clear();
 				if (count % 10000 == 0) {
@@ -104,7 +102,7 @@ public class DvfImportService {
 		}
 
 		if (!batch.isEmpty()) {
-			transactionRepository.saveAll(batch);
+			persister.saveBatch(batch);
 			count += batch.size();
 		}
 

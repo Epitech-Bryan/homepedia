@@ -3,16 +3,7 @@ import { useDepartment, useCities, useTransactionStats } from "@/api/hooks";
 import { StatCard } from "@/components/StatCard";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import type { CitySummary } from "@/api/client";
 
 export function DepartmentPage() {
@@ -31,31 +22,23 @@ export function DepartmentPage() {
     : [];
 
   return (
-    <div className="space-y-8">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to="/" />}>France</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to={`/regions/${dept.regionCode}`} />}>
-              Region {dept.regionCode}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{dept.name}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
+    <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{dept.name}</h1>
-        <p className="text-muted-foreground mt-1">Department {dept.code}</p>
+        <p className="text-xs text-muted-foreground">
+          <Link to="/" className="hover:underline">
+            France
+          </Link>
+          {" / "}
+          <Link to={`/regions/${dept.regionCode}`} className="hover:underline">
+            Region {dept.regionCode}
+          </Link>
+          {" / Dept."}
+        </p>
+        <h1 className="text-xl font-bold tracking-tight mt-1">{dept.name}</h1>
+        <p className="text-muted-foreground text-sm">{dept.code}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <StatCard label="Population" value={dept.population ?? 0} />
         <StatCard label="Area" value={dept.area ?? 0} unit="km²" />
         <StatCard label="Cities" value={cities.length} />
@@ -65,34 +48,29 @@ export function DepartmentPage() {
       </div>
 
       {stats && stats.totalTransactions > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <StatCard label="Transactions" value={stats.totalTransactions} />
-          <StatCard label="Median Price" value={stats.medianPrice ?? 0} unit="€" />
           <StatCard label="Avg. €/m²" value={stats.averagePricePerSqm ?? 0} unit="€/m²" />
         </div>
       )}
 
       <div>
-        <h2 className="text-xl font-semibold mb-4">
+        <h2 className="text-sm font-semibold mb-2">
           Cities ({citiesPage?.page?.totalElements ?? cities.length})
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
           {cities.map((city) => (
-            <Card
+            <button
               key={city.inseeCode}
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              type="button"
               onClick={() => navigate(`/cities/${city.inseeCode}`)}
+              className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm hover:bg-accent transition-colors text-left"
             >
-              <CardContent className="pt-6">
-                <h3 className="font-semibold">{city.name}</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  <Badge variant="outline" className="mr-2">
-                    {city.postalCode}
-                  </Badge>
-                  {(city.population ?? 0).toLocaleString("fr-FR")} hab.
-                </p>
-              </CardContent>
-            </Card>
+              <span className="font-medium">{city.name}</span>
+              <Badge variant="outline" className="text-xs">
+                {city.postalCode}
+              </Badge>
+            </button>
           ))}
         </div>
       </div>

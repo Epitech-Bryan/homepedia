@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TransactionMap } from "@/components/TransactionMap";
 import { TransactionDetailDialog } from "@/components/TransactionDetailDialog";
 import type { DepartmentSummary, TransactionSummary } from "@/api/client";
 
@@ -69,27 +68,25 @@ export function ExplorerPage() {
       : [];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Data Explorer</h1>
-        <p className="text-muted-foreground mt-1">
-          Filter and analyze real estate transactions across France.
-        </p>
+        <h1 className="text-xl font-bold tracking-tight">Data Explorer</h1>
+        <p className="text-muted-foreground text-sm">Filter and analyze transactions.</p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm uppercase tracking-wide">Filters</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs uppercase tracking-wide">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">Region</label>
+              <label className="text-xs font-medium text-muted-foreground">Region</label>
               <Select
                 value={filters.regionCode ?? "__all__"}
                 onValueChange={(v) => updateFilter("regionCode", v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="All regions" />
                 </SelectTrigger>
                 <SelectContent>
@@ -104,13 +101,13 @@ export function ExplorerPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">Department</label>
+              <label className="text-xs font-medium text-muted-foreground">Department</label>
               <Select
                 value={filters.departmentCode ?? "__all__"}
                 onValueChange={(v) => updateFilter("departmentCode", v)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="All departments" />
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="All depts" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All departments</SelectItem>
@@ -124,12 +121,12 @@ export function ExplorerPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">Year</label>
+              <label className="text-xs font-medium text-muted-foreground">Year</label>
               <Select
                 value={filters.year ?? "__all__"}
                 onValueChange={(v) => updateFilter("year", v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="All years" />
                 </SelectTrigger>
                 <SelectContent>
@@ -144,12 +141,12 @@ export function ExplorerPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">Property Type</label>
+              <label className="text-xs font-medium text-muted-foreground">Type</label>
               <Select
                 value={filters.propertyType ?? "__all__"}
                 onValueChange={(v) => updateFilter("propertyType", v)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -167,59 +164,43 @@ export function ExplorerPage() {
       </Card>
 
       {stats && stats.totalTransactions > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <StatCard label="Transactions" value={stats.totalTransactions} />
-          <StatCard label="Average Price" value={stats.averagePrice} unit="€" />
-          <StatCard label="Median Price" value={stats.medianPrice} unit="€" />
+          <StatCard label="Avg. Price" value={stats.averagePrice} unit="€" />
+          <StatCard label="Median" value={stats.medianPrice} unit="€" />
           <StatCard label="Avg. €/m²" value={stats.averagePricePerSqm} unit="€/m²" />
-          <StatCard
-            label="Price Range"
-            value={`${(stats.minPrice / 1000).toFixed(0)}k - ${(stats.maxPrice / 1000).toFixed(0)}k`}
-            unit="€"
-          />
         </div>
-      )}
-
-      {stats && stats.totalTransactions > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm uppercase tracking-wide">Transaction Map</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <TransactionMap filters={filters} stats={stats} />
-          </CardContent>
-        </Card>
       )}
 
       {chartData.length > 0 && <PriceChart data={chartData} title="Price Distribution" />}
 
       <div>
-        <h2 className="text-xl font-semibold mb-4">
+        <h2 className="text-sm font-semibold mb-2">
           Transactions{" "}
           {transactions?.page ? `(${transactions.page.totalElements.toLocaleString("fr-FR")})` : ""}
         </h2>
         {isLoading ? (
           <LoadingSpinner />
         ) : items.length === 0 ? (
-          <p className="text-muted-foreground py-8 text-center">
+          <p className="text-muted-foreground py-4 text-center text-sm">
             No transactions match your filters.
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
               {items.map((tx) => (
                 <Card key={tx.id} className="cursor-pointer" onClick={() => setSelectedTx(tx)}>
-                  <CardContent className="pt-6">
+                  <CardContent className="py-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-semibold">
+                        <p className="font-semibold text-sm">
                           {tx.propertyValue?.toLocaleString("fr-FR")} €
                         </p>
-                        <p className="text-sm text-muted-foreground mt-1">{tx.cityName}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{tx.cityName}</p>
                       </div>
-                      <Badge>{tx.propertyType}</Badge>
+                      <Badge className="text-xs">{tx.propertyType}</Badge>
                     </div>
-                    <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                       <span>{tx.mutationDate}</span>
                       {tx.builtSurface > 0 && <span>{tx.builtSurface} m²</span>}
                       {tx.roomCount > 0 && <span>{tx.roomCount} rooms</span>}
@@ -229,7 +210,7 @@ export function ExplorerPage() {
               ))}
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 pt-4">
+              <div className="flex items-center justify-center gap-4 pt-3">
                 <Button
                   variant="outline"
                   size="sm"
@@ -238,8 +219,8 @@ export function ExplorerPage() {
                 >
                   Previous
                 </Button>
-                <span className="text-sm text-muted-foreground">
-                  Page {page + 1} of {totalPages}
+                <span className="text-xs text-muted-foreground">
+                  {page + 1} / {totalPages}
                 </span>
                 <Button
                   variant="outline"

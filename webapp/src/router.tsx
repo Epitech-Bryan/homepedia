@@ -1,6 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
 import { Layout } from "@/components/Layout";
-import { HomePage } from "@/pages/HomePage";
 import { RegionPage } from "@/pages/RegionPage";
 import { DepartmentPage } from "@/pages/DepartmentPage";
 import { CityPage } from "@/pages/CityPage";
@@ -13,7 +12,7 @@ export const router = createBrowserRouter([
     path: "/",
     element: <Layout />,
     children: [
-      { index: true, element: <HomePage /> },
+      { index: true, element: null },
       { path: "regions/:code", element: <RegionPage /> },
       { path: "departments/:code", element: <DepartmentPage /> },
       { path: "cities/:code", element: <CityPage /> },

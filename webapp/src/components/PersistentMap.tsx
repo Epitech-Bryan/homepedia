@@ -19,11 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Maximize2, Minimize2 } from "lucide-react";
 import type { CityStats, DepartmentStats, RegionStats } from "@/api/client";
-
-const HIDDEN_PATHS = ["/explorer"];
 
 // Below this zoom, we show regions; at or above, we switch to departments.
 const DEPARTMENT_ZOOM_THRESHOLD = 7;
@@ -136,7 +132,6 @@ export function PersistentMap() {
   const [style, setStyle] = useState<MapStyle>("choropleth");
   const [zoom, setZoom] = useState(6);
   const [center, setCenter] = useState<[number, number]>([46.6, 2.5]);
-  const [expanded, setExpanded] = useState(false);
   // Visible map bounds: [south, west, north, east]. Used to fetch commune
   // polygons for every department that intersects the viewport, so cells
   // along the edge don't appear truncated.
@@ -359,10 +354,6 @@ export function PersistentMap() {
     [navigate],
   );
 
-  const isHidden = HIDDEN_PATHS.some((p) => pathname.startsWith(p));
-  if (isHidden) return null;
-
-  // Active feature priority: in-map click > URL match > none.
   const urlActive = showDepartments ? departmentCode : (activeRegionCode ?? undefined);
   const activeFeatureCode = clickedFeatureCode ?? urlActive;
 
@@ -376,65 +367,53 @@ export function PersistentMap() {
         : "Regions";
 
   return (
-    <div className="space-y-3">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-xs text-muted-foreground">
-          <span className="font-medium uppercase tracking-wide">Showing</span>{" "}
-          <span className="text-foreground">{layerName}</span>{" "}
-          <span className="text-muted-foreground/60">· zoom {zoom.toFixed(1)}</span>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-sm font-medium text-muted-foreground">Color by</label>
-          <Select value={metric} onValueChange={(v) => setMetric(v as MapMetric)}>
-            <SelectTrigger className="w-56">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(METRIC_LABELS).map(([key, label]) => (
-                <SelectItem key={key} value={key}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <label className="text-sm font-medium text-muted-foreground">Style</label>
-          <Select value={style} onValueChange={(v) => setStyle(v as MapStyle)}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="choropleth">Choropleth</SelectItem>
-              <SelectItem value="bubbles">Bubbles</SelectItem>
-              <SelectItem value="heat">Heatmap</SelectItem>
-              <SelectItem value="all">All</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setExpanded((v) => !v)}
-            aria-label={expanded ? "Shrink map" : "Expand map"}
-          >
-            {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          </Button>
-        </div>
+    <div className="relative h-full w-full">
+      <FranceMap
+        geojson={geojson}
+        onFeatureClick={onFeatureClick}
+        markers={markers}
+        onMarkerClick={onMarkerClick}
+        activeFeatureCode={activeFeatureCode}
+        metricByCode={metricByCode}
+        metricLabel={METRIC_LABELS[metric]}
+        mapStyle={style}
+        height="100%"
+        onZoomChange={setZoom}
+        onCenterChange={onCenterChange}
+        onBoundsChange={onBoundsChange}
+        bleed
+      />
+      <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2 pointer-events-auto">
+        <Select value={metric} onValueChange={(v) => setMetric(v as MapMetric)}>
+          <SelectTrigger className="w-44 h-8 text-xs bg-background/90 backdrop-blur shadow-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(METRIC_LABELS).map(([key, label]) => (
+              <SelectItem key={key} value={key}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={style} onValueChange={(v) => setStyle(v as MapStyle)}>
+          <SelectTrigger className="w-32 h-8 text-xs bg-background/90 backdrop-blur shadow-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="choropleth">Choropleth</SelectItem>
+            <SelectItem value="bubbles">Bubbles</SelectItem>
+            <SelectItem value="heat">Heatmap</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
-      <div className={expanded ? "" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"}>
-        <FranceMap
-          geojson={geojson}
-          onFeatureClick={onFeatureClick}
-          markers={markers}
-          onMarkerClick={onMarkerClick}
-          activeFeatureCode={activeFeatureCode}
-          metricByCode={metricByCode}
-          metricLabel={METRIC_LABELS[metric]}
-          mapStyle={style}
-          height={expanded ? "78vh" : "500px"}
-          onZoomChange={setZoom}
-          onCenterChange={onCenterChange}
-          onBoundsChange={onBoundsChange}
-          bleed={expanded}
-        />
+      <div className="absolute bottom-3 left-3 z-[1000] pointer-events-auto">
+        <span className="inline-flex items-center gap-1.5 rounded-md bg-background/90 backdrop-blur px-2 py-1 text-xs shadow-sm">
+          <span className="font-medium uppercase tracking-wide text-muted-foreground">Showing</span>
+          <span className="text-foreground">{layerName}</span>
+          <span className="text-muted-foreground/60">· zoom {zoom.toFixed(1)}</span>
+        </span>
       </div>
     </div>
   );

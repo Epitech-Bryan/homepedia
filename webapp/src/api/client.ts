@@ -47,8 +47,21 @@ export const api = {
     regions: () => fetchJson<RegionStats[]>("/stats/regions"),
     departments: (regionCode?: string) =>
       fetchJson<DepartmentStats[]>("/stats/departments", regionCode ? { regionCode } : undefined),
-    cities: (codes: string[]) =>
-      fetchJson<CityStats[]>("/stats/cities", { codes: codes.join(",") }),
+    cities: async (codes: string[]): Promise<CityStats[]> => {
+      const BATCH_SIZE = 200;
+      if (codes.length <= BATCH_SIZE) {
+        return fetchJson<CityStats[]>("/stats/cities", { codes: codes.join(",") });
+      }
+      const batches: Promise<CityStats[]>[] = [];
+      for (let i = 0; i < codes.length; i += BATCH_SIZE) {
+        batches.push(
+          fetchJson<CityStats[]>("/stats/cities", {
+            codes: codes.slice(i, i + BATCH_SIZE).join(","),
+          }),
+        );
+      }
+      return (await Promise.all(batches)).flat();
+    },
   },
   indicators: {
     byLevelAndCode: (level: string, code: string, params?: Record<string, string>) =>

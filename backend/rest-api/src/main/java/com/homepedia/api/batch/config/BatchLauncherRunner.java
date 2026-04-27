@@ -61,8 +61,8 @@ public class BatchLauncherRunner implements CommandLineRunner {
 	@Value("${homepedia.infrastructure.import-enabled:false}")
 	private boolean infrastructureEnabled;
 
-	@Value("${homepedia.dvf.zip-path:}")
-	private String dvfZipPath;
+	@Value("${homepedia.dvf.import-enabled:false}")
+	private boolean dvfEnabled;
 
 	@Override
 	public void run(String... args) throws Exception {
@@ -74,7 +74,7 @@ public class BatchLauncherRunner implements CommandLineRunner {
 		if (geoEnabled) {
 			jobsToRun.add(geoJsonImportJob);
 		}
-		if (org.apache.commons.lang3.StringUtils.isNotBlank(dvfZipPath)) {
+		if (dvfEnabled) {
 			jobsToRun.add(dvfImportJob);
 		}
 		if (dpeEnabled) {

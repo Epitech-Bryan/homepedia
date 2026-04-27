@@ -5,6 +5,16 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.20.0] - 2026-04-27
+
+### Features
+
+- feat: add admin recompute-stats endpoint and wire Spark DVF stats
+
+### Bug Fixes
+
+- fix: increase dialog z-index above map layer (z-2000)
+
 ## [3.19.4] - 2026-04-27
 
 ### Bug Fixes

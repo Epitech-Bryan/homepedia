@@ -1,5 +1,11 @@
 # app
 
+## [0.15.0] - 2026-04-27
+
+### Features
+
+- feat: add admin recompute-stats endpoint and wire Spark DVF stats
+
 ## [0.14.7] - 2026-04-27
 
 ### Bug Fixes

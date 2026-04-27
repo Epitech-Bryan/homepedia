@@ -5,14 +5,6 @@ import { PriceChart } from "@/components/PriceChart";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { Button } from "@/components/ui/button";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 
 export function CityPage() {
   const { code = "" } = useParams<{ code: string }>();
@@ -34,62 +26,49 @@ export function CityPage() {
       : [];
 
   return (
-    <div className="space-y-8">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to="/" />}>France</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to={`/departments/${city.departmentCode}`} />}>
-              Dept. {city.departmentCode}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{city.name}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
+    <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{city.name}</h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground">
+          <Link to="/" className="hover:underline">
+            France
+          </Link>
+          {" / "}
+          <Link to={`/departments/${city.departmentCode}`} className="hover:underline">
+            Dept. {city.departmentCode}
+          </Link>
+          {" / City"}
+        </p>
+        <h1 className="text-xl font-bold tracking-tight mt-1">{city.name}</h1>
+        <p className="text-muted-foreground text-sm">
           {city.postalCode} · INSEE {city.inseeCode}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <StatCard label="Population" value={city.population ?? 0} />
         <StatCard label="Area" value={city.area ?? 0} unit="km²" />
-        {city.latitude && city.longitude && (
-          <StatCard
-            label="Coordinates"
-            value={`${city.latitude.toFixed(4)}, ${city.longitude.toFixed(4)}`}
-          />
-        )}
         {stats && stats.totalTransactions > 0 && (
-          <StatCard label="Transactions" value={stats.totalTransactions} />
+          <>
+            <StatCard label="Transactions" value={stats.totalTransactions} />
+            <StatCard label="Avg. €/m²" value={stats.averagePricePerSqm} unit="€/m²" />
+          </>
         )}
       </div>
 
       {stats && stats.totalTransactions > 0 && (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="Average Price" value={stats.averagePrice} unit="€" />
-            <StatCard label="Median Price" value={stats.medianPrice} unit="€" />
-            <StatCard label="Avg. €/m²" value={stats.averagePricePerSqm} unit="€/m²" />
-          </div>
-          <PriceChart data={chartData} title="Price Overview" />
-        </>
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="Avg. Price" value={stats.averagePrice} unit="€" />
+          <StatCard label="Median" value={stats.medianPrice} unit="€" />
+        </div>
       )}
 
-      <div>
-        <Link to={`/cities/${code}/reviews`}>
-          <Button variant="outline">View Reviews &amp; Opinions</Button>
-        </Link>
-      </div>
+      {chartData.length > 0 && <PriceChart data={chartData} title="Price Overview" />}
+
+      <Link to={`/cities/${code}/reviews`}>
+        <Button variant="outline" className="w-full">
+          View Reviews &amp; Opinions
+        </Button>
+      </Link>
     </div>
   );
 }

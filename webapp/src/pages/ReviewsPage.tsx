@@ -9,14 +9,6 @@ import { ErrorMessage } from "@/components/ErrorMessage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 
 function sentimentBadgeVariant(label: string) {
   switch (label.toLowerCase()) {
@@ -69,101 +61,88 @@ export function ReviewsPage() {
   const totalPages = reviews?.page?.totalPages ?? 0;
 
   return (
-    <div className="space-y-8">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to="/" />}>France</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to={`/departments/${city.departmentCode}`} />}>
-              Dept. {city.departmentCode}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to={`/cities/${code}`} />}>{city.name}</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Reviews</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
+    <div className="space-y-5">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{city.name} - Avis et Opinions</h1>
-        <p className="text-muted-foreground mt-1">
-          Discover what people think about living in {city.name}
+        <p className="text-xs text-muted-foreground">
+          <Link to="/" className="hover:underline">
+            France
+          </Link>
+          {" / "}
+          <Link to={`/departments/${city.departmentCode}`} className="hover:underline">
+            Dept. {city.departmentCode}
+          </Link>
+          {" / "}
+          <Link to={`/cities/${code}`} className="hover:underline">
+            {city.name}
+          </Link>
+          {" / Reviews"}
         </p>
+        <h1 className="text-xl font-bold tracking-tight mt-1">{city.name} — Avis</h1>
       </div>
 
-      {/* Sentiment overview */}
       {sentiment && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
-            <SentimentChart stats={sentiment} />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-            <StatCard label="Average Score" value={sentiment.averageScore.toFixed(2)} />
+        <div className="space-y-3">
+          <SentimentChart stats={sentiment} />
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="Avg. Score" value={sentiment.averageScore.toFixed(2)} />
             <StatCard label="Total Reviews" value={sentiment.totalReviews} />
           </div>
         </div>
       )}
 
-      {/* Word Cloud */}
       {wordCloudData && Object.keys(wordCloudData).length > 0 && (
         <WordCloud words={wordCloudData} />
       )}
 
-      {/* Reviews list */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Reviews</h2>
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold">Reviews</h2>
         {reviewList.length === 0 ? (
           <p className="text-muted-foreground text-sm">No reviews available yet.</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {reviewList.map((review) => (
               <Card key={review.id}>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-base">{review.author}</span>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center justify-between flex-wrap gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span>{review.author}</span>
                       <StarRating rating={review.rating} />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        className={sentimentBadgeClass(review.sentimentLabel)}
-                        variant={sentimentBadgeVariant(review.sentimentLabel)}
-                      >
-                        {review.sentimentLabel}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(review.publishedAt).toLocaleDateString("fr-FR")}
-                      </span>
-                    </div>
+                    <Badge
+                      className={sentimentBadgeClass(review.sentimentLabel)}
+                      variant={sentimentBadgeVariant(review.sentimentLabel)}
+                    >
+                      {review.sentimentLabel}
+                    </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-foreground/80 leading-relaxed">{review.content}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {new Date(review.publishedAt).toLocaleDateString("fr-FR")}
+                  </p>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
 
-        {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-4 pt-4">
-            <Button variant="outline" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+          <div className="flex items-center justify-center gap-4 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page === 0}
+              onClick={() => setPage((p) => p - 1)}
+            >
               Previous
             </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {page + 1} of {totalPages}
+            <span className="text-xs text-muted-foreground">
+              {page + 1} / {totalPages}
             </span>
             <Button
               variant="outline"
+              size="sm"
               disabled={page >= totalPages - 1}
               onClick={() => setPage((p) => p + 1)}
             >

@@ -25,8 +25,8 @@ public class RegionController {
 
 	@Operation(summary = "List all regions")
 	@GetMapping
-	public List<RegionSummary> findAll() {
-		return regionService.findAll();
+	public ResponseEntity<List<RegionSummary>> findAll() {
+		return ResponseEntity.ok(regionService.findAll());
 	}
 
 	@Operation(summary = "Get a region by its code")

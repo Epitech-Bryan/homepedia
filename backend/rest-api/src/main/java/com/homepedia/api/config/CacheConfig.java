@@ -2,10 +2,10 @@ package com.homepedia.api.config;
 
 import java.time.Duration;
 import java.util.Map;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
@@ -51,11 +51,10 @@ public class CacheConfig implements CachingConfigurer {
 
 	@Bean
 	public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-		// ObjectMapper configured to handle Java records and embed @class
-		// type info so Redis can deserialize back to the correct type.
 		final var ptv = BasicPolymorphicTypeValidator.builder().allowIfBaseType(Object.class).build();
-		final ObjectMapper mapper = JsonMapper.builder().addModule(new JavaTimeModule())
-				.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL).build();
+		final ObjectMapper mapper = JsonMapper.builder().findAndAddModules()
+				.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.EVERYTHING)
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
 		final var jsonSerializer = new GenericJackson2JsonRedisSerializer(mapper);
 
 		final var defaults = RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(1))

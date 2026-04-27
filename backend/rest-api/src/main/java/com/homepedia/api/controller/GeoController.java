@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,16 +29,16 @@ public class GeoController {
 
 	@Operation(summary = "Region boundaries", description = "GeoJSON FeatureCollection of all French regions")
 	@GetMapping(GEO_REGIONS)
-	public FeatureCollection getRegionBoundaries() {
-		return geoService.findBoundariesByLevel(REGION);
+	public ResponseEntity<FeatureCollection> getRegionBoundaries() {
+		return ResponseEntity.ok(geoService.findBoundariesByLevel(REGION));
 	}
 
 	@Operation(summary = "Department boundaries", description = "GeoJSON FeatureCollection of departments, optionally filtered by region")
 	@GetMapping(GEO_DEPARTMENTS)
-	public FeatureCollection getDepartmentBoundaries(
+	public ResponseEntity<FeatureCollection> getDepartmentBoundaries(
 			@Parameter(description = "Region code to filter by") @RequestParam(required = false) final String regionCode) {
-		return StringUtils.isNotBlank(regionCode)
+		return ResponseEntity.ok(StringUtils.isNotBlank(regionCode)
 				? geoService.findDepartmentBoundariesByRegion(regionCode)
-				: geoService.findBoundariesByLevel(DEPARTMENT);
+				: geoService.findBoundariesByLevel(DEPARTMENT));
 	}
 }

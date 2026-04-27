@@ -21,7 +21,7 @@ const PAGE_SIZE = 20;
 export function ExplorerPage() {
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [page, setPage] = useState(0);
-  const [selectedTx, setSelectedTx] = useState<TransactionSummary | null>(null);
+  const [selectedTxId, setSelectedTxId] = useState<number | null>(null);
   const { data: regions } = useRegions();
   const { data: departments = [] } = useDepartments(
     filters.regionCode ? { regionCode: filters.regionCode } : undefined,
@@ -82,7 +82,7 @@ export function ExplorerPage() {
                 value={filters.regionCode ?? "__all__"}
                 onValueChange={(v) => updateFilter("regionCode", v)}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="w-full h-8 text-xs">
                   <SelectValue placeholder="All regions" />
                 </SelectTrigger>
                 <SelectContent>
@@ -102,7 +102,7 @@ export function ExplorerPage() {
                 value={filters.departmentCode ?? "__all__"}
                 onValueChange={(v) => updateFilter("departmentCode", v)}
               >
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger className="w-full h-8 text-xs">
                   <SelectValue placeholder="All depts" />
                 </SelectTrigger>
                 <SelectContent>
@@ -184,7 +184,7 @@ export function ExplorerPage() {
           <>
             <div className="space-y-2">
               {items.map((tx) => (
-                <Card key={tx.id} className="cursor-pointer" onClick={() => setSelectedTx(tx)}>
+                <Card key={tx.id} className="cursor-pointer" onClick={() => setSelectedTxId(tx.id)}>
                   <CardContent className="py-3">
                     <div className="flex items-start justify-between">
                       <div>
@@ -232,10 +232,10 @@ export function ExplorerPage() {
       </div>
 
       <TransactionDetailDialog
-        transaction={selectedTx}
-        open={selectedTx !== null}
+        transactionId={selectedTxId}
+        open={selectedTxId !== null}
         onOpenChange={(open) => {
-          if (!open) setSelectedTx(null);
+          if (!open) setSelectedTxId(null);
         }}
       />
     </div>

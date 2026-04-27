@@ -3,6 +3,7 @@ package com.homepedia.api.service;
 import com.homepedia.api.mapper.TransactionMapper;
 import com.homepedia.common.transaction.PropertyType;
 import com.homepedia.common.transaction.RealEstateTransaction;
+import com.homepedia.common.transaction.TransactionDetail;
 import com.homepedia.common.transaction.TransactionRepository;
 import com.homepedia.common.transaction.TransactionStats;
 import com.homepedia.common.transaction.TransactionSummary;
@@ -11,14 +12,17 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.homepedia.api.config.CacheConfig.CACHE_STATS;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 
 @Service
@@ -33,6 +37,11 @@ public class TransactionService {
 			final Pageable pageable) {
 		final var spec = buildSpecification(cityInseeCode, departmentCode, year, minPrice, maxPrice, propertyType);
 		return transactionRepository.findAll(spec, pageable).map(TransactionMapper.INSTANCE::convertToSummary);
+	}
+
+	@Cacheable(value = CACHE_STATS, key = "'transaction:' + #id")
+	public Optional<TransactionDetail> findById(final Long id) {
+		return transactionRepository.findById(id).map(TransactionMapper.INSTANCE::convertToDetail);
 	}
 
 	public TransactionStats computeStats(final String cityInseeCode, final String departmentCode, final Integer year) {

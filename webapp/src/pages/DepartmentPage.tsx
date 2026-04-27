@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useDepartment, useCities, useTransactionStats } from "@/api/hooks";
+import { useDepartment, useCitiesForDepartment, useTransactionStats } from "@/api/hooks";
 import { StatCard } from "@/components/StatCard";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
@@ -10,7 +10,7 @@ export function DepartmentPage() {
   const { code = "" } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { data: dept, isLoading, error } = useDepartment(code);
-  const { data: citiesPage } = useCities(code ? { departmentCode: code } : undefined);
+  const { data: citiesPage } = useCitiesForDepartment(code || undefined);
   const { data: stats } = useTransactionStats(code ? { departmentCode: code } : undefined);
 
   if (isLoading) return <LoadingSpinner />;

@@ -98,7 +98,7 @@ export function Layout() {
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col bg-background">
-      <header className="h-12 z-50 flex items-center gap-3 px-4 border-b bg-background/80 backdrop-blur-lg shrink-0">
+      <header className="h-12 z-[1000] flex items-center gap-3 px-4 border-b bg-background/80 backdrop-blur-lg shrink-0">
         <Link
           to="/"
           className="flex items-center gap-2 font-semibold text-sm tracking-tight shrink-0"

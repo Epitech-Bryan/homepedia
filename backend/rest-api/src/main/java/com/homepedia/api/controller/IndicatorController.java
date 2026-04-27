@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,10 +29,10 @@ public class IndicatorController {
 
 	@Operation(summary = "Get indicators for a geographic entity", description = "Returns indicators for a region, department, or city, optionally filtered by category")
 	@GetMapping(BY_LEVEL_AND_CODE)
-	public List<IndicatorSummary> findIndicators(
+	public ResponseEntity<List<IndicatorSummary>> findIndicators(
 			@Parameter(description = "Geographic level") @PathVariable final GeographicLevel level,
 			@Parameter(description = "Geographic code (region, department, or INSEE)") @PathVariable final String code,
 			@Parameter(description = "Indicator category filter") @RequestParam(required = false) final IndicatorCategory category) {
-		return indicatorService.findIndicators(level, code, category);
+		return ResponseEntity.ok(indicatorService.findIndicators(level, code, category));
 	}
 }

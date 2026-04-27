@@ -31,12 +31,12 @@ public class CityController {
 
 	@Operation(summary = "Search cities", description = "Paginated list of cities, filterable by department or name query")
 	@GetMapping
-	public PagedModel<EntityModel<CitySummary>> findAll(
+	public ResponseEntity<PagedModel<EntityModel<CitySummary>>> findAll(
 			@Parameter(description = "Department code") @RequestParam(required = false) final String departmentCode,
 			@Parameter(description = "Name search query") @RequestParam(required = false) final String query,
 			final Pageable pageable) {
 		final var page = cityService.findAll(departmentCode, query, pageable);
-		return pagedResourcesAssembler.toModel(page);
+		return ResponseEntity.ok(pagedResourcesAssembler.toModel(page));
 	}
 
 	@Operation(summary = "Get a city by its INSEE code")

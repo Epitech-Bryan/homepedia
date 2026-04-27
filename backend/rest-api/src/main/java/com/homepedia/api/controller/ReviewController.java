@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,23 +31,23 @@ public class ReviewController {
 
 	@Operation(summary = "List reviews for a city", description = "Paginated reviews with sentiment data for a given city")
 	@GetMapping(REVIEWS)
-	public PagedModel<EntityModel<ReviewSummary>> findByCityInseeCode(
+	public ResponseEntity<PagedModel<EntityModel<ReviewSummary>>> findByCityInseeCode(
 			@Parameter(description = "City INSEE code") @PathVariable final String inseeCode, final Pageable pageable) {
 		final var page = reviewService.findByCityInseeCode(inseeCode, pageable);
-		return pagedResourcesAssembler.toModel(page);
+		return ResponseEntity.ok(pagedResourcesAssembler.toModel(page));
 	}
 
 	@Operation(summary = "Word cloud data", description = "Word frequency map for generating a word cloud from city reviews")
 	@GetMapping(WORD_CLOUD)
-	public Map<String, Integer> getWordCloud(
+	public ResponseEntity<Map<String, Integer>> getWordCloud(
 			@Parameter(description = "City INSEE code") @PathVariable final String inseeCode) {
-		return reviewService.getWordFrequencies(inseeCode);
+		return ResponseEntity.ok(reviewService.getWordFrequencies(inseeCode));
 	}
 
 	@Operation(summary = "Sentiment statistics", description = "Aggregated sentiment analysis statistics for a city")
 	@GetMapping(SENTIMENT_STATS)
-	public SentimentStats getSentimentStats(
+	public ResponseEntity<SentimentStats> getSentimentStats(
 			@Parameter(description = "City INSEE code") @PathVariable final String inseeCode) {
-		return reviewService.getSentimentStats(inseeCode);
+		return ResponseEntity.ok(reviewService.getSentimentStats(inseeCode));
 	}
 }

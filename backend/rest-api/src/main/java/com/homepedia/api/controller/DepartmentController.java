@@ -27,9 +27,9 @@ public class DepartmentController {
 
 	@Operation(summary = "List departments", description = "List all departments, optionally filtered by region code")
 	@GetMapping
-	public List<DepartmentSummary> findAll(
+	public ResponseEntity<List<DepartmentSummary>> findAll(
 			@Parameter(description = "Region code to filter by") @RequestParam(required = false) final String regionCode) {
-		return departmentService.findAll(regionCode);
+		return ResponseEntity.ok(departmentService.findAll(regionCode));
 	}
 
 	@Operation(summary = "Get a department by its code")

@@ -151,11 +151,10 @@ export function ExplorerPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all__">All types</SelectItem>
-                  <SelectItem value="APARTMENT">Apartment</SelectItem>
-                  <SelectItem value="HOUSE">House</SelectItem>
-                  <SelectItem value="LAND">Land</SelectItem>
-                  <SelectItem value="COMMERCIAL">Commercial</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
+                  <SelectItem value="MAISON">Maison</SelectItem>
+                  <SelectItem value="APPARTEMENT">Appartement</SelectItem>
+                  <SelectItem value="DEPENDANCE">Dépendance</SelectItem>
+                  <SelectItem value="LOCAL">Local</SelectItem>
                 </SelectContent>
               </Select>
             </div>

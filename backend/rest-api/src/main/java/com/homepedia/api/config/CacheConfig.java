@@ -2,6 +2,10 @@ package com.homepedia.api.config;
 
 import java.time.Duration;
 import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
@@ -47,10 +51,12 @@ public class CacheConfig implements CachingConfigurer {
 
 	@Bean
 	public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-		// Default GenericJackson2JsonRedisSerializer uses an "@class" property
-		// embedded in each JSON document for type recovery — friendlier with
-		// shared Redis instances than the WRAPPER_ARRAY default-typing format.
-		final var jsonSerializer = new GenericJackson2JsonRedisSerializer();
+		// ObjectMapper configured to handle Java records and embed @class
+		// type info so Redis can deserialize back to the correct type.
+		final var ptv = BasicPolymorphicTypeValidator.builder().allowIfBaseType(Object.class).build();
+		final ObjectMapper mapper = JsonMapper.builder().addModule(new JavaTimeModule())
+				.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL).build();
+		final var jsonSerializer = new GenericJackson2JsonRedisSerializer(mapper);
 
 		final var defaults = RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(1))
 				.prefixCacheNameWith(KEY_PREFIX)

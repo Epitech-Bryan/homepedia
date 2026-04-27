@@ -1,0 +1,114 @@
+package com.homepedia.api.admin;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.BatchStatus;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobInstance;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.stereotype.Service;
+
+@Slf4j
+@Service
+public class AdminJobsService {
+
+	/**
+	 * Whitelist of job names exposed to the admin console, in display order.
+	 * Each entry maps the API key (URL slug) to the Spring Batch Job bean name.
+	 */
+	public static final Map<String, String> JOB_NAMES;
+	static {
+		final var map = new LinkedHashMap<String, String>();
+		map.put("dvf", "dvfImportJob");
+		map.put("insee", "inseeImportJob");
+		map.put("geo", "geoJsonImportJob");
+		map.put("dpe", "dpeImportJob");
+		map.put("health", "healthImportJob");
+		map.put("reviews", "reviewImportJob");
+		map.put("economy", "economyImportJob");
+		map.put("education", "educationImportJob");
+		map.put("environment", "environmentImportJob");
+		map.put("infrastructure", "infrastructureImportJob");
+		JOB_NAMES = Map.copyOf(map);
+	}
+
+	private final JobLauncher jobLauncher;
+	private final JobExplorer jobExplorer;
+	private final TaskExecutor adminTaskExecutor;
+	private final Map<String, Job> jobsByName;
+
+	public AdminJobsService(JobLauncher jobLauncher, JobExplorer jobExplorer, TaskExecutor adminTaskExecutor,
+			Map<String, Job> jobsByName) {
+		this.jobLauncher = jobLauncher;
+		this.jobExplorer = jobExplorer;
+		this.adminTaskExecutor = adminTaskExecutor;
+		this.jobsByName = jobsByName;
+	}
+
+	public Map<String, JobStatusView> statusAll() {
+		final var out = new LinkedHashMap<String, JobStatusView>();
+		for (var entry : JOB_NAMES.entrySet()) {
+			final var slug = entry.getKey();
+			final var beanName = entry.getValue();
+			out.put(slug, statusOf(beanName));
+		}
+		return out;
+	}
+
+	public void trigger(String slug) {
+		final var beanName = JOB_NAMES.get(slug);
+		if (beanName == null) {
+			throw new UnknownJobException(slug);
+		}
+		final var job = jobsByName.get(beanName);
+		if (job == null) {
+			throw new UnknownJobException(slug);
+		}
+		if (!jobExplorer.findRunningJobExecutions(beanName).isEmpty()) {
+			throw new JobAlreadyRunningException(slug);
+		}
+		final var params = new JobParametersBuilder().addLong("timestamp", System.currentTimeMillis())
+				.toJobParameters();
+		adminTaskExecutor.execute(() -> {
+			try {
+				log.info("Manual job trigger: {}", beanName);
+				jobLauncher.run(job, params);
+			} catch (Exception e) {
+				log.error("Manual job '{}' failed: {}", beanName, e.getMessage(), e);
+			}
+		});
+	}
+
+	private JobStatusView statusOf(String beanName) {
+		final boolean running = !jobExplorer.findRunningJobExecutions(beanName).isEmpty();
+		Instant lastRunAt = null;
+		String lastStatus = null;
+		final List<JobInstance> instances = jobExplorer.findJobInstancesByJobName(beanName, 0, 1);
+		if (!instances.isEmpty()) {
+			final var execs = jobExplorer.getJobExecutions(instances.get(0));
+			if (!execs.isEmpty()) {
+				final var last = execs.get(0);
+				lastRunAt = toInstant(last.getStartTime());
+				lastStatus = last.getStatus().toString();
+			}
+		}
+		final BatchStatus state = running ? BatchStatus.STARTED : BatchStatus.UNKNOWN;
+		return new JobStatusView(running ? "RUNNING" : "IDLE", lastRunAt, lastStatus, state.toString());
+	}
+
+	private static Instant toInstant(LocalDateTime ldt) {
+		return ldt == null ? null : ldt.atZone(ZoneId.systemDefault()).toInstant();
+	}
+
+	public record JobStatusView(String state, Instant lastRunAt, String lastStatus, String lastBatchStatus) {
+	}
+}

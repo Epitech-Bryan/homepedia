@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/changes/002-spring-batch-schema.yaml
   - include:
       file: db/changelog/changes/003-create-dept-dvf-stats.yaml
+  - include:
+      file: db/changelog/changes/004-create-admins.yaml

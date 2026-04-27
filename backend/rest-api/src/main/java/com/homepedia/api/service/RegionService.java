@@ -23,8 +23,9 @@ public class RegionService {
 		return RegionMapper.INSTANCE.convertToSummaryList(regionRepository.findAll());
 	}
 
-	@Cacheable(value = CacheConfig.CACHE_REFDATA, key = "'region:' + #code", unless = "#result == null || !#result.isPresent()")
-	public Optional<RegionSummary> findByCode(final String code) {
-		return regionRepository.findByCode(code).map(RegionMapper.INSTANCE::convertToSummary);
-	}
+    @Cacheable(value = CacheConfig.CACHE_REFDATA, key = "'region:' + #code", unless = "#result == null")
+    public Optional<RegionSummary> findByCode(final String code) {
+        return regionRepository.findByCode(code)
+                .map(RegionMapper.INSTANCE::convertToSummary);
+    }
 }

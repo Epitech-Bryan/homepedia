@@ -1,5 +1,11 @@
 # app
 
+## [0.14.7] - 2026-04-27
+
+### Bug Fixes
+
+- fix: increase dialog z-index above map layer (z-2000)
+
 ## [0.14.6] - 2026-04-27
 
 ### Bug Fixes

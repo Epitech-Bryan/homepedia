@@ -55,8 +55,7 @@ public class AdminController {
 	@PostMapping("/evict-all-caches")
 	public ResponseEntity<EvictResponse> evictAllCaches() {
 		log.info("Manual full cache eviction triggered");
-		cacheInvalidationService.evictGeoAndRefdataAndStats();
-		cacheInvalidationService.evictReviews();
+		cacheInvalidationService.evictAll();
 		return ResponseEntity.ok(new EvictResponse("All caches evicted", Instant.now()));
 	}
 

@@ -38,4 +38,9 @@ public class CacheInvalidationService {
 	public void evictReviews() {
 		log.info("Evicted reviews cache");
 	}
+
+	public void evictAll() {
+		evictGeoAndRefdataAndStats();
+		evictReviews();
+	}
 }

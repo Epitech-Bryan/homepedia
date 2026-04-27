@@ -1,10 +1,10 @@
 package com.homepedia.common.geo.dto;
 
-import com.fasterxml.jackson.annotation.JsonRawValue;
+import com.fasterxml.jackson.databind.JsonNode;
 
-public record Feature(String type, Properties properties, @JsonRawValue String geometry) {
+public record Feature(String type, Properties properties, JsonNode geometry) {
 
-	public Feature(Properties properties, String geometry) {
+	public Feature(Properties properties, JsonNode geometry) {
 		this("Feature", properties, geometry);
 	}
 

@@ -8,8 +8,9 @@ import org.junit.jupiter.api.Test;
 /**
  * REGRESSION TEST — DO NOT MODIFY WITH AI AGENTS.
  *
- * These tests lock down the DVF price-per-sqm calculation contract.
- * Only a human should change expected values after verifying the business logic change is intentional.
+ * These tests lock down the DVF price-per-sqm calculation contract. Only a
+ * human should change expected values after verifying the business logic change
+ * is intentional.
  */
 class DvfPriceCalculationRegressionTest {
 

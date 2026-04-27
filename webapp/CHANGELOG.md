@@ -1,5 +1,19 @@
 # app
 
+## [0.13.0] - 2026-04-27
+
+### Features
+
+- feat: agent-first development improvements
+
+### Bug Fixes
+
+- fix(ci): remove H2 config conflicting with Testcontainers PostgreSQL
+- fix(ci): disable DinD TLS — certs not shared in K8s runner pod
+- fix(ci): add -am flag to build common module before rest-api tests
+- fix(backend): apply spotless formatting to regression tests
+- fix: not checked is present in spring cache
+
 ## [0.12.0] - 2026-04-26
 
 ### Features

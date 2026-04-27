@@ -1,0 +1,34 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 004-create-admins
+      author: homepedia
+      comment: Lightweight admin auth — single role (anyone with an account is admin); seeded on first boot via AdminUserSeeder.
+      changes:
+        - createTable:
+            tableName: admins
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: username
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: password_hash
+                  type: varchar(72)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: now()
+                  constraints:
+                    nullable: false

@@ -1,7 +1,9 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Map, X, Search, Compass } from "lucide-react";
+import { Map, X, Search, Compass, ShieldCheck, LogIn, LogOut } from "lucide-react";
 import { PersistentMap } from "@/components/PersistentMap";
+import { LoginDialog } from "@/components/LoginDialog";
 import { useRegions, useDepartments } from "@/api/hooks";
+import { useAuth } from "@/auth/AuthContext";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -90,6 +92,13 @@ export function Layout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const hasPanel = pathname !== "/";
+  const { user, logout } = useAuth();
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+    if (pathname === "/admin") navigate("/", { replace: true });
+  };
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col bg-background">
@@ -112,6 +121,28 @@ export function Layout() {
           <Compass className="h-4 w-4 mr-1.5" />
           Explorer
         </Button>
+        {user && (
+          <Button
+            variant={pathname === "/admin" ? "secondary" : "ghost"}
+            size="sm"
+            render={<Link to="/admin" />}
+          >
+            <ShieldCheck className="h-4 w-4 mr-1.5" />
+            Administrer
+          </Button>
+        )}
+        {user ? (
+          <Button variant="ghost" size="sm" onClick={handleLogout} title={`Déconnecter ${user.username}`}>
+            <LogOut className="h-4 w-4 mr-1.5" />
+            {user.username}
+          </Button>
+        ) : (
+          <Button variant="ghost" size="sm" onClick={() => setLoginOpen(true)}>
+            <LogIn className="h-4 w-4 mr-1.5" />
+            Connexion
+          </Button>
+        )}
+        <LoginDialog open={loginOpen} onOpenChange={setLoginOpen} />
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">

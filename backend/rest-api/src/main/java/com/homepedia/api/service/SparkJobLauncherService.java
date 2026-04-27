@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 public class SparkJobLauncherService {
 
 	private static final String JOB_NAME = "spark-dvf-aggregate";
+	private static final long TIMEOUT_MINUTES = 30;
 
 	private final BatchEventPublisher eventPublisher;
 	private final CacheInvalidationService cacheInvalidationService;
@@ -28,6 +30,9 @@ public class SparkJobLauncherService {
 
 	@Value("${homepedia.spark.enabled:false}")
 	private boolean sparkEnabled;
+
+	@Value("${homepedia.spark.timeout-minutes:30}")
+	private long timeoutMinutes;
 
 	public boolean isEnabled() {
 		return sparkEnabled && StringUtils.isNotBlank(submitCommand);
@@ -44,10 +49,10 @@ public class SparkJobLauncherService {
 		final var start = System.currentTimeMillis();
 		eventPublisher.publish(BatchEvent.starting(JOB_NAME, "Launching DVF aggregate Spark job"));
 
+		Process process = null;
 		try {
 			log.info("Launching Spark job with command: {}", submitCommand);
-			final var process = new ProcessBuilder(List.of("sh", "-c", submitCommand)).redirectErrorStream(true)
-					.start();
+			process = new ProcessBuilder(List.of("sh", "-c", submitCommand)).redirectErrorStream(true).start();
 
 			eventPublisher.publish(BatchEvent.running(JOB_NAME, "Spark job running"));
 
@@ -55,8 +60,17 @@ public class SparkJobLauncherService {
 				reader.lines().forEach(line -> log.info("[spark] {}", line));
 			}
 
-			final var exitCode = process.waitFor();
+			final var finished = process.waitFor(timeoutMinutes, TimeUnit.MINUTES);
 			final var elapsed = System.currentTimeMillis() - start;
+
+			if (!finished) {
+				log.error("Spark job timed out after {} minutes", timeoutMinutes);
+				process.destroyForcibly();
+				eventPublisher.publish(BatchEvent.failed(JOB_NAME, "Timed out after " + timeoutMinutes + " min"));
+				return CompletableFuture.completedFuture(false);
+			}
+
+			final var exitCode = process.exitValue();
 
 			if (exitCode == 0) {
 				log.info("Spark job completed successfully in {} ms", elapsed);
@@ -73,6 +87,9 @@ public class SparkJobLauncherService {
 			final var elapsed = System.currentTimeMillis() - start;
 			log.error("Spark job failed after {} ms: {}", elapsed, e.getMessage(), e);
 			eventPublisher.publish(BatchEvent.failed(JOB_NAME, e.getMessage()));
+			if (process != null && process.isAlive()) {
+				process.destroyForcibly();
+			}
 			return CompletableFuture.completedFuture(false);
 		}
 	}

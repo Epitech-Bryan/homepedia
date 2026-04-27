@@ -48,6 +48,9 @@ export const api = {
     regions: () => fetchJson<RegionStats[]>("/stats/regions"),
     departments: (regionCode?: string) =>
       fetchJson<DepartmentStats[]>("/stats/departments", regionCode ? { regionCode } : undefined),
+    departmentsPrecomputed: () => fetchJson<DepartmentDvfStats[]>("/stats/departments/precomputed"),
+    departmentPrecomputed: (departmentCode: string) =>
+      fetchJson<DepartmentDvfStats>(`/stats/departments/precomputed/${departmentCode}`),
     cities: async (codes: string[]): Promise<CityStats[]> => {
       const BATCH_SIZE = 200;
       if (codes.length <= BATCH_SIZE) {
@@ -113,6 +116,14 @@ export interface DepartmentStats {
   transactionCount: number;
   averagePrice: number | null;
   averagePricePerSqm: number | null;
+}
+
+export interface DepartmentDvfStats {
+  departmentCode: string;
+  transactionCount: number | null;
+  avgPrice: number | null;
+  avgPricePerSqm: number | null;
+  medianPrice: number | null;
 }
 
 export interface CityStats {

@@ -1,0 +1,33 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 003-create-dept-dvf-stats
+      author: homepedia
+      changes:
+        - createTable:
+            tableName: dept_dvf_stats
+            columns:
+              - column:
+                  name: department_code
+                  type: varchar(3)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: transaction_count
+                  type: bigint
+              - column:
+                  name: avg_price
+                  type: double
+              - column:
+                  name: avg_price_per_sqm
+                  type: double
+              - column:
+                  name: median_price
+                  type: double
+        - addForeignKeyConstraint:
+            baseTableName: dept_dvf_stats
+            baseColumnNames: department_code
+            referencedTableName: departments
+            referencedColumnNames: code
+            constraintName: fk_dept_dvf_stats_department

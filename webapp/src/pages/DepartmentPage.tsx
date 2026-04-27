@@ -1,5 +1,10 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useDepartment, useCitiesForDepartment, useTransactionStats } from "@/api/hooks";
+import {
+  useDepartment,
+  useCitiesForDepartment,
+  useTransactionStats,
+  useDepartmentPrecomputedStats,
+} from "@/api/hooks";
 import { StatCard } from "@/components/StatCard";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
@@ -12,6 +17,7 @@ export function DepartmentPage() {
   const { data: dept, isLoading, error } = useDepartment(code);
   const { data: citiesPage } = useCitiesForDepartment(code || undefined);
   const { data: stats } = useTransactionStats(code ? { departmentCode: code } : undefined);
+  const { data: precomputed } = useDepartmentPrecomputedStats(code || undefined);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
@@ -51,6 +57,9 @@ export function DepartmentPage() {
         <div className="grid grid-cols-2 gap-3">
           <StatCard label="Transactions" value={stats.totalTransactions} />
           <StatCard label="Avg. €/m²" value={stats.averagePricePerSqm ?? 0} unit="€/m²" />
+          {precomputed && precomputed.medianPrice != null && precomputed.medianPrice > 0 && (
+            <StatCard label="Median" value={precomputed.medianPrice} unit="€" />
+          )}
         </div>
       )}
 

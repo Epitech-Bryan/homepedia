@@ -1,5 +1,11 @@
 # app
 
+## [0.14.1] - 2026-04-27
+
+### Bug Fixes
+
+- fix(api): batch city stats requests to avoid URL length overflow
+
 ## [0.14.0] - 2026-04-27
 
 ### Features

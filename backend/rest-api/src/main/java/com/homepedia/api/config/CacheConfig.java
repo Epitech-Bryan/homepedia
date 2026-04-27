@@ -68,8 +68,26 @@ public class CacheConfig implements CachingConfigurer {
 				defaults.entryTtl(Duration.ofHours(12)), CACHE_STATS, defaults.entryTtl(Duration.ofMinutes(30)),
 				CACHE_REVIEWS, defaults.entryTtl(Duration.ofMinutes(15)));
 
-		return RedisCacheManager.builder(connectionFactory).cacheDefaults(defaults)
+		final var manager = RedisCacheManager.builder(connectionFactory).cacheDefaults(defaults)
 				.withInitialCacheConfigurations(perCache).transactionAware().build();
+
+		flushStaleEntries(connectionFactory);
+
+		return manager;
+	}
+
+	private void flushStaleEntries(RedisConnectionFactory connectionFactory) {
+		try {
+			final var connection = connectionFactory.getConnection();
+			final var keys = connection.keyCommands().keys((KEY_PREFIX + "*").getBytes());
+			if (keys != null && !keys.isEmpty()) {
+				connection.keyCommands().del(keys.toArray(byte[][]::new));
+				log.info("Flushed {} stale Redis cache entries on startup", keys.size());
+			}
+			connection.close();
+		} catch (Exception e) {
+			log.warn("Could not flush Redis cache on startup: {}", e.getMessage());
+		}
 	}
 
 	/**

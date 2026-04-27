@@ -1,5 +1,21 @@
 # app
 
+## [0.16.0] - 2026-04-27
+
+### Features
+
+- feat: admin console with auth + on-demand import triggers
+
+### Bug Fixes
+
+- fix(rest-api): include api.auth in JPA scan so AdminUserRepository is wired
+- fix(rest-api): correct SecurityContextRepository import path
+- perf(rest-api): use Postgres COPY FROM STDIN for DVF bulk insert
+- fix(rest-api): make Feature.geometry round-trippable through Redis
+- perf(rest-api): tune JDBC batching for DVF bulk insert
+- fix: auto-flush stale Redis cache entries on startup
+- fix: add Spark timeout, increase HikariCP pool, fix thread starvation
+
 ## [0.15.0] - 2026-04-27
 
 ### Features

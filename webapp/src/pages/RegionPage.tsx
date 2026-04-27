@@ -4,22 +4,17 @@ import { StatCard } from "@/components/StatCard";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { Badge } from "@/components/ui/badge";
-import type { DepartmentSummary } from "@/api/client";
 
 export function RegionPage() {
   const { code = "" } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { data: region, isLoading, error } = useRegion(code);
-  const { data: deptPage } = useDepartments(code ? { regionCode: code } : undefined);
+  const { data: departments = [] } = useDepartments(code ? { regionCode: code } : undefined);
   const { data: stats } = useTransactionStats(code ? { regionCode: code } : undefined);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
   if (!region) return <ErrorMessage message="Region not found" />;
-
-  const departments: DepartmentSummary[] = deptPage?._embedded
-    ? (Object.values(deptPage._embedded).flat() as DepartmentSummary[])
-    : [];
 
   return (
     <div className="space-y-5">

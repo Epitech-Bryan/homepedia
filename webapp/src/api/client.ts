@@ -21,7 +21,7 @@ export const api = {
   },
   departments: {
     list: (params?: Record<string, string>) =>
-      fetchJson<PagedResponse<DepartmentSummary>>("/departments", params),
+      fetchJson<DepartmentSummary[]>("/departments", params),
     get: (code: string) => fetchJson<DepartmentSummary>(`/departments/${code}`),
   },
   cities: {

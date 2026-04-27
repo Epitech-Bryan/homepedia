@@ -10,14 +10,7 @@ vi.mock("@/api/hooks", () => ({
     ],
   }),
   useDepartments: () => ({
-    data: {
-      _embedded: {
-        departments: [
-          { code: "75", name: "Paris", regionCode: "11", population: 2100000, area: 105 },
-        ],
-      },
-      page: { size: 20, totalElements: 1, totalPages: 1, number: 0 },
-    },
+    data: [{ code: "75", name: "Paris", regionCode: "11", population: 2100000, area: 105 }],
   }),
   useTransactions: () => ({
     data: {

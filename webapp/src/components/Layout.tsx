@@ -12,12 +12,7 @@ function QuickSearch() {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { data: regions } = useRegions();
-  const { data: deptPage } = useDepartments();
-
-  const departments = useMemo(
-    () => (deptPage?._embedded ? Object.values(deptPage._embedded).flat() : []),
-    [deptPage],
-  );
+  const { data: departments = [] } = useDepartments();
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();

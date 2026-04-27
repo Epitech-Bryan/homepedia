@@ -13,6 +13,9 @@ See the root `copilot-instructions.md` for full project conventions.
 - **Sealed interfaces** for polymorphic types (indicators, etc.)
 - **Error handling** via `@RestControllerAdvice` returning `ErrorResponse` records
 - **Frontend**: TanStack Query for data, React Router for nav, typed API layer
+- **Spark jobs**: standalone JARs (no Spring/Lombok), heavy aggregation only (see ADR-005)
+- **Spring Batch**: I/O-bound ETL imports (<100K rows) inside `rest-api/batch/`
+- **Agent-first**: run periodic review prompts weekly (see root `copilot-instructions.md`)
 
 ## When Making Changes
 

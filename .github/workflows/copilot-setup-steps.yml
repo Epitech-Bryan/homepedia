@@ -1,0 +1,50 @@
+name: "Copilot Setup Steps"
+
+on:
+    workflow_dispatch:
+    push:
+        paths:
+            - .github/workflows/copilot-setup-steps.yml
+    pull_request:
+        paths:
+            - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+    copilot-setup-steps:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v5
+
+            - name: Set up Java 21 (Temurin)
+              uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "21"
+                  cache: maven
+
+            - name: Set up Maven 3.9.11
+              uses: stCarolas/setup-maven@v5
+              with:
+                  maven-version: "3.9.11"
+
+            - name: Set up Node.js 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: "10.33.2"
+
+            - name: Install root dependencies
+              run: pnpm install
+
+            - name: Install webapp dependencies
+              run: cd webapp && pnpm install
+
+            - name: Pre-build backend (warm Maven cache)
+              run: cd backend && mvn dependency:go-offline -q

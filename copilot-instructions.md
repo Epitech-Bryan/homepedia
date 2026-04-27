@@ -222,3 +222,28 @@ PostgreSQL 16. Schema managed by Liquibase (YAML changelogs in `rest-api/src/mai
 4. Add the corresponding API endpoint
 5. Add the frontend page/component
 6. Update this file if the feature introduces new patterns
+
+## Spark Jobs (backend/spark-jobs)
+
+Spark jobs are standalone JARs — no Spring, no Lombok. They are shaded via `maven-shade-plugin`.
+
+- Follow the same "no comments" rule as the rest of the project
+- Use Java records for configuration and value objects
+- Use `final` on all local variables; prefer `var` with `final`
+- Extract logic into well-named `private static` methods for self-documentation
+- Jobs read from CSV/JDBC and write aggregated results to PostgreSQL
+- Submit via `spark-submit` (see `docs/architecture.md` for the command)
+
+## Agent-First Development
+
+Treat Copilot like a new team member: give it context, review its work, and keep instructions up to date.
+
+### Recommended Periodic Prompts
+
+Run these regularly (weekly or after major features) to maintain code health:
+
+- `/plan Review the code for missing tests, broken tests, and dead code`
+- `/plan Review for duplication or abstraction opportunities`
+- `/plan Review documentation and code to identify gaps, update copilot-instructions.md`
+
+After any major feature, run a cleanup pass combining all three prompts to catch regressions, remove dead code, and keep documentation in sync.

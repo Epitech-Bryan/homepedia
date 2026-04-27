@@ -41,9 +41,9 @@ public class GeoService {
 		return GeoMapper.INSTANCE.convertToFeatureCollection(boundaries);
 	}
 
-    @Cacheable(value = CacheConfig.CACHE_GEO, key = "'boundary:' + #level + ':' + #code", unless = "#result == null")
-    public Optional<Feature> findBoundary(final GeographicLevel level, final String code) {
-        return geoJsonBoundaryRepository.findByGeographicLevelAndGeographicCode(level, code)
-                .map(GeoMapper.INSTANCE::convertToFeature);
-    }
+	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'boundary:' + #level + ':' + #code", unless = "#result == null")
+	public Optional<Feature> findBoundary(final GeographicLevel level, final String code) {
+		return geoJsonBoundaryRepository.findByGeographicLevelAndGeographicCode(level, code)
+				.map(GeoMapper.INSTANCE::convertToFeature);
+	}
 }

@@ -25,11 +25,11 @@ fix(dvf-importer): handle missing postal codes
 refactor(common): extract indicator sealed interface
 ```
 
-Scopes: `common`, `rest-api`, `data-pipeline`, `webapp`, `ci`, `docs`
+Scopes: `common`, `rest-api`, `spark-jobs`, `webapp`, `ci`, `docs`
 
 ## Adding a New Data Source
 
-1. Create a new package in `backend/data-pipeline/src/main/java/com/homepedia/pipeline/<source>/`
+1. Create a new package in `backend/rest-api/src/main/java/com/homepedia/api/batch/<source>/`
 2. Implement an importer class (Spring Batch job or `@Scheduled` task)
 3. Add the corresponding JPA entity in `backend/common/`
 4. Add the REST endpoint in `backend/rest-api/`

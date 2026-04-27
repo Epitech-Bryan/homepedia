@@ -8,8 +8,8 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
-@EntityScan(basePackages = { "com.homepedia.common", "com.homepedia.api.auth" })
-@EnableJpaRepositories(basePackages = { "com.homepedia.common", "com.homepedia.api.auth" })
+@EntityScan(basePackages = {"com.homepedia.common", "com.homepedia.api.auth"})
+@EnableJpaRepositories(basePackages = {"com.homepedia.common", "com.homepedia.api.auth"})
 @EnableMongoRepositories(basePackages = "com.homepedia.common")
 @EnableAsync
 public class HomepediaRestApiApplication {

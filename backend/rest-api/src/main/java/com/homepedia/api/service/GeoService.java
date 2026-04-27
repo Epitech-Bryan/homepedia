@@ -23,11 +23,12 @@ public class GeoService {
 
 	private final GeoJsonBoundaryRepository geoJsonBoundaryRepository;
 	private final DepartmentRepository departmentRepository;
+	private final GeoMapper geoMapper;
 
 	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'level:' + #level")
 	public FeatureCollection findBoundariesByLevel(final GeographicLevel level) {
 		final var boundaries = geoJsonBoundaryRepository.findByGeographicLevel(level);
-		return GeoMapper.INSTANCE.convertToFeatureCollection(boundaries);
+		return geoMapper.convertToFeatureCollection(boundaries);
 	}
 
 	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'depts-of-region:' + #regionCode")
@@ -38,12 +39,12 @@ public class GeoService {
 		final var boundaries = geoJsonBoundaryRepository.findByGeographicLevel(GeographicLevel.DEPARTMENT).stream()
 				.filter(b -> departmentCodes.contains(b.getGeographicCode())).toList();
 
-		return GeoMapper.INSTANCE.convertToFeatureCollection(boundaries);
+		return geoMapper.convertToFeatureCollection(boundaries);
 	}
 
 	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'boundary:' + #level + ':' + #code", unless = "#result == null")
 	public Optional<Feature> findBoundary(final GeographicLevel level, final String code) {
 		return geoJsonBoundaryRepository.findByGeographicLevelAndGeographicCode(level, code)
-				.map(GeoMapper.INSTANCE::convertToFeature);
+				.map(geoMapper::convertToFeature);
 	}
 }

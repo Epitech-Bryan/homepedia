@@ -1,5 +1,6 @@
 stages:
   - lint
+  - test
   - build
   - release
   - publish
@@ -73,6 +74,44 @@ lint:webapp:
     - cd webapp && pnpm install --frozen-lockfile
   script:
     - pnpm lint && pnpm format:check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# -----------------------------------------------------------------------------
+# Test — run test suites. Backend uses Testcontainers (needs DinD); webapp
+# uses Vitest. Runs on MR and main pushes.
+# -----------------------------------------------------------------------------
+
+test:backend:
+  extends: .cache_maven
+  stage: test
+  image: eclipse-temurin:21-jdk-alpine
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_CERT_PATH: /certs/client
+    DOCKER_TLS_VERIFY: "1"
+  before_script:
+    - apk add --no-cache maven docker-cli
+  script:
+    - cd backend && mvn test -pl rest-api -B
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+test:webapp:
+  extends: .cache_pnpm
+  stage: test
+  image: node:22-alpine
+  before_script:
+    - npm install -g pnpm
+    - pnpm config set store-dir "$PNPM_STORE_DIR"
+    - cd webapp && pnpm install --frozen-lockfile
+  script:
+    - pnpm test
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

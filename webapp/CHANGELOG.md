@@ -1,5 +1,16 @@
 # app
 
+## [0.14.0] - 2026-04-27
+
+### Features
+
+- feat(webapp): rewrite to map-first architecture with floating panels
+- feat(batch): enable all auto-downloadable imports in prod
+
+### Bug Fixes
+
+- fix(test): update ExplorerPage tests to match panel-compact labels
+
 ## [0.13.0] - 2026-04-27
 
 ### Features

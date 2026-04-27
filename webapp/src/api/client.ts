@@ -32,6 +32,7 @@ export const api = {
   transactions: {
     list: (params?: Record<string, string>) =>
       fetchJson<PagedResponse<TransactionSummary>>("/transactions", params),
+    get: (id: number) => fetchJson<TransactionDetail>(`/transactions/${id}`),
     stats: (params?: Record<string, string>) =>
       fetchJson<TransactionStats>("/transactions/stats", params),
   },
@@ -146,6 +147,27 @@ export interface TransactionSummary {
   builtSurface: number;
   roomCount: number;
   landSurface: number;
+}
+
+export interface TransactionDetail {
+  id: number;
+  mutationDate: string;
+  mutationNature: string;
+  propertyValue: number;
+  streetNumber: string | null;
+  streetType: string | null;
+  postalCode: string | null;
+  cityName: string;
+  cityInseeCode: string;
+  departmentCode: string | null;
+  propertyType: string;
+  builtSurface: number;
+  roomCount: number;
+  landSurface: number;
+  section: string | null;
+  planNumber: string | null;
+  lotCount: number | null;
+  pricePerSqm: number | null;
 }
 
 export interface TransactionStats {

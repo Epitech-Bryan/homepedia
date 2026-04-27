@@ -1,10 +1,12 @@
 package com.homepedia.api.controller;
 
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.TRANSACTIONS;
+import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.BY_ID;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.STATS;
 
 import com.homepedia.api.service.TransactionService;
 import com.homepedia.common.transaction.PropertyType;
+import com.homepedia.common.transaction.TransactionDetail;
 import com.homepedia.common.transaction.TransactionStats;
 import com.homepedia.common.transaction.TransactionSummary;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +20,7 @@ import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,6 +47,12 @@ public class TransactionController {
 		final var page = transactionService.search(cityInseeCode, departmentCode, year, minPrice, maxPrice,
 				propertyType, pageable);
 		return ResponseEntity.ok(pagedResourcesAssembler.toModel(page));
+	}
+
+	@Operation(summary = "Transaction detail", description = "Full detail for a single transaction")
+	@GetMapping(BY_ID)
+	public ResponseEntity<TransactionDetail> getById(@PathVariable final Long id) {
+		return transactionService.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
 	}
 
 	@Operation(summary = "Transaction statistics", description = "Aggregated price statistics for the given filters")

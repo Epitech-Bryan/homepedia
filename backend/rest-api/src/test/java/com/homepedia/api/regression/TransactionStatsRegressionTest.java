@@ -100,7 +100,7 @@ class TransactionStatsRegressionTest {
 
 		final var expectedPerSqm = (100000.0 / 40.0 + 150000.0 / 55.0 + 200000.0 / 70.0 + 250000.0 / 90.0
 				+ 400000.0 / 120.0) / 5.0;
-		assertThat(stats.averagePricePerSquareMeter()).isCloseTo(expectedPerSqm, Offset.offset(0.01));
+		assertThat(stats.averagePricePerSqm()).isCloseTo(expectedPerSqm, Offset.offset(0.01));
 	}
 
 	@Test
@@ -115,7 +115,7 @@ class TransactionStatsRegressionTest {
 		assertThat(stats.minPrice()).isEqualByComparingTo(BigDecimal.ZERO);
 		assertThat(stats.maxPrice()).isEqualByComparingTo(BigDecimal.ZERO);
 		assertThat(stats.averageSurface()).isEqualTo(0.0);
-		assertThat(stats.averagePricePerSquareMeter()).isEqualTo(0.0);
+		assertThat(stats.averagePricePerSqm()).isEqualTo(0.0);
 	}
 
 	@Test
@@ -132,7 +132,7 @@ class TransactionStatsRegressionTest {
 		assertThat(stats.minPrice()).isEqualByComparingTo(new BigDecimal("175000"));
 		assertThat(stats.maxPrice()).isEqualByComparingTo(new BigDecimal("175000"));
 		assertThat(stats.averageSurface()).isEqualTo(65.0);
-		assertThat(stats.averagePricePerSquareMeter()).isCloseTo(175000.0 / 65.0, Offset.offset(0.01));
+		assertThat(stats.averagePricePerSqm()).isCloseTo(175000.0 / 65.0, Offset.offset(0.01));
 	}
 
 	@Test
@@ -174,7 +174,7 @@ class TransactionStatsRegressionTest {
 		final var stats = transactionService.computeStats("75056", null, null);
 
 		assertThat(stats.averageSurface()).isEqualTo(80.0);
-		assertThat(stats.averagePricePerSquareMeter()).isCloseTo(200000.0 / 80.0, Offset.offset(0.01));
+		assertThat(stats.averagePricePerSqm()).isCloseTo(200000.0 / 80.0, Offset.offset(0.01));
 	}
 
 	private static RealEstateTransaction transaction(BigDecimal price, Double surface) {

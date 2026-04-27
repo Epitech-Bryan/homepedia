@@ -44,7 +44,7 @@ class TransactionServiceTest {
 		assertThat(stats.minPrice()).isEqualByComparingTo(new BigDecimal("100000"));
 		assertThat(stats.maxPrice()).isEqualByComparingTo(new BigDecimal("300000"));
 		assertThat(stats.averageSurface()).isEqualTo(75.0);
-		assertThat(stats.averagePricePerSquareMeter()).isGreaterThan(0.0);
+		assertThat(stats.averagePricePerSqm()).isGreaterThan(0.0);
 	}
 
 	@Test
@@ -104,6 +104,6 @@ class TransactionServiceTest {
 
 		assertThat(stats.totalTransactions()).isEqualTo(1);
 		assertThat(stats.averageSurface()).isEqualTo(0.0);
-		assertThat(stats.averagePricePerSquareMeter()).isEqualTo(0.0);
+		assertThat(stats.averagePricePerSqm()).isEqualTo(0.0);
 	}
 }

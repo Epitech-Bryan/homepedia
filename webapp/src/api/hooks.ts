@@ -120,6 +120,18 @@ export function useTransactions(params?: Record<string, string>) {
   });
 }
 
+export function useTransactionDetail(id: number | null) {
+  return useQuery({
+    queryKey: ["transactions", "detail", id],
+    queryFn: () => {
+      if (id === null) throw new Error("id is required");
+      return api.transactions.get(id);
+    },
+    enabled: id !== null,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useTransactionStats(params?: Record<string, string>) {
   return useQuery({
     queryKey: ["transactionStats", params],

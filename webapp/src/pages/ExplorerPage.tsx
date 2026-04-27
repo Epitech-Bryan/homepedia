@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TransactionDetailDialog } from "@/components/TransactionDetailDialog";
-import type { DepartmentSummary, TransactionSummary } from "@/api/client";
+import type { TransactionSummary } from "@/api/client";
 
 const PAGE_SIZE = 20;
 
@@ -23,7 +23,7 @@ export function ExplorerPage() {
   const [page, setPage] = useState(0);
   const [selectedTx, setSelectedTx] = useState<TransactionSummary | null>(null);
   const { data: regions } = useRegions();
-  const { data: deptPage } = useDepartments(
+  const { data: departments = [] } = useDepartments(
     filters.regionCode ? { regionCode: filters.regionCode } : undefined,
   );
   const { data: transactions, isLoading } = useTransactions({
@@ -32,10 +32,6 @@ export function ExplorerPage() {
     size: PAGE_SIZE.toString(),
   });
   const { data: stats } = useTransactionStats(filters);
-
-  const departments: DepartmentSummary[] = deptPage?._embedded
-    ? (Object.values(deptPage._embedded).flat() as DepartmentSummary[])
-    : [];
 
   const items: TransactionSummary[] = transactions?._embedded
     ? (Object.values(transactions._embedded).flat() as TransactionSummary[])
@@ -79,8 +75,8 @@ export function ExplorerPage() {
           <CardTitle className="text-xs uppercase tracking-wide">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1 sm:col-span-2">
               <label className="text-xs font-medium text-muted-foreground">Region</label>
               <Select
                 value={filters.regionCode ?? "__all__"}
@@ -100,7 +96,7 @@ export function ExplorerPage() {
               </Select>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 sm:col-span-2">
               <label className="text-xs font-medium text-muted-foreground">Department</label>
               <Select
                 value={filters.departmentCode ?? "__all__"}

@@ -16,11 +16,17 @@ public record DvfRawRecord(String dateMutation, String natureMutation, String va
 	}
 
 	public String fullInseeCode() {
-		if (codeDepartement == null || codeCommune == null) {
+		if (codeCommune == null) {
+			return null;
+		}
+		String commune = codeCommune.trim();
+		if (commune.length() >= 5) {
+			return commune;
+		}
+		if (codeDepartement == null) {
 			return null;
 		}
 		String dept = codeDepartement.trim();
-		String commune = codeCommune.trim();
 		if (dept.length() == 1) {
 			dept = "0" + dept;
 		}

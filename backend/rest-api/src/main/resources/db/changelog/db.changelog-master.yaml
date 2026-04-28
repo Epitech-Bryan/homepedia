@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/003-create-dept-dvf-stats.yaml
   - include:
       file: db/changelog/changes/004-create-admins.yaml
+  - include:
+      file: db/changelog/changes/005-partition-transactions-by-year.yaml

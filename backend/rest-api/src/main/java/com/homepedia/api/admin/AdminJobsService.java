@@ -64,6 +64,16 @@ public class AdminJobsService {
 	}
 
 	public void trigger(String slug) {
+		trigger(slug, Map.of());
+	}
+
+	/**
+	 * Async-launch a Spring Batch job by slug, optionally forwarding extra job
+	 * parameters. Numeric strings (e.g. {@code year=2024}) are passed as Longs so
+	 * jobs can read them via {@code @Value("#{jobParameters['year']}") Long};
+	 * everything else is forwarded as a String.
+	 */
+	public void trigger(String slug, Map<String, String> extraParams) {
 		final var beanName = JOB_NAMES.get(slug);
 		if (beanName == null) {
 			throw new UnknownJobException(slug);
@@ -75,16 +85,32 @@ public class AdminJobsService {
 		if (!jobExplorer.findRunningJobExecutions(beanName).isEmpty()) {
 			throw new JobAlreadyRunningException(slug);
 		}
-		final var params = new JobParametersBuilder().addLong("timestamp", System.currentTimeMillis())
-				.toJobParameters();
+		final var builder = new JobParametersBuilder().addLong("timestamp", System.currentTimeMillis());
+		if (extraParams != null) {
+			for (var entry : extraParams.entrySet()) {
+				addTypedParam(builder, entry.getKey(), entry.getValue());
+			}
+		}
+		final var params = builder.toJobParameters();
 		adminTaskExecutor.execute(() -> {
 			try {
-				log.info("Manual job trigger: {}", beanName);
+				log.info("Manual job trigger: {} (params={})", beanName, extraParams);
 				jobLauncher.run(job, params);
 			} catch (Exception e) {
 				log.error("Manual job '{}' failed: {}", beanName, e.getMessage(), e);
 			}
 		});
+	}
+
+	private static void addTypedParam(JobParametersBuilder builder, String key, String value) {
+		if (key == null || value == null) {
+			return;
+		}
+		try {
+			builder.addLong(key, Long.parseLong(value));
+		} catch (NumberFormatException e) {
+			builder.addString(key, value);
+		}
 	}
 
 	private JobStatusView statusOf(String beanName) {

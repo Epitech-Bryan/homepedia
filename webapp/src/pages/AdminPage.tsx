@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Play } from "lucide-react";
+import { Loader2, Play, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -8,12 +8,28 @@ import {
   triggerImport,
   IMPORT_JOBS,
   JobAlreadyRunningError,
+  CACHES,
+  evictCache,
+  evictAllCaches,
   type JobsStatus,
 } from "@/api/admin";
 import { useAuth } from "@/auth/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const POLL_INTERVAL_MS = 4000;
+
+// DVF datasets are published yearly; import targets a specific year and swaps
+// just that partition. Bound = current year - 1 (data.gouv.fr publishes year N
+// in early N+1) down to the oldest yearly partition provisioned in migration
+// 005 (2014). Build the list once at module load — it doesn't change per
+// render and React's purity rules forbid Date.now()/new Date() in render.
+const DVF_OLDEST_YEAR = 2014;
+const DVF_LATEST_YEAR = new Date().getFullYear() - 1;
+const DVF_YEARS: number[] = (() => {
+  const out: number[] = [];
+  for (let y = DVF_LATEST_YEAR; y >= DVF_OLDEST_YEAR; y--) out.push(y);
+  return out;
+})();
 
 function formatRelative(iso: string | null): string {
   if (!iso) return "jamais lancé";
@@ -34,6 +50,10 @@ export function AdminPage() {
   const qc = useQueryClient();
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [pendingTrigger, setPendingTrigger] = useState<string | null>(null);
+  const [cacheErrors, setCacheErrors] = useState<Record<string, string | null>>({});
+  const [pendingCacheEvict, setPendingCacheEvict] = useState<string | null>(null);
+  const [cacheEvictedAt, setCacheEvictedAt] = useState<Record<string, number | null>>({});
+  const [dvfYear, setDvfYear] = useState<number>(DVF_LATEST_YEAR);
 
   useEffect(() => {
     if (!loading && !user) navigate("/", { replace: true });
@@ -55,7 +75,8 @@ export function AdminPage() {
     setPendingTrigger(slug);
     setErrors((prev) => ({ ...prev, [slug]: null }));
     try {
-      await triggerImport(slug);
+      const params: Record<string, string | number> = slug === "dvf" ? { year: dvfYear } : {};
+      await triggerImport(slug, params);
       qc.invalidateQueries({ queryKey: ["admin", "jobsStatus"] });
     } catch (err) {
       const message =
@@ -67,6 +88,32 @@ export function AdminPage() {
       setErrors((prev) => ({ ...prev, [slug]: message }));
     } finally {
       setPendingTrigger(null);
+    }
+  };
+
+  const onEvictCache = async (name: string) => {
+    setPendingCacheEvict(name);
+    setCacheErrors((prev) => ({ ...prev, [name]: null }));
+    try {
+      if (name === "__all__") {
+        await evictAllCaches();
+        setCacheEvictedAt((prev) => {
+          const now = Date.now();
+          return {
+            ...prev,
+            ...Object.fromEntries(CACHES.map((c) => [c.name, now] as const)),
+            __all__: now,
+          };
+        });
+      } else {
+        await evictCache(name);
+        setCacheEvictedAt((prev) => ({ ...prev, [name]: Date.now() }));
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      setCacheErrors((prev) => ({ ...prev, [name]: message }));
+    } finally {
+      setPendingCacheEvict(null);
     }
   };
 
@@ -115,19 +162,36 @@ export function AdminPage() {
               </CardHeader>
               <CardContent className="p-3 pt-1 flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">{job.description}</p>
-                <Button
-                  size="sm"
-                  variant={running ? "secondary" : "default"}
-                  onClick={() => onTrigger(job.slug)}
-                  disabled={disabled}
-                >
-                  {disabled ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Play className="h-3 w-3" />
+                <div className="flex items-center gap-2">
+                  {job.slug === "dvf" && (
+                    <select
+                      className="h-8 rounded-md border bg-background px-2 text-xs"
+                      value={dvfYear}
+                      onChange={(e) => setDvfYear(Number(e.target.value))}
+                      disabled={disabled}
+                      aria-label="Année DVF"
+                    >
+                      {DVF_YEARS.map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
                   )}
-                  {running ? "En cours" : "Lancer"}
-                </Button>
+                  <Button
+                    size="sm"
+                    variant={running ? "secondary" : "default"}
+                    onClick={() => onTrigger(job.slug)}
+                    disabled={disabled}
+                  >
+                    {disabled ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Play className="h-3 w-3" />
+                    )}
+                    {running ? "En cours" : "Lancer"}
+                  </Button>
+                </div>
               </CardContent>
               {(error || (s?.lastStatus && s.lastStatus !== "COMPLETED" && !running)) && (
                 <div className="px-3 pb-3 text-xs">
@@ -140,6 +204,83 @@ export function AdminPage() {
             </Card>
           );
         })}
+      </div>
+
+      <header className="flex flex-col gap-1 mt-4">
+        <h2 className="text-sm font-semibold">Cache Redis</h2>
+        <p className="text-xs text-muted-foreground">
+          Vide les entrées en cache pour forcer la régénération depuis la base au prochain accès.
+        </p>
+      </header>
+
+      <div className="flex flex-col gap-2">
+        {CACHES.map((cache) => {
+          const evicting = pendingCacheEvict === cache.name;
+          const allBusy = pendingCacheEvict === "__all__";
+          const disabled = evicting || allBusy;
+          const cacheError = cacheErrors[cache.name];
+          const evictedAt = cacheEvictedAt[cache.name];
+          return (
+            <Card key={cache.name} className="border bg-background">
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-sm font-medium flex items-center justify-between">
+                  <span>{cache.label}</span>
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {evictedAt ? `vidé ${formatRelative(new Date(evictedAt).toISOString())}` : "—"}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-1 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">{cache.description}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onEvictCache(cache.name)}
+                  disabled={disabled}
+                >
+                  {disabled ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3 w-3" />
+                  )}
+                  Vider
+                </Button>
+              </CardContent>
+              {cacheError && (
+                <div className="px-3 pb-3 text-xs">
+                  <span className="text-destructive">{cacheError}</span>
+                </div>
+              )}
+            </Card>
+          );
+        })}
+
+        <Card className="border bg-background">
+          <CardContent className="p-3 flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              Vider <span className="font-medium">tous</span> les caches Redis en une seule
+              opération.
+            </p>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => onEvictCache("__all__")}
+              disabled={pendingCacheEvict !== null}
+            >
+              {pendingCacheEvict === "__all__" ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Trash2 className="h-3 w-3" />
+              )}
+              Tout vider
+            </Button>
+          </CardContent>
+          {cacheErrors["__all__"] && (
+            <div className="px-3 pb-3 text-xs">
+              <span className="text-destructive">{cacheErrors["__all__"]}</span>
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );

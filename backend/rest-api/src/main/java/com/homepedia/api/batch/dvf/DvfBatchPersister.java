@@ -51,9 +51,13 @@ public class DvfBatchPersister {
 	public void prepareShadow(int year) {
 		final var shadow = shadowName(year);
 		jdbcTemplate.execute("DROP TABLE IF EXISTS " + shadow);
-		// LIKE INCLUDING DEFAULTS gets us the IDENTITY sequence link; we deliberately
-		// exclude indexes/constraints so the COPY runs on a bare heap.
+		// LIKE INCLUDING DEFAULTS copies regular DEFAULT expressions but NOT GENERATED
+		// AS IDENTITY columns. We follow up with an explicit ALTER to wire `id` to the
+		// parent's sequence so COPY FROM STDIN (which omits `id`) auto-generates
+		// globally-unique ids rather than failing with a NOT NULL violation.
 		jdbcTemplate.execute("CREATE UNLOGGED TABLE " + shadow + " (LIKE transactions INCLUDING DEFAULTS)");
+		jdbcTemplate.execute("ALTER TABLE " + shadow
+				+ " ALTER COLUMN id SET DEFAULT nextval(pg_get_serial_sequence('transactions', 'id'))");
 		log.info("Prepared shadow partition {} (UNLOGGED)", shadow);
 	}
 

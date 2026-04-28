@@ -7,6 +7,7 @@ import com.homepedia.api.service.StatsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -64,16 +65,38 @@ public class AdminController {
 		return ResponseEntity.ok(new EvictResponse("All caches evicted", Instant.now()));
 	}
 
+	@Operation(summary = "List Redis caches", description = "Returns the names of all caches that can be evicted from the admin UI.")
+	@GetMapping("/caches")
+	public ResponseEntity<List<String>> listCaches() {
+		return ResponseEntity.ok(CacheInvalidationService.AVAILABLE_CACHES);
+	}
+
+	@Operation(summary = "Evict a single cache", description = "Clears the named Redis cache. Returns 404 if the cache name is not registered.")
+	@PostMapping("/caches/{name}/evict")
+	public ResponseEntity<EvictResponse> evictCache(@PathVariable String name) {
+		final var cleared = cacheInvalidationService.evictByName(name);
+		if (!cleared) {
+			return ResponseEntity.notFound().build();
+		}
+		log.info("Manual cache eviction triggered: {}", name);
+		return ResponseEntity.ok(new EvictResponse("Cache '" + name + "' evicted", Instant.now()));
+	}
+
 	@Operation(summary = "List import jobs status", description = "Returns the current state of every Spring Batch import job (RUNNING/IDLE + last run metadata).")
 	@GetMapping("/jobs/status")
 	public ResponseEntity<Map<String, AdminJobsService.JobStatusView>> jobsStatus() {
 		return ResponseEntity.ok(adminJobsService.statusAll());
 	}
 
-	@Operation(summary = "Trigger an import job", description = "Async — launches the named job (slug, e.g. 'dvf'). Returns 202 if dispatched, 409 if already running, 404 if unknown.")
+	@Operation(summary = "Trigger an import job", description = "Async — launches the named job (slug, e.g. 'dvf'). Any additional query parameters are forwarded as Spring Batch job parameters (e.g. ?year=2024). Returns 202 if dispatched, 409 if already running, 404 if unknown.")
 	@PostMapping("/imports/{slug}")
-	public ResponseEntity<TriggerResponse> triggerImport(@PathVariable String slug) {
-		adminJobsService.trigger(slug);
+	public ResponseEntity<TriggerResponse> triggerImport(@PathVariable String slug,
+			@RequestParam Map<String, String> queryParams) {
+		// Strip the path variable from the query map (Spring includes it on some
+		// configurations) so it doesn't accidentally land in JobParameters.
+		final var extras = queryParams.entrySet().stream().filter(e -> !"slug".equals(e.getKey()))
+				.collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+		adminJobsService.trigger(slug, extras);
 		return ResponseEntity.accepted().body(new TriggerResponse(slug, "dispatched", Instant.now()));
 	}
 

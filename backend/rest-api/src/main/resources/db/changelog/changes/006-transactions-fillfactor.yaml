@@ -1,0 +1,56 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-transactions-fillfactor-and-autovacuum
+      author: homepedia
+      comment: >
+        DVF data is write-once / read-many: a year's partition is filled in
+        one COPY pass during import and never UPDATEd afterwards. fillfactor
+        100 packs rows tighter (≈10% storage saved, better seq-scan locality)
+        and we tighten autovacuum so freshly-attached partitions get their
+        stats refreshed quickly even when ANALYZE wasn't called explicitly.
+
+        Applied per-partition (rather than on the parent) because Postgres
+        partitioning doesn't propagate storage parameters automatically.
+      changes:
+        - sql:
+            comment: fillfactor + autovacuum tuning on every yearly partition
+            sql: |
+              DO $$
+              DECLARE
+                  partition_name text;
+              BEGIN
+                  FOR partition_name IN
+                      SELECT c.relname
+                        FROM pg_inherits i
+                        JOIN pg_class c     ON c.oid = i.inhrelid
+                        JOIN pg_class p     ON p.oid = i.inhparent
+                       WHERE p.relname = 'transactions'
+                  LOOP
+                      EXECUTE format(
+                          'ALTER TABLE %I SET (fillfactor = 100, autovacuum_analyze_scale_factor = 0.02)',
+                          partition_name
+                      );
+                  END LOOP;
+              END$$;
+
+      rollback:
+        - sql:
+            comment: Reset to defaults on every yearly partition
+            sql: |
+              DO $$
+              DECLARE
+                  partition_name text;
+              BEGIN
+                  FOR partition_name IN
+                      SELECT c.relname
+                        FROM pg_inherits i
+                        JOIN pg_class c     ON c.oid = i.inhrelid
+                        JOIN pg_class p     ON p.oid = i.inhparent
+                       WHERE p.relname = 'transactions'
+                  LOOP
+                      EXECUTE format(
+                          'ALTER TABLE %I RESET (fillfactor, autovacuum_analyze_scale_factor)',
+                          partition_name
+                      );
+                  END LOOP;
+              END$$;

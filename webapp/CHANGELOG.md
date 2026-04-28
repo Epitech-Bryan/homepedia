@@ -1,5 +1,12 @@
 # app
 
+## [0.17.0] - 2026-04-28
+
+### Features
+
+- feat(admin): DVF import speed-up + Redis cache controls
+- feat(admin): DVF import speed-up + Redis cache controls
+
 ## [0.16.0] - 2026-04-27
 
 ### Features

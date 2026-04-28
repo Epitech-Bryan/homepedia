@@ -267,19 +267,28 @@ export function AdminPage() {
                     </Button>
                   </div>
                   {partitionStats && partitionStats.length > 0 && (
-                    <div className="grid grid-cols-3 gap-1 text-xs sm:grid-cols-4 md:grid-cols-6">
-                      {partitionStats.map((p) => (
-                        <div
-                          key={p.year}
-                          className="rounded border bg-muted/30 px-2 py-1 flex items-center justify-between"
-                          title={`${p.approxCount.toLocaleString("fr-FR")} lignes (estimation planner)`}
-                        >
-                          <span className="font-medium">{p.year}</span>
-                          <span className="text-muted-foreground tabular-nums">
-                            {formatCount(p.approxCount)}
-                          </span>
-                        </div>
-                      ))}
+                    <div className="rounded border bg-muted/30 overflow-hidden">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/50 text-muted-foreground">
+                          <tr>
+                            <th className="px-2 py-1 text-left font-medium">Année</th>
+                            <th className="px-2 py-1 text-right font-medium">Lignes (approx.)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {partitionStats.map((p) => (
+                            <tr key={p.year} className="border-t border-border/50">
+                              <td className="px-2 py-1 font-medium">{p.year}</td>
+                              <td
+                                className="px-2 py-1 text-right tabular-nums text-muted-foreground"
+                                title={`${p.approxCount.toLocaleString("fr-FR")} lignes (estimation planner)`}
+                              >
+                                {p.approxCount === 0 ? "—" : formatCount(p.approxCount)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>

@@ -1,5 +1,7 @@
 package com.homepedia.api.config;
 
+import com.homepedia.api.admin.JobAlreadyRunningException;
+import com.homepedia.api.admin.UnknownJobException;
 import com.homepedia.common.shared.ErrorResponse;
 import java.time.Instant;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,20 @@ public class GlobalExceptionHandler {
 		final var error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Bad Request", ex.getMessage(),
 				Instant.now());
 		return ResponseEntity.badRequest().body(error);
+	}
+
+	@ExceptionHandler(JobAlreadyRunningException.class)
+	public ResponseEntity<ErrorResponse> handleJobAlreadyRunning(JobAlreadyRunningException ex) {
+		log.debug("Job already running: {}", ex.getMessage());
+		final var error = new ErrorResponse(HttpStatus.CONFLICT.value(), "Conflict", ex.getMessage(), Instant.now());
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+	}
+
+	@ExceptionHandler(UnknownJobException.class)
+	public ResponseEntity<ErrorResponse> handleUnknownJob(UnknownJobException ex) {
+		log.debug("Unknown job: {}", ex.getMessage());
+		final var error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), "Not Found", ex.getMessage(), Instant.now());
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
 	}
 
 	@ExceptionHandler(Exception.class)

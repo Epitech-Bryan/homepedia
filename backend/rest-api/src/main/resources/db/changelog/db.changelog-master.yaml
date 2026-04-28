@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/004-create-admins.yaml
   - include:
       file: db/changelog/changes/005-partition-transactions-by-year.yaml
+  - include:
+      file: db/changelog/changes/006-transactions-fillfactor.yaml

@@ -4,6 +4,7 @@ import com.homepedia.api.admin.AdminJobsService;
 import com.homepedia.api.service.CacheInvalidationService;
 import com.homepedia.api.service.SparkJobLauncherService;
 import com.homepedia.api.service.StatsService;
+import com.homepedia.api.service.TransactionsPartitionStatsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.Instant;
@@ -30,6 +31,7 @@ public class AdminController {
 	private final StatsService statsService;
 	private final SparkJobLauncherService sparkJobLauncherService;
 	private final AdminJobsService adminJobsService;
+	private final TransactionsPartitionStatsService transactionsPartitionStatsService;
 
 	@Operation(summary = "Recompute all statistics", description = "Evicts stats caches, optionally triggers Spark DVF aggregation, and warms up caches.")
 	@PostMapping("/recompute-stats")
@@ -80,6 +82,12 @@ public class AdminController {
 		}
 		log.info("Manual cache eviction triggered: {}", name);
 		return ResponseEntity.ok(new EvictResponse("Cache '" + name + "' evicted", Instant.now()));
+	}
+
+	@Operation(summary = "Per-year transaction counts", description = "Returns the number of rows in each yearly partition of the `transactions` table. Useful to see DVF import progress over time.")
+	@GetMapping("/transactions/partition-stats")
+	public ResponseEntity<List<TransactionsPartitionStatsService.YearCount>> partitionStats() {
+		return ResponseEntity.ok(transactionsPartitionStatsService.countByYear());
 	}
 
 	@Operation(summary = "List import jobs status", description = "Returns the current state of every Spring Batch import job (RUNNING/IDLE + last run metadata).")

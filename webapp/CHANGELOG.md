@@ -1,5 +1,12 @@
 # app
 
+## [0.18.1] - 2026-04-28
+
+### Bug Fixes
+
+- fix(dvf): @JobScope on dvfImportStep + table layout for partition stats
+- fix(dvf): @JobScope on dvfImportStep + table layout for partition stats
+
 ## [0.18.0] - 2026-04-28
 
 ### Features

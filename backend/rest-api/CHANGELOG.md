@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.23.1] - 2026-04-28
+
+### Bug Fixes
+
+- fix(dvf): @JobScope on dvfImportStep + table layout for partition stats
+- fix(dvf): @JobScope on dvfImportStep + table layout for partition stats
+
 ## [3.23.0] - 2026-04-28
 
 ### Features

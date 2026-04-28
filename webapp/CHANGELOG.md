@@ -1,5 +1,16 @@
 # app
 
+## [0.18.0] - 2026-04-28
+
+### Features
+
+- feat(admin): DVF follow-ups — cleanup, perf, partition stats, bulk import
+- feat(admin): DVF follow-ups — cleanup, perf, partition stats, bulk import
+
+### Bug Fixes
+
+- fix(liquibase): splitStatements:false on the DO block in 006
+
 ## [0.17.0] - 2026-04-28
 
 ### Features

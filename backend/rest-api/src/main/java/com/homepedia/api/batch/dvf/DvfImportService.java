@@ -7,6 +7,7 @@ import com.homepedia.common.transaction.PropertyType;
 import com.homepedia.common.transaction.RealEstateTransaction;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -64,6 +65,7 @@ public class DvfImportService {
 		}
 
 		persister.swapPartition(year);
+		persister.analyzePartition(year);
 		log.info("DVF import for year {} complete: {} transactions imported", year, totalImported);
 		return totalImported;
 	}
@@ -79,6 +81,7 @@ public class DvfImportService {
 		}
 
 		persister.swapPartition(year);
+		persister.analyzePartition(year);
 		log.info("DVF import for year {} complete: {} transactions imported", year, totalImported);
 		return totalImported;
 	}
@@ -95,6 +98,32 @@ public class DvfImportService {
 		}
 
 		persister.swapPartition(year);
+		persister.analyzePartition(year);
+		log.info("DVF import for year {} complete: {} transactions imported", year, totalImported);
+		return totalImported;
+	}
+
+	/**
+	 * Stream-import from an arbitrary {@link InputStream} (e.g. HTTP body). Lets
+	 * callers skip the download-to-temp-file roundtrip entirely; the COPY starts as
+	 * soon as the first bytes arrive over the network.
+	 *
+	 * @param gzip
+	 *            whether the stream is gzipped
+	 */
+	public int importFromStream(int year, InputStream raw, boolean gzip) throws IOException {
+		log.info("Starting DVF import for year {} from streaming source (gzip={})", year, gzip);
+		persister.prepareShadow(year);
+		final var citiesByInsee = loadCityCache();
+		final int totalImported;
+
+		try (final var decoded = gzip ? new java.util.zip.GZIPInputStream(raw) : raw;
+				final var reader = new BufferedReader(new InputStreamReader(decoded, StandardCharsets.UTF_8))) {
+			totalImported = importFromReader(year, reader, citiesByInsee);
+		}
+
+		persister.swapPartition(year);
+		persister.analyzePartition(year);
 		log.info("DVF import for year {} complete: {} transactions imported", year, totalImported);
 		return totalImported;
 	}

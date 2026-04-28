@@ -76,6 +76,12 @@ public class DvfBatchPersister {
 				""".formatted(shadowName(year));
 		final Connection conn = DataSourceUtils.getConnection(dataSource);
 		try {
+			// The shadow is rebuildable from the source CSV, so trade durability for
+			// throughput on the COPY: no need to fsync the WAL after every commit.
+			// Scoped to this transaction (LOCAL), so no other workload is affected.
+			try (var st = conn.createStatement()) {
+				st.execute("SET LOCAL synchronous_commit = OFF");
+			}
 			final var copyManager = new CopyManager(conn.unwrap(BaseConnection.class));
 			try (OutputStream copyOut = new PGCopyOutputStream(copyManager.copyIn(sql));
 					Writer w = new OutputStreamWriter(copyOut, StandardCharsets.UTF_8)) {
@@ -123,6 +129,19 @@ public class DvfBatchPersister {
 		jdbcTemplate.execute("ALTER TABLE " + shadow + " RENAME TO " + current);
 
 		log.info("Swapped partition for year {} (old dropped, new attached as {})", year, current);
+	}
+
+	/**
+	 * Refresh planner stats on the freshly attached partition. ANALYZE is cheap and
+	 * absolutely necessary — without it the planner falls back on whatever was last
+	 * computed (often nothing for a brand-new heap), which produces disastrous
+	 * plans on the first few API queries hitting the year. Run outside the swap
+	 * transaction since VACUUM can't be wrapped in one.
+	 */
+	public void analyzePartition(int year) {
+		final var partition = partitionName(year);
+		jdbcTemplate.execute("VACUUM ANALYZE " + partition);
+		log.info("VACUUM ANALYZE done on {}", partition);
 	}
 
 	private static String shadowName(int year) {

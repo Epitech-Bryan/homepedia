@@ -103,3 +103,18 @@ export async function evictAllCaches(): Promise<void> {
     throw new Error(`Failed to evict all caches: ${res.status} ${res.statusText}`);
   }
 }
+
+export type PartitionYearCount = {
+  year: number;
+  approxCount: number;
+};
+
+export async function fetchPartitionStats(): Promise<PartitionYearCount[]> {
+  const res = await fetch(`${BASE_URL}/transactions/partition-stats`, {
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch partition stats: ${res.status}`);
+  }
+  return res.json();
+}

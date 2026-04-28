@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Play, Trash2 } from "lucide-react";
+import { Loader2, Play, Trash2, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -11,7 +11,9 @@ import {
   CACHES,
   evictCache,
   evictAllCaches,
+  fetchPartitionStats,
   type JobsStatus,
+  type PartitionYearCount,
 } from "@/api/admin";
 import { useAuth } from "@/auth/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +32,12 @@ const DVF_YEARS: number[] = (() => {
   for (let y = DVF_LATEST_YEAR; y >= DVF_OLDEST_YEAR; y--) out.push(y);
   return out;
 })();
+
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
+  return String(n);
+}
 
 function formatRelative(iso: string | null): string {
   if (!iso) return "jamais lancé";
@@ -54,6 +62,7 @@ export function AdminPage() {
   const [pendingCacheEvict, setPendingCacheEvict] = useState<string | null>(null);
   const [cacheEvictedAt, setCacheEvictedAt] = useState<Record<string, number | null>>({});
   const [dvfYear, setDvfYear] = useState<number>(DVF_LATEST_YEAR);
+  const [bulkProgress, setBulkProgress] = useState<{ year: number; total: number } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/", { replace: true });
@@ -62,6 +71,13 @@ export function AdminPage() {
   const { data: status } = useQuery<JobsStatus>({
     queryKey: ["admin", "jobsStatus"],
     queryFn: fetchJobsStatus,
+    refetchInterval: POLL_INTERVAL_MS,
+    enabled: !!user,
+  });
+
+  const { data: partitionStats } = useQuery<PartitionYearCount[]>({
+    queryKey: ["admin", "partitionStats"],
+    queryFn: fetchPartitionStats,
     refetchInterval: POLL_INTERVAL_MS,
     enabled: !!user,
   });
@@ -88,6 +104,37 @@ export function AdminPage() {
       setErrors((prev) => ({ ...prev, [slug]: message }));
     } finally {
       setPendingTrigger(null);
+    }
+  };
+
+  const onBulkImportDvf = async () => {
+    setErrors((prev) => ({ ...prev, dvf: null }));
+    setBulkProgress({ year: DVF_YEARS[0], total: DVF_YEARS.length });
+    try {
+      for (const y of DVF_YEARS) {
+        setBulkProgress({ year: y, total: DVF_YEARS.length });
+        await triggerImport("dvf", { year: y });
+        // Wait until the job finishes before launching the next year — server
+        // returns 409 if we try to overlap two DVF runs.
+        let stillRunning = true;
+        while (stillRunning) {
+          await new Promise((r) => setTimeout(r, 4000));
+          const s = await fetchJobsStatus();
+          stillRunning = s.dvf?.state === "RUNNING";
+        }
+        qc.invalidateQueries({ queryKey: ["admin", "jobsStatus"] });
+        qc.invalidateQueries({ queryKey: ["admin", "partitionStats"] });
+      }
+    } catch (err) {
+      const message =
+        err instanceof JobAlreadyRunningError
+          ? "Déjà en cours."
+          : err instanceof Error
+            ? err.message
+            : "Erreur inconnue";
+      setErrors((prev) => ({ ...prev, dvf: message }));
+    } finally {
+      setBulkProgress(null);
     }
   };
 
@@ -193,6 +240,50 @@ export function AdminPage() {
                   </Button>
                 </div>
               </CardContent>
+              {job.slug === "dvf" && (
+                <div className="px-3 pb-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      Importer toutes les années{" "}
+                      <span className="font-medium">
+                        {DVF_OLDEST_YEAR}–{DVF_LATEST_YEAR}
+                      </span>{" "}
+                      en séquence (chaque année swap sa partition à la fin).
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={onBulkImportDvf}
+                      disabled={disabled || bulkProgress !== null}
+                    >
+                      {bulkProgress ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Layers className="h-3 w-3" />
+                      )}
+                      {bulkProgress
+                        ? `Année ${bulkProgress.year} (${bulkProgress.total - DVF_YEARS.indexOf(bulkProgress.year)}/${bulkProgress.total})`
+                        : "Tout importer"}
+                    </Button>
+                  </div>
+                  {partitionStats && partitionStats.length > 0 && (
+                    <div className="grid grid-cols-3 gap-1 text-xs sm:grid-cols-4 md:grid-cols-6">
+                      {partitionStats.map((p) => (
+                        <div
+                          key={p.year}
+                          className="rounded border bg-muted/30 px-2 py-1 flex items-center justify-between"
+                          title={`${p.approxCount.toLocaleString("fr-FR")} lignes (estimation planner)`}
+                        >
+                          <span className="font-medium">{p.year}</span>
+                          <span className="text-muted-foreground tabular-nums">
+                            {formatCount(p.approxCount)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {(error || (s?.lastStatus && s.lastStatus !== "COMPLETED" && !running)) && (
                 <div className="px-3 pb-3 text-xs">
                   {error && <span className="text-destructive">{error}</span>}

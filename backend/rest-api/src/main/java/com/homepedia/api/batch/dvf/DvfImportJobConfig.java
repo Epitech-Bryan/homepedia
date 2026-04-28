@@ -1,7 +1,12 @@
 package com.homepedia.api.batch.dvf;
 
 import com.homepedia.api.batch.config.DatasetDownloadService;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Year;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,19 +76,35 @@ public class DvfImportJobConfig {
 	private RepeatStatus importFromDownload(int year) throws Exception {
 		validateYearBounds(year);
 		final var url = DOWNLOAD_URL_TEMPLATE.formatted(year);
+		// .zip needs random access (ZipInputStream needs the central directory), so
+		// we still go through a temp file. Plain .csv / .csv.gz can be streamed
+		// straight from the HTTP body into COPY — saves disk I/O and starts the
+		// import as soon as the first bytes arrive.
+		if (url.endsWith(".zip")) {
+			return importZipViaTempFile(year, url);
+		}
 		final var isGzip = url.endsWith(".gz");
-		final var suffix = isGzip ? ".csv.gz" : url.endsWith(".zip") ? ".zip" : ".csv";
+		final var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30))
+				.followRedirects(HttpClient.Redirect.NORMAL).build();
+		final var request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofMinutes(30)).GET().build();
+		final var response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+		if (response.statusCode() / 100 != 2) {
+			response.body().close();
+			throw new IllegalStateException(
+					"Failed to download DVF year %d: HTTP %d".formatted(year, response.statusCode()));
+		}
+		try (var body = response.body()) {
+			final int count = dvfImportService.importFromStream(year, body, isGzip);
+			log.info("DVF import from streaming download finished: {} transactions loaded for year {}", count, year);
+		}
+		return RepeatStatus.FINISHED;
+	}
+
+	private RepeatStatus importZipViaTempFile(int year, String url) throws Exception {
 		Path tempFile = null;
 		try {
-			tempFile = downloadService.downloadToTempFile(url, "dvf-" + year + "-", suffix);
-			int count;
-			if (url.endsWith(".zip")) {
-				count = dvfImportService.importFromZip(year, tempFile);
-			} else if (isGzip) {
-				count = dvfImportService.importFromGzip(year, tempFile);
-			} else {
-				count = dvfImportService.importFromCsv(year, tempFile);
-			}
+			tempFile = downloadService.downloadToTempFile(url, "dvf-" + year + "-", ".zip");
+			final int count = dvfImportService.importFromZip(year, tempFile);
 			log.info("DVF import from download finished: {} transactions loaded for year {}", count, year);
 		} finally {
 			downloadService.cleanup(tempFile);

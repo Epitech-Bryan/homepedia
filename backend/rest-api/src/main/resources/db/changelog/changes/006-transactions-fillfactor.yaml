@@ -14,6 +14,8 @@ databaseChangeLog:
       changes:
         - sql:
             comment: fillfactor + autovacuum tuning on every yearly partition
+            splitStatements: false
+            stripComments: false
             sql: |
               DO $$
               DECLARE
@@ -36,6 +38,8 @@ databaseChangeLog:
       rollback:
         - sql:
             comment: Reset to defaults on every yearly partition
+            splitStatements: false
+            stripComments: false
             sql: |
               DO $$
               DECLARE

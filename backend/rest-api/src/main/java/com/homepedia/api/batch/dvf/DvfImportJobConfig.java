@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.configuration.annotation.JobScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -57,7 +57,7 @@ public class DvfImportJobConfig {
 	}
 
 	@Bean
-	@StepScope
+	@JobScope
 	public Step dvfImportStep(JobRepository jobRepository, PlatformTransactionManager transactionManager,
 			@Value("#{jobParameters['year']}") Long yearParam) {
 		final int year = yearParam != null ? yearParam.intValue() : defaultYear;

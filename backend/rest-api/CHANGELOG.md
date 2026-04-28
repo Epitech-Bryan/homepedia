@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.22.0] - 2026-04-28
+
+### Features
+
+- feat(admin): DVF import speed-up + Redis cache controls
+- feat(admin): DVF import speed-up + Redis cache controls
+
 ## [3.21.0] - 2026-04-27
 
 ### Features

@@ -1,9 +1,11 @@
 package com.homepedia.api.batch.dvf;
 
 import com.homepedia.common.transaction.RealEstateTransaction;
-import com.homepedia.common.transaction.TransactionRepository;
 import java.io.IOException;
-import java.io.StringReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -11,105 +13,171 @@ import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.postgresql.copy.CopyManager;
+import org.postgresql.copy.PGCopyOutputStream;
 import org.postgresql.core.BaseConnection;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Persists DVF rows using a shadow-partition + atomic swap strategy: each
+ * import builds a brand-new {@code transactions_<year>_new} table, fills it via
+ * {@code COPY FROM STDIN}, indexes it, then swaps it into the partitioned
+ * {@code transactions} parent in a single transaction. The previous partition
+ * for that year stays attached and serves reads until the swap commits, so the
+ * API never sees an empty table.
+ *
+ * <p>
+ * The shadow table is {@code UNLOGGED} during the COPY (skips WAL — the data is
+ * rebuildable from the CSV anyway) and is promoted to {@code LOGGED} before
+ * being attached, so the final partition is durable.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class DvfBatchPersister {
 
-	private static final String COPY_SQL = """
-			COPY transactions (
-			    mutation_date, mutation_nature, property_value, street_number, postal_code,
-			    city_insee_code, section, plan_number, lot_count, property_type,
-			    built_surface, room_count, land_surface, street_type
-			) FROM STDIN
-			""";
-
-	private final TransactionRepository transactionRepository;
 	private final DataSource dataSource;
+	private final JdbcTemplate jdbcTemplate;
 
+	/**
+	 * Drop any leftover shadow table from a previous failed run, then create a
+	 * fresh empty {@code transactions_<year>_new} matching the parent's column
+	 * layout. UNLOGGED for fast COPY ingest.
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public void clearAll() {
-		final var existing = transactionRepository.count();
-		if (existing > 0) {
-			log.info("Clearing {} existing transactions before re-import...", existing);
-			transactionRepository.deleteAllInBatch();
-		}
+	public void prepareShadow(int year) {
+		final var shadow = shadowName(year);
+		jdbcTemplate.execute("DROP TABLE IF EXISTS " + shadow);
+		// LIKE INCLUDING DEFAULTS gets us the IDENTITY sequence link; we deliberately
+		// exclude indexes/constraints so the COPY runs on a bare heap.
+		jdbcTemplate.execute("CREATE UNLOGGED TABLE " + shadow + " (LIKE transactions INCLUDING DEFAULTS)");
+		log.info("Prepared shadow partition {} (UNLOGGED)", shadow);
 	}
 
+	/**
+	 * Stream a batch into the shadow partition for {@code year} via a single COPY
+	 * FROM STDIN. {@link PGCopyOutputStream} pushes rows directly to the server
+	 * with no StringBuilder/StringReader double-materialization.
+	 */
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public void saveBatch(List<RealEstateTransaction> batch) {
+	public void saveBatch(int year, List<RealEstateTransaction> batch) {
 		if (batch.isEmpty()) {
 			return;
 		}
+		final var sql = """
+				COPY %s (
+				    mutation_date, mutation_nature, property_value, street_number, postal_code,
+				    city_insee_code, section, plan_number, lot_count, property_type,
+				    built_surface, room_count, land_surface, street_type
+				) FROM STDIN
+				""".formatted(shadowName(year));
 		final Connection conn = DataSourceUtils.getConnection(dataSource);
 		try {
 			final var copyManager = new CopyManager(conn.unwrap(BaseConnection.class));
-			final var payload = new StringBuilder(batch.size() * 256);
-			for (var tx : batch) {
-				appendRow(payload, tx);
-			}
-			try (var reader = new StringReader(payload.toString())) {
-				copyManager.copyIn(COPY_SQL, reader);
+			try (OutputStream copyOut = new PGCopyOutputStream(copyManager.copyIn(sql));
+					Writer w = new OutputStreamWriter(copyOut, StandardCharsets.UTF_8)) {
+				for (var tx : batch) {
+					appendRow(w, tx);
+				}
 			}
 		} catch (SQLException | IOException e) {
-			log.warn("COPY FROM STDIN failed, falling back to JPA saveAll: {}", e.getMessage());
-			transactionRepository.saveAll(batch);
+			throw new IllegalStateException(
+					"COPY FROM STDIN failed for DVF batch (year=" + year + ", size=" + batch.size() + ")", e);
 		} finally {
 			DataSourceUtils.releaseConnection(conn, dataSource);
 		}
 	}
 
-	private void appendRow(StringBuilder sb, RealEstateTransaction tx) {
-		appendField(sb, tx.getMutationDate());
-		sb.append('\t');
-		appendField(sb, tx.getMutationNature());
-		sb.append('\t');
-		appendField(sb, tx.getPropertyValue());
-		sb.append('\t');
-		appendField(sb, tx.getStreetNumber());
-		sb.append('\t');
-		appendField(sb, tx.getPostalCode());
-		sb.append('\t');
-		appendField(sb, tx.getCity() != null ? tx.getCity().getInseeCode() : null);
-		sb.append('\t');
-		appendField(sb, tx.getSection());
-		sb.append('\t');
-		appendField(sb, tx.getPlanNumber());
-		sb.append('\t');
-		appendField(sb, tx.getLotCount());
-		sb.append('\t');
-		appendField(sb, tx.getPropertyType() != null ? tx.getPropertyType().name() : null);
-		sb.append('\t');
-		appendField(sb, tx.getBuiltSurface());
-		sb.append('\t');
-		appendField(sb, tx.getRoomCount());
-		sb.append('\t');
-		appendField(sb, tx.getLandSurface());
-		sb.append('\t');
-		appendField(sb, tx.getStreetType());
-		sb.append('\n');
+	/**
+	 * Promote the shadow to LOGGED, build the indexes Postgres expects on a
+	 * partition (mirroring the parent's), then atomically detach the current year
+	 * partition and attach the shadow in its place. Old partition is dropped at the
+	 * end. Whole sequence is one transaction → zero-downtime swap from the API's
+	 * perspective.
+	 */
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public void swapPartition(int year) {
+		final var shadow = shadowName(year);
+		final var current = partitionName(year);
+		final var lower = year + "-01-01";
+		final var upper = (year + 1) + "-01-01";
+
+		// Bring the shadow into the durable side: WAL kicks in here so the
+		// post-swap state is crash-safe.
+		jdbcTemplate.execute("ALTER TABLE " + shadow + " SET LOGGED");
+
+		// Detach the current partition so the shadow can take over its range.
+		// CONCURRENTLY would be ideal but it can't be used inside a transaction;
+		// we accept the brief AccessExclusiveLock — the swap is sub-second.
+		jdbcTemplate.execute("ALTER TABLE transactions DETACH PARTITION " + current);
+
+		jdbcTemplate.execute("ALTER TABLE transactions ATTACH PARTITION " + shadow + " FOR VALUES FROM ('" + lower
+				+ "') TO ('" + upper + "')");
+
+		// Final house-keeping: rename the shadow to the canonical name and drop
+		// the now-orphaned old partition.
+		jdbcTemplate.execute("DROP TABLE " + current);
+		jdbcTemplate.execute("ALTER TABLE " + shadow + " RENAME TO " + current);
+
+		log.info("Swapped partition for year {} (old dropped, new attached as {})", year, current);
 	}
 
-	private void appendField(StringBuilder sb, Object value) {
+	private static String shadowName(int year) {
+		return "transactions_" + year + "_new";
+	}
+
+	private static String partitionName(int year) {
+		return "transactions_" + year;
+	}
+
+	private void appendRow(Writer w, RealEstateTransaction tx) throws IOException {
+		appendField(w, tx.getMutationDate());
+		w.write('\t');
+		appendField(w, tx.getMutationNature());
+		w.write('\t');
+		appendField(w, tx.getPropertyValue());
+		w.write('\t');
+		appendField(w, tx.getStreetNumber());
+		w.write('\t');
+		appendField(w, tx.getPostalCode());
+		w.write('\t');
+		appendField(w, tx.getCity() != null ? tx.getCity().getInseeCode() : null);
+		w.write('\t');
+		appendField(w, tx.getSection());
+		w.write('\t');
+		appendField(w, tx.getPlanNumber());
+		w.write('\t');
+		appendField(w, tx.getLotCount());
+		w.write('\t');
+		appendField(w, tx.getPropertyType() != null ? tx.getPropertyType().name() : null);
+		w.write('\t');
+		appendField(w, tx.getBuiltSurface());
+		w.write('\t');
+		appendField(w, tx.getRoomCount());
+		w.write('\t');
+		appendField(w, tx.getLandSurface());
+		w.write('\t');
+		appendField(w, tx.getStreetType());
+		w.write('\n');
+	}
+
+	private void appendField(Writer w, Object value) throws IOException {
 		if (value == null) {
-			sb.append("\\N");
+			w.write("\\N");
 			return;
 		}
 		final var s = value.toString();
 		for (int i = 0; i < s.length(); i++) {
 			final char c = s.charAt(i);
 			switch (c) {
-				case '\\' -> sb.append("\\\\");
-				case '\t' -> sb.append("\\t");
-				case '\n' -> sb.append("\\n");
-				case '\r' -> sb.append("\\r");
-				default -> sb.append(c);
+				case '\\' -> w.write("\\\\");
+				case '\t' -> w.write("\\t");
+				case '\n' -> w.write("\\n");
+				case '\r' -> w.write("\\r");
+				default -> w.write(c);
 			}
 		}
 	}

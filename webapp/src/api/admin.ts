@@ -38,8 +38,17 @@ export async function fetchJobsStatus(): Promise<JobsStatus> {
   return res.json();
 }
 
-export async function triggerImport(slug: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/imports/${slug}`, {
+export async function triggerImport(
+  slug: string,
+  params: Record<string, string | number> = {},
+): Promise<void> {
+  const search = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    search.set(k, String(v));
+  }
+  const qs = search.toString();
+  const url = `${BASE_URL}/imports/${slug}${qs ? `?${qs}` : ""}`;
+  const res = await fetch(url, {
     method: "POST",
     credentials: "include",
   });
@@ -55,5 +64,42 @@ export class JobAlreadyRunningError extends Error {
   constructor(public readonly slug: string) {
     super(`Job '${slug}' is already running`);
     this.name = "JobAlreadyRunningError";
+  }
+}
+
+export type CacheDef = {
+  name: string;
+  label: string;
+  description: string;
+};
+
+export const CACHES: CacheDef[] = [
+  { name: "geo", label: "GeoJSON", description: "Polygones régions/départements (TTL 24h)" },
+  {
+    name: "refdata",
+    label: "Référentiels",
+    description: "Régions, départements, communes (TTL 12h)",
+  },
+  { name: "stats", label: "Statistiques", description: "Agrégats DVF/DPE (TTL 30 min)" },
+  { name: "reviews", label: "Avis", description: "Word clouds et sentiments (TTL 15 min)" },
+];
+
+export async function evictCache(name: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/caches/${name}/evict`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to evict cache '${name}': ${res.status} ${res.statusText}`);
+  }
+}
+
+export async function evictAllCaches(): Promise<void> {
+  const res = await fetch(`${BASE_URL}/evict-all-caches`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to evict all caches: ${res.status} ${res.statusText}`);
   }
 }

@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -21,7 +20,12 @@ public class ReviewScraperService {
 	private final ReviewDataGenerator reviewDataGenerator;
 	private final SentimentAnalysisService sentimentAnalysisService;
 
-	@Transactional
+	// No @Transactional: cities are read once into memory at the start, and
+	// reviewRepository writes go to MongoDB (different store, not bound to
+	// the JPA transaction manager anyway). Wrapping the whole 6h loop in a
+	// JPA transaction kept a Postgres connection idle-in-transaction holding
+	// a RowShareLock on `cities`, which blocked DROP/ALTER on tables with
+	// FKs to cities (e.g. partition swaps during DVF imports).
 	public void importReviews() {
 		final var cities = cityRepository.findAll();
 		log.info("Generating reviews for {} cities", cities.size());

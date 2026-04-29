@@ -122,8 +122,8 @@ public class InseeImportService {
 		final List<City> allCommunes;
 		try {
 			final List<CompletableFuture<List<City>>> futures = existingDepartments.values().stream()
-					.map(department -> CompletableFuture.supplyAsync(
-							() -> fetchAndMapCommunesForDepartment(department, existingCities), executor))
+					.map(department -> CompletableFuture
+							.supplyAsync(() -> fetchAndMapCommunesForDepartment(department, existingCities), executor))
 					.toList();
 			allCommunes = futures.stream().map(CompletableFuture::join).flatMap(List::stream).toList();
 		} finally {
@@ -154,8 +154,7 @@ public class InseeImportService {
 	}
 
 	private List<City> fetchAndMapCommunesForDepartment(Department department, Map<String, City> existingCities) {
-		final var dtos = CollectionUtils
-				.emptyIfNull(inseeApiClient.fetchCommunesForDepartment(department.getCode()));
+		final var dtos = CollectionUtils.emptyIfNull(inseeApiClient.fetchCommunesForDepartment(department.getCode()));
 		log.info("Fetched {} communes for department {}", dtos.size(), department.getCode());
 		final var result = new ArrayList<City>(dtos.size());
 		for (final var dto : dtos) {

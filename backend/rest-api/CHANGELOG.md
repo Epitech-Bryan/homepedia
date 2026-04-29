@@ -5,6 +5,19 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.24.0] - 2026-04-29
+
+### Features
+
+- feat(admin): per-year inline trigger button in DVF partition table
+
+### Bug Fixes
+
+- perf(imports): drop @Transactional from DPE/Health/Indicator services
+- perf(reviews): parallelize generation and bump batch size
+- perf(insee): drop @Transactional + parallelize fetchCommunes calls
+- fix(reviews): drop @Transactional from importReviews to avoid 6h Postgres tx leak
+
 ## [3.23.3] - 2026-04-28
 
 ### Bug Fixes

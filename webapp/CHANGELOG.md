@@ -1,5 +1,22 @@
 # app
 
+## [0.19.0] - 2026-04-29
+
+### Features
+
+- feat(admin): per-year inline trigger button in DVF partition table
+
+### Bug Fixes
+
+- perf(imports): drop @Transactional from DPE/Health/Indicator services
+- perf(reviews): parallelize generation and bump batch size
+- perf(insee): drop @Transactional + parallelize fetchCommunes calls
+- fix(reviews): drop @Transactional from importReviews to avoid 6h Postgres tx leak
+- fix: update dependency com.fasterxml.jackson.core:jackson-databind to v2.21.3
+- fix: update dependency com.fasterxml.jackson.core:jackson-databind to v2.21.3
+- fix(dvf): wire id sequence on shadow table + 409 for job already running
+- fix(dvf): wire id sequence on shadow table + 409 for job already running
+
 ## [0.18.1] - 2026-04-28
 
 ### Bug Fixes

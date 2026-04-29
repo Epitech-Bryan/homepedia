@@ -15,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Imports indicators from a normalized CSV with header
@@ -32,7 +31,10 @@ public class GenericIndicatorImportService {
 
 	private final IndicatorRepository indicatorRepository;
 
-	@Transactional
+	// No @Transactional: each saveAll() opens its own short-lived Spring Data
+	// transaction, which is enough — there's no shared state requiring
+	// atomicity across the whole CSV. Wrapping the parse loop in a tx held
+	// the indicators table idle-in-transaction for the whole import.
 	public int importFromCsv(Path csvPath, IndicatorCategory category) throws IOException {
 		log.info("Starting {} indicator import from {}", category, csvPath);
 

@@ -21,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 
 @Slf4j
@@ -35,7 +34,11 @@ public class DpeImportService {
 
 	private final IndicatorRepository indicatorRepository;
 
-	@Transactional
+	// No @Transactional: this method spends most of its time parsing the CSV
+	// in memory; the actual DB writes are isolated in saveIndicators(), which
+	// relies on Spring Data's per-saveAll() implicit transaction. Keeping the
+	// annotation here would have held a Postgres connection idle-in-transaction
+	// for the whole parse window, blocking DDL on the indicators table.
 	public int importFromCsv(Path csvPath) throws IOException {
 		log.info("Starting DPE import from {}", csvPath);
 
@@ -67,7 +70,9 @@ public class DpeImportService {
 		return saveIndicators(aggregation, totalPerCommune);
 	}
 
-	@Transactional
+	// Same reasoning as importFromCsv: pagination over the ADEME API can run
+	// for tens of minutes; the JPA tx wrapping that whole window would have
+	// blocked the indicators table.
 	public int importFromApi(String baseUrl, RestClient restClient) {
 		log.info("Starting DPE import from API: {}", baseUrl);
 

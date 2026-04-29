@@ -17,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -28,7 +27,9 @@ public class HealthDataImportService {
 
 	private final IndicatorRepository indicatorRepository;
 
-	@Transactional
+	// No @Transactional: aggregation runs in memory; saves use Spring Data's
+	// per-saveAll implicit transaction. Avoids holding the indicators table
+	// idle-in-transaction during CSV parsing.
 	public int importFromCsv(Path csvPath) throws IOException {
 		log.info("Starting health data import from {}", csvPath);
 

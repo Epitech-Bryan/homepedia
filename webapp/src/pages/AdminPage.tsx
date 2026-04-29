@@ -87,11 +87,12 @@ export function AdminPage() {
     [status],
   );
 
-  const onTrigger = async (slug: string) => {
+  const onTrigger = async (slug: string, paramsOverride?: Record<string, string | number>) => {
     setPendingTrigger(slug);
     setErrors((prev) => ({ ...prev, [slug]: null }));
     try {
-      const params: Record<string, string | number> = slug === "dvf" ? { year: dvfYear } : {};
+      const params: Record<string, string | number> =
+        paramsOverride ?? (slug === "dvf" ? { year: dvfYear } : {});
       await triggerImport(slug, params);
       qc.invalidateQueries({ queryKey: ["admin", "jobsStatus"] });
     } catch (err) {
@@ -273,20 +274,37 @@ export function AdminPage() {
                           <tr>
                             <th className="px-2 py-1 text-left font-medium">Année</th>
                             <th className="px-2 py-1 text-right font-medium">Lignes (approx.)</th>
+                            <th className="px-2 py-1 w-px font-medium" aria-label="Action" />
                           </tr>
                         </thead>
                         <tbody>
-                          {partitionStats.map((p) => (
-                            <tr key={p.year} className="border-t border-border/50">
-                              <td className="px-2 py-1 font-medium">{p.year}</td>
-                              <td
-                                className="px-2 py-1 text-right tabular-nums text-muted-foreground"
-                                title={`${p.approxCount.toLocaleString("fr-FR")} lignes (estimation planner)`}
-                              >
-                                {p.approxCount === 0 ? "—" : formatCount(p.approxCount)}
-                              </td>
-                            </tr>
-                          ))}
+                          {partitionStats.map((p) => {
+                            const rowDisabled = disabled || bulkProgress !== null;
+                            return (
+                              <tr key={p.year} className="border-t border-border/50">
+                                <td className="px-2 py-1 font-medium">{p.year}</td>
+                                <td
+                                  className="px-2 py-1 text-right tabular-nums text-muted-foreground"
+                                  title={`${p.approxCount.toLocaleString("fr-FR")} lignes (estimation planner)`}
+                                >
+                                  {p.approxCount === 0 ? "—" : formatCount(p.approxCount)}
+                                </td>
+                                <td className="px-1 py-0.5 text-right">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => onTrigger("dvf", { year: p.year })}
+                                    disabled={rowDisabled}
+                                    aria-label={`Importer DVF ${p.year}`}
+                                    title={`Importer DVF ${p.year}`}
+                                  >
+                                    <Play className="h-3 w-3" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

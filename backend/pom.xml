@@ -7,7 +7,7 @@
 
     <groupId>com.homepedia</groupId>
     <artifactId>homepedia-backend</artifactId>
-    <version>3.25.0</version>
+    <version>3.26.0</version>
     <packaging>pom</packaging>
 
     <parent>

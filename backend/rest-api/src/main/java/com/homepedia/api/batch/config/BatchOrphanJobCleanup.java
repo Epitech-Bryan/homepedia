@@ -9,10 +9,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * Marks any {@code STARTED} Spring Batch job execution as {@code ABANDONED}
- * at application startup. After a hard pod kill (OOM, network blip, deploy)
- * the JVM cannot mark its own jobs as failed — they remain forever STARTED
- * in {@code batch_job_execution} and prevent the same job from being re-run
+ * Marks any {@code STARTED} Spring Batch job execution as {@code ABANDONED} at
+ * application startup. After a hard pod kill (OOM, network blip, deploy) the
+ * JVM cannot mark its own jobs as failed — they remain forever STARTED in
+ * {@code batch_job_execution} and prevent the same job from being re-run
  * (Spring Batch refuses to launch a new instance while another is "running").
  */
 @Slf4j

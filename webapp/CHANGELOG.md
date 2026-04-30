@@ -1,5 +1,11 @@
 # app
 
+## [0.24.1] - 2026-04-30
+
+### Bug Fixes
+
+- perf(map): debounce bounds + canvas renderer + bbox cache + stable layerKey
+
 ## [0.24.0] - 2026-04-30
 
 ### Features

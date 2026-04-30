@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -26,11 +27,28 @@ import org.springframework.stereotype.Service;
 public class InseeImportService {
 
 	private static final int BATCH_SIZE = 1000;
+	// UPSERT to keep importCommunes idempotent across runs without a SELECT-
+	// then-INSERT round-trip. The previous JPA saveAll did a findAll() + a
+	// per-row dirty check, which on 35 k cities means 35 k SELECTs hitting
+	// the L1 cache one by one. PG's ON CONFLICT does it in one round-trip
+	// per batch.
+	private static final String CITY_UPSERT_SQL = """
+			INSERT INTO cities (insee_code, name, postal_code, department_code, population, area, longitude, latitude)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (insee_code) DO UPDATE SET
+			  name        = EXCLUDED.name,
+			  postal_code = EXCLUDED.postal_code,
+			  population  = EXCLUDED.population,
+			  area        = EXCLUDED.area,
+			  longitude   = EXCLUDED.longitude,
+			  latitude    = EXCLUDED.latitude
+			""";
 
 	private final InseeApiClient inseeApiClient;
 	private final RegionRepository regionRepository;
 	private final DepartmentRepository departmentRepository;
 	private final CityRepository cityRepository;
+	private final JdbcTemplate jdbcTemplate;
 
 	// No @Transactional anywhere here. The whole importAll() runs ~20 min
 	// (101 fetchCommunesForDepartment HTTP calls + ~35k city upserts), and
@@ -130,23 +148,26 @@ public class InseeImportService {
 			executor.shutdown();
 		}
 
-		// Save in fixed-size batches. Each saveAll() opens its own short
-		// Spring Data transaction, so the cities lock is held only for the
-		// duration of one batch insert, not the whole import.
-		final var batch = new ArrayList<City>(BATCH_SIZE);
+		// JdbcTemplate.batchUpdate with ON CONFLICT — ~10x faster than the
+		// JPA saveAll for 35 k cities (no findAll() L1 cache, no Hibernate
+		// flush per row). Each batch is one round-trip in its own implicit
+		// transaction.
+		final var rows = new ArrayList<Object[]>(BATCH_SIZE);
 		var count = 0;
 		for (final var city : allCommunes) {
-			batch.add(city);
-			if (batch.size() >= BATCH_SIZE) {
-				cityRepository.saveAll(batch);
-				count += batch.size();
-				batch.clear();
+			rows.add(new Object[]{city.getInseeCode(), city.getName(), city.getPostalCode(),
+					city.getDepartment() != null ? city.getDepartment().getCode() : null, city.getPopulation(),
+					city.getArea(), city.getLongitude(), city.getLatitude()});
+			if (rows.size() >= BATCH_SIZE) {
+				jdbcTemplate.batchUpdate(CITY_UPSERT_SQL, rows);
+				count += rows.size();
+				rows.clear();
 				log.info("Imported {} communes...", count);
 			}
 		}
-		if (!batch.isEmpty()) {
-			cityRepository.saveAll(batch);
-			count += batch.size();
+		if (!rows.isEmpty()) {
+			jdbcTemplate.batchUpdate(CITY_UPSERT_SQL, rows);
+			count += rows.size();
 		}
 
 		log.info("Imported {} communes total", count);

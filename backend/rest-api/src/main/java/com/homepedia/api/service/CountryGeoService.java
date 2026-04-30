@@ -86,6 +86,29 @@ public class CountryGeoService {
 		}
 	}
 
+	/**
+	 * Admin-1 boundaries (states/provinces/regions) for ~38 EU + G20 countries,
+	 * sourced from GADM 4.1 and Douglas-Peucker-simplified to ~5 km tolerance
+	 * (plenty for the zoom 5-7 browse view). 6 MB on disk → ~1.5 MB on the wire
+	 * after Brotli, served once and cached forever in the browser.
+	 *
+	 * <p>
+	 * Belgium and France are intentionally excluded from this dataset: Belgium has
+	 * its own bundled file with Statbel population; France comes from
+	 * geo.api.gouv.fr at higher resolution.
+	 */
+	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'world-admin1'")
+	public String getWorldAdmin1GeoJson() {
+		try {
+			final var resource = new ClassPathResource("data/world-admin1.geojson");
+			try (var in = resource.getInputStream()) {
+				return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException("World admin-1 GeoJSON not available", e);
+		}
+	}
+
 	private synchronized void loadAndTrim() throws IOException {
 		if (trimmedGeoJsonCache != null) {
 			return;

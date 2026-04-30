@@ -42,6 +42,12 @@ public class GeoController {
 		return ResponseEntity.ok(countryGeoService.getBelgiumProvincesGeoJson());
 	}
 
+	@Operation(summary = "World admin-1 (states/provinces/regions)", description = "Simplified GADM 4.1 boundaries (~5 km tolerance) for ~38 EU + G20 countries' first-level subdivisions. Excludes France (covered by /geo/regions) and Belgium (covered by /geo/belgium/provinces). Used by the map at zoom 5-7 to render foreign countries' admin-1 alongside French regions.")
+	@GetMapping(value = "/world/admin1", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<String> getWorldAdmin1() {
+		return ResponseEntity.ok(countryGeoService.getWorldAdmin1GeoJson());
+	}
+
 	@Operation(summary = "Region boundaries", description = "GeoJSON FeatureCollection of all French regions")
 	@GetMapping(GEO_REGIONS)
 	public ResponseEntity<FeatureCollection> getRegionBoundaries() {

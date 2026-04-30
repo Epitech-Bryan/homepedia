@@ -422,6 +422,10 @@ export function PersistentMap() {
     <div className="relative h-full w-full">
       <FranceMap
         geojson={geojson}
+        // Country outlines stay rendered as a contextual backdrop the
+        // moment we leave the world view. A user zooming on Bordeaux still
+        // sees the rest of Europe sketched out behind the French stack.
+        baseGeojson={!showWorld ? geoCountries : null}
         onFeatureClick={onFeatureClick}
         markers={markers}
         onMarkerClick={onMarkerClick}

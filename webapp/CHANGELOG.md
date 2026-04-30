@@ -1,5 +1,11 @@
 # app
 
+## [0.27.1] - 2026-04-30
+
+### Bug Fixes
+
+- fix(map): hide foreground polygons in pure heat mode
+
 ## [0.27.0] - 2026-04-30
 
 ### Features

@@ -461,12 +461,18 @@ function FranceMapComponent({
     [onFeatureClick, metricByCode, metricLabel, baseStyle, colorForCode],
   );
 
+  // layerKey forces LeafletGeoJSON to remount when the underlying data or the
+  // styling axis changes. The previous version stringified geojson on every
+  // render, which was both slow AND noisy: any feature add/remove changed
+  // the truncated prefix, remounting the layer. Identity (geojson reference)
+  // + feature count is enough — TanStack Query keeps the same reference for
+  // cached data, so panning across already-loaded depts no longer remounts.
   const layerKey = useMemo(() => {
-    const sample = geojson ? JSON.stringify(geojson).slice(0, 80) : "";
+    const featureCount = geojson?.features.length ?? 0;
     const metricKey = metricByCode
       ? Object.keys(metricByCode).length + ":" + JSON.stringify(choroplethRange)
       : "no-metric";
-    return `${sample}|${metricKey}|${activeFeatureCode ?? ""}`;
+    return `${featureCount}|${metricKey}|${activeFeatureCode ?? ""}`;
   }, [geojson, metricByCode, choroplethRange, activeFeatureCode]);
 
   return (
@@ -491,6 +497,12 @@ function FranceMapComponent({
                 zoom={FRANCE_ZOOM}
                 scrollWheelZoom={true}
                 zoomControl={false}
+                // preferCanvas: render polygons + circles via Canvas instead
+                // of SVG. At city zoom we display thousands of commune
+                // polygons; SVG creates one DOM node per shape and the
+                // browser layout cost dominates on every pan. Canvas drops
+                // pan latency by ~3-5x.
+                preferCanvas={true}
                 style={{ width: "100%", height: "100%", background: "#f4f1ec" }}
               >
                 <TileLayer

@@ -1,5 +1,11 @@
 # app
 
+## [0.29.0] - 2026-04-30
+
+### Features
+
+- feat(map): world admin-1 boundaries for ~38 EU + G20 countries
+
 ## [0.28.0] - 2026-04-30
 
 ### Features

@@ -9,6 +9,11 @@ COPY webapp/ webapp/
 RUN pnpm --filter webapp build
 
 FROM docker.io/library/nginx:alpine
+# OCI source label so GHCR auto-links this package to the source repo
+# (grants Actions workflows in this repo write:packages by default).
+LABEL org.opencontainers.image.source=https://github.com/Epitech-Bryan/homepedia
+LABEL org.opencontainers.image.description="HomePedia webapp — Vite/React frontend served by nginx"
+LABEL org.opencontainers.image.licenses=MIT
 COPY --from=build /app/webapp/dist /usr/share/nginx/html
 COPY webapp/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

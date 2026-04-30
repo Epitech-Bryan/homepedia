@@ -37,6 +37,7 @@ export const api = {
       fetchJson<TransactionStats>("/transactions/stats", params),
   },
   geo: {
+    countries: () => fetchJson<GeoJSON.FeatureCollection>("/geo/countries"),
     regions: () => fetchJson<GeoJSON.FeatureCollection>("/geo/regions"),
     departments: (regionCode?: string) =>
       fetchJson<GeoJSON.FeatureCollection>(

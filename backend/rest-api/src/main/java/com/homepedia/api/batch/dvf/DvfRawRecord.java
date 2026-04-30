@@ -3,10 +3,10 @@ package com.homepedia.api.batch.dvf;
 import java.math.BigDecimal;
 import org.apache.commons.lang3.StringUtils;
 
-public record DvfRawRecord(String dateMutation, String natureMutation, String valeurFonciere, String noVoie,
-		String codeVoie, String codePostal, String commune, String codeDepartement, String codeCommune, String section,
-		String noPlan, String nombreDeLots, String typeLocal, String surfaceReelleBati, String nombrePiecesPrincipales,
-		String surfaceTerrain, String typeVoie) {
+public record DvfRawRecord(String idMutation, String dateMutation, String natureMutation, String valeurFonciere,
+		String noVoie, String codeVoie, String codePostal, String commune, String codeDepartement, String codeCommune,
+		String section, String noPlan, String nombreDeLots, String typeLocal, String surfaceReelleBati,
+		String nombrePiecesPrincipales, String surfaceTerrain, String typeVoie) {
 
 	public BigDecimal parsedValeurFonciere() {
 		if (StringUtils.isBlank(valeurFonciere)) {

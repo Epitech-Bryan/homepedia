@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-add-transactions-mutation-id
+      author: homepedia
+      comment: >
+        DVF source publishes one CSV row per "lot" (parking + flat + cellar =
+        3 rows, all sharing the same mutation_id and the same valeur_fonciere
+        which is the TOTAL price of the mutation). Without storing
+        mutation_id, the import naively inserts each lot as its own row, so
+        a mutation with N lots is counted N times in COUNT(*) / AVG aggregations
+        — observed 73 rows for one 250 k€ sale, 55 rows for one 8 M€ sale.
+
+        Storing mutation_id lets the stats queries deduplicate by GROUPing on
+        it before aggregating, restoring "1 mutation = 1 transaction".
+
+        ALTER TABLE on a partitioned parent propagates ADD COLUMN to existing
+        partitions; CREATE INDEX on the parent (Postgres 11+) propagates the
+        per-partition indexes automatically. Existing rows get mutation_id =
+        NULL — the stats queries filter NULL out, so historic partitions show
+        as empty until re-imported. New imports populate it.
+      changes:
+        - addColumn:
+            tableName: transactions
+            columns:
+              - column:
+                  name: mutation_id
+                  type: VARCHAR(20)
+        - createIndex:
+            tableName: transactions
+            indexName: idx_transaction_mutation_id
+            columns:
+              - column:
+                  name: mutation_id
+      rollback:
+        - dropIndex:
+            tableName: transactions
+            indexName: idx_transaction_mutation_id
+        - dropColumn:
+            tableName: transactions
+            columnName: mutation_id

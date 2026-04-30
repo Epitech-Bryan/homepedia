@@ -73,7 +73,7 @@ public class DvfBatchPersister {
 		}
 		final var sql = """
 				COPY %s (
-				    mutation_date, mutation_nature, property_value, street_number, postal_code,
+				    mutation_id, mutation_date, mutation_nature, property_value, street_number, postal_code,
 				    city_insee_code, section, plan_number, lot_count, property_type,
 				    built_surface, room_count, land_surface, street_type
 				) FROM STDIN
@@ -157,6 +157,8 @@ public class DvfBatchPersister {
 	}
 
 	private void appendRow(Writer w, RealEstateTransaction tx) throws IOException {
+		appendField(w, tx.getMutationId());
+		w.write('\t');
 		appendField(w, tx.getMutationDate());
 		w.write('\t');
 		appendField(w, tx.getMutationNature());

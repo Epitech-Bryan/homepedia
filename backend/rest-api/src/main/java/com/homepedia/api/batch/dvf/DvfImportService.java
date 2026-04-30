@@ -156,12 +156,12 @@ public class DvfImportService {
 				noPlan = idParcelle.substring(idParcelle.length() - 4);
 			}
 
-			final var raw = new DvfRawRecord(clean(fields[1]), clean(fields[3]), clean(fields[4]), clean(fields[5]),
-					clean(fields[8]), clean(fields[9]), clean(fields[11]), clean(fields[12]), clean(fields[10]),
-					section, noPlan, clean(fields[28]), clean(fields[30]), clean(fields[31]), clean(fields[32]),
-					clean(fields[37]), null);
+			final var raw = new DvfRawRecord(clean(fields[0]), clean(fields[1]), clean(fields[3]), clean(fields[4]),
+					clean(fields[5]), clean(fields[8]), clean(fields[9]), clean(fields[11]), clean(fields[12]),
+					clean(fields[10]), section, noPlan, clean(fields[28]), clean(fields[30]), clean(fields[31]),
+					clean(fields[32]), clean(fields[37]), null);
 
-			final var transaction = RealEstateTransaction.builder()
+			final var transaction = RealEstateTransaction.builder().mutationId(raw.idMutation())
 					.mutationDate(LocalDate.parse(raw.dateMutation(), DVF_DATE_FORMAT))
 					.mutationNature(raw.natureMutation()).propertyValue(raw.parsedValeurFonciere())
 					.streetNumber(raw.noVoie()).postalCode(raw.codePostal()).section(raw.section())

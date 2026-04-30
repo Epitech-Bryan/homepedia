@@ -36,6 +36,15 @@ public class RealEstateTransaction {
 	@GeneratedValue(strategy = IDENTITY)
 	private Long id;
 
+	/**
+	 * DVF mutation identifier (e.g. "2024-1234567"). One mutation = one real sale;
+	 * the source CSV publishes one row per "lot" of that mutation, all sharing the
+	 * same mutation_id and the same total price. Stats aggregations group on this
+	 * column to count one mutation once.
+	 */
+	@Column(name = "mutation_id")
+	private String mutationId;
+
 	private LocalDate mutationDate;
 
 	private String mutationNature;

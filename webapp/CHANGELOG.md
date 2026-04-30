@@ -1,5 +1,15 @@
 # app
 
+## [0.23.0] - 2026-04-30
+
+### Features
+
+- feat(admin): add per-year stats refresh button
+
+### Bug Fixes
+
+- fix(dvf): use plain ANALYZE instead of VACUUM ANALYZE after swap
+
 ## [0.22.1] - 2026-04-30
 
 ### Bug Fixes

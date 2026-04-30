@@ -1,5 +1,11 @@
 # app
 
+## [0.25.1] - 2026-04-30
+
+### Bug Fixes
+
+- fix(geo): commit Natural Earth countries.geojson + gitignore exception
+
 ## [0.25.0] - 2026-04-30
 
 ### Features

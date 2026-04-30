@@ -132,8 +132,7 @@ public class AdminJobsService {
 			}
 		}
 		final BatchStatus state = running ? BatchStatus.STARTED : BatchStatus.UNKNOWN;
-		return new JobStatusView(running ? "RUNNING" : "IDLE", lastRunAt, lastStatus, state.toString(),
-				lastDurationMs);
+		return new JobStatusView(running ? "RUNNING" : "IDLE", lastRunAt, lastStatus, state.toString(), lastDurationMs);
 	}
 
 	private static Instant toInstant(LocalDateTime ldt) {

@@ -14,10 +14,11 @@ import org.springframework.stereotype.Service;
  * planner stats are good enough for a "is the year populated?" panel.
  *
  * <p>
- * Each row is also enriched with the most recent successful {@code dvfImportJob}
- * run for that year (from Spring Batch metadata) so the admin can see how long
- * the last import took. Joins {@code batch_job_execution} with
- * {@code batch_job_execution_params} where {@code parameter_name='year'}.
+ * Each row is also enriched with the most recent successful
+ * {@code dvfImportJob} run for that year (from Spring Batch metadata) so the
+ * admin can see how long the last import took. Joins
+ * {@code batch_job_execution} with {@code batch_job_execution_params} where
+ * {@code parameter_name='year'}.
  */
 @Service
 @RequiredArgsConstructor

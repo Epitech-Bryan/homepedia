@@ -3,6 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Theme color drives the mobile address-bar tint and matches the
+         neutral surface used at the top of the layout. -->
+    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- /api is same-origin in prod (Traefik routes /api to the rest-api
+         service) — preconnect warms the TCP+TLS handshake so the first
+         /stats / /geo call doesn't pay the round-trip. -->
+    <link rel="preconnect" href="/api" crossorigin />
+
+    <!-- Leaflet tiles come from OpenStreetMap. dns-prefetch is cheap
+         and shaves ~50-100 ms off the first map render on a cold
+         browser. -->
+    <link rel="dns-prefetch" href="https://a.tile.openstreetmap.org" />
+    <link rel="dns-prefetch" href="https://b.tile.openstreetmap.org" />
+    <link rel="dns-prefetch" href="https://c.tile.openstreetmap.org" />
+
     <title>HomePedia</title>
   </head>
   <body>

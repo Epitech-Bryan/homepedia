@@ -13,3 +13,5 @@ databaseChangeLog:
       file: db/changelog/changes/006-transactions-fillfactor.yaml
   - include:
       file: db/changelog/changes/007-add-mutation-id.yaml
+  - include:
+      file: db/changelog/changes/008-city-dvf-yearly-stats.yaml

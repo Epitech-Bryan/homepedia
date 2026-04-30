@@ -1,0 +1,72 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-city-dvf-yearly-stats
+      author: homepedia
+      comment: >
+        Pre-aggregated DVF stats per (commune, year). Replaces the heavy
+        mutation_dedup CTE on the 20M-row transactions table that ran on
+        every /stats/* request: now the API does a 36 k-row SUM and the
+        deduplication / filtering / weighted-mean computation happens once
+        per import (after each swapPartition).
+
+        Stored values are partial sums so region/department/city queries
+        compose the same way: SUM(transaction_count), SUM(total_price),
+        SUM(total_residential_surface) — averages and price/m² are
+        recomputed at query time. This keeps "weighted mean across all
+        years" exact even when only some years have been imported.
+
+        total_residential_surface NULL means the commune had transactions
+        for that year but none with valid residential surface; we still
+        keep the row so transaction_count is accurate.
+      changes:
+        - createTable:
+            tableName: city_dvf_yearly_stats
+            columns:
+              - column:
+                  name: insee_code
+                  type: VARCHAR(5)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: year
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_count
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_price
+                  type: NUMERIC(20,2)
+              - column:
+                  name: total_residential_surface
+                  type: DOUBLE PRECISION
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: NOW()
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: city_dvf_yearly_stats
+            columnNames: insee_code, year
+            constraintName: pk_city_dvf_yearly_stats
+        - addForeignKeyConstraint:
+            baseTableName: city_dvf_yearly_stats
+            baseColumnNames: insee_code
+            referencedTableName: cities
+            referencedColumnNames: insee_code
+            constraintName: fk_city_dvf_yearly_stats_city
+            onDelete: CASCADE
+        - createIndex:
+            tableName: city_dvf_yearly_stats
+            indexName: idx_city_dvf_yearly_stats_year
+            columns:
+              - column:
+                  name: year
+      rollback:
+        - dropTable:
+            tableName: city_dvf_yearly_stats

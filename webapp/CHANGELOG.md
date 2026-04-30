@@ -1,5 +1,11 @@
 # app
 
+## [0.27.0] - 2026-04-30
+
+### Features
+
+- feat(map): always show France data, world borders are just backdrop
+
 ## [0.26.0] - 2026-04-30
 
 ### Features

@@ -1,5 +1,11 @@
 # app
 
+## [0.26.0] - 2026-04-30
+
+### Features
+
+- feat(map): keep world country outlines visible at all zooms + horizontal loop
+
 ## [0.25.1] - 2026-04-30
 
 ### Bug Fixes

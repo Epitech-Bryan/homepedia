@@ -1,5 +1,6 @@
 package com.homepedia.api.batch.config;
 
+import com.homepedia.api.admin.AdminJobsService;
 import com.homepedia.api.events.BatchEvent;
 import com.homepedia.api.events.BatchEventPublisher;
 import com.homepedia.api.service.CacheInvalidationService;
@@ -7,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,6 +23,7 @@ public class BatchScheduler {
 	private static final String ZONE = "${homepedia.scheduler.zone:Europe/Paris}";
 
 	private final JobLauncher jobLauncher;
+	private final JobExplorer jobExplorer;
 	private final BatchEventPublisher eventPublisher;
 	private final CacheInvalidationService cacheInvalidation;
 	private final Job inseeImportJob;
@@ -86,6 +89,12 @@ public class BatchScheduler {
 
 	private void runJob(Job job) {
 		final var name = job.getName();
+		final var alreadyRunning = findRunningImportJobName();
+		if (alreadyRunning != null) {
+			log.warn("Skipping scheduled launch of {}: {} is already running", name, alreadyRunning);
+			eventPublisher.publish(BatchEvent.failed(name, "skipped: " + alreadyRunning + " already running"));
+			return;
+		}
 		final var start = System.currentTimeMillis();
 		eventPublisher.publish(BatchEvent.starting(name, "Scheduled launch"));
 		try {
@@ -102,5 +111,14 @@ public class BatchScheduler {
 			log.error("Scheduled job {} failed after {} ms: {}", name, elapsed, e.getMessage(), e);
 			eventPublisher.publish(BatchEvent.failed(name, e.getMessage()));
 		}
+	}
+
+	private String findRunningImportJobName() {
+		for (var beanName : AdminJobsService.JOB_NAMES.values()) {
+			if (!jobExplorer.findRunningJobExecutions(beanName).isEmpty()) {
+				return beanName;
+			}
+		}
+		return null;
 	}
 }

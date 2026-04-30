@@ -2,7 +2,6 @@ package com.homepedia.api.batch.dvf;
 
 import com.homepedia.api.batch.shared.ParseUtils;
 import com.homepedia.common.city.City;
-import com.homepedia.common.city.CityRepository;
 import com.homepedia.common.transaction.PropertyType;
 import com.homepedia.common.transaction.RealEstateTransaction;
 import java.io.BufferedReader;
@@ -15,7 +14,6 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.zip.ZipEntry;
@@ -46,12 +44,12 @@ public class DvfImportService {
 	private static final int BATCH_SIZE = 50_000;
 
 	private final DvfBatchPersister persister;
-	private final CityRepository cityRepository;
+	private final CityCacheLoader cityCacheLoader;
 
 	public int importFromZip(int year, Path zipPath) throws IOException {
 		log.info("Starting DVF import for year {} from {}", year, zipPath);
 		persister.prepareShadow(year);
-		final var citiesByInsee = loadCityCache();
+		final var citiesByInsee = cityCacheLoader.load();
 		var totalImported = 0;
 
 		try (final var zis = new ZipInputStream(Files.newInputStream(zipPath), StandardCharsets.UTF_8)) {
@@ -73,7 +71,7 @@ public class DvfImportService {
 	public int importFromCsv(int year, Path csvPath) throws IOException {
 		log.info("Starting DVF import for year {} from CSV {}", year, csvPath);
 		persister.prepareShadow(year);
-		final var citiesByInsee = loadCityCache();
+		final var citiesByInsee = cityCacheLoader.load();
 		final int totalImported;
 
 		try (final var reader = new BufferedReader(Files.newBufferedReader(csvPath, StandardCharsets.UTF_8))) {
@@ -89,7 +87,7 @@ public class DvfImportService {
 	public int importFromGzip(int year, Path gzipPath) throws IOException {
 		log.info("Starting DVF import for year {} from gzipped CSV {}", year, gzipPath);
 		persister.prepareShadow(year);
-		final var citiesByInsee = loadCityCache();
+		final var citiesByInsee = cityCacheLoader.load();
 		final int totalImported;
 
 		try (final var gis = new java.util.zip.GZIPInputStream(Files.newInputStream(gzipPath));
@@ -114,7 +112,7 @@ public class DvfImportService {
 	public int importFromStream(int year, InputStream raw, boolean gzip) throws IOException {
 		log.info("Starting DVF import for year {} from streaming source (gzip={})", year, gzip);
 		persister.prepareShadow(year);
-		final var citiesByInsee = loadCityCache();
+		final var citiesByInsee = cityCacheLoader.load();
 		final int totalImported;
 
 		try (final var decoded = gzip ? new java.util.zip.GZIPInputStream(raw) : raw;
@@ -126,20 +124,6 @@ public class DvfImportService {
 		persister.analyzePartition(year);
 		log.info("DVF import for year {} complete: {} transactions imported", year, totalImported);
 		return totalImported;
-	}
-
-	/**
-	 * Build an in-memory {@code inseeCode -> City} map once per import run. Avoids
-	 * the previous N+1 pattern (~3M findByInseeCode JPA calls per full DVF import).
-	 */
-	private Map<String, City> loadCityCache() {
-		final var all = cityRepository.findAll();
-		final var map = new HashMap<String, City>(Math.max(16, (int) (all.size() / 0.75f) + 1));
-		for (var c : all) {
-			map.put(c.getInseeCode(), c);
-		}
-		log.info("Loaded {} cities into in-memory lookup cache", map.size());
-		return map;
 	}
 
 	private int importFromReader(int year, BufferedReader reader, Map<String, City> citiesByInsee) throws IOException {

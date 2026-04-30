@@ -30,11 +30,22 @@ spring:
         order_updates: true
 
 management:
+  endpoints:
+    web:
+      exposure:
+        # threaddump + heapdump help diagnose OOMs / hangs in prod without
+        # needing kubectl exec + kill -3 on the JVM. Auth-gated upstream
+        # via Spring Security. Prometheus left in for future scrape.
+        include: health,info,metrics,threaddump,heapdump,prometheus
   endpoint:
     health:
       show-details: always
       probes:
         enabled: true
+    heapdump:
+      access: read_only
+    threaddump:
+      access: read_only
   health:
     livenessstate:
       enabled: true

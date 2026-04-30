@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-brin-on-mutation-date
+      author: homepedia
+      comment: >
+        BRIN index on transactions(mutation_date). DVF data is naturally
+        time-ordered (rows for year N go into transactions_N, COPYed in
+        chronological order), so block-range index entries cluster
+        tightly: a BRIN index for the parent is ~250x smaller than a
+        B-tree (a few KB per partition vs MB) and the planner can skip
+        whole heap blocks outside the requested date range.
+
+        Created on the partitioned parent — Postgres 11+ propagates the
+        index definition to existing partitions and to any partition
+        attached afterwards (the DvfBatchPersister swap will get it for
+        free). pages_per_range left at the default of 128.
+
+        Note: TimescaleDB extension is installed on this cluster but the
+        transactions table stays a native PG-partitioned table because
+        our shadow-partition + atomic-swap import pattern is incompatible
+        with TimescaleDB hypertables (which manage their own chunks).
+      changes:
+        - sql:
+            comment: BRIN index on the partitioned parent
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_transaction_mutation_date_brin
+                ON transactions USING BRIN (mutation_date);
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_transaction_mutation_date_brin;

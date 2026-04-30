@@ -39,6 +39,7 @@ export const api = {
   geo: {
     countries: () => fetchJson<GeoJSON.FeatureCollection>("/geo/countries"),
     belgiumProvinces: () => fetchJson<GeoJSON.FeatureCollection>("/geo/belgium/provinces"),
+    worldAdmin1: () => fetchJson<GeoJSON.FeatureCollection>("/geo/world/admin1"),
     regions: () => fetchJson<GeoJSON.FeatureCollection>("/geo/regions"),
     departments: (regionCode?: string) =>
       fetchJson<GeoJSON.FeatureCollection>(

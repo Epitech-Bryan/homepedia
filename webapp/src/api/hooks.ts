@@ -159,6 +159,18 @@ export function useGeoBelgiumProvinces() {
   });
 }
 
+export function useGeoWorldAdmin1() {
+  return useQuery({
+    queryKey: ["geo", "world", "admin1"],
+    queryFn: () => api.geo.worldAdmin1(),
+    // Static dataset (~38 countries × admin-1) — never changes for the
+    // tab's lifetime. ~1.5 MB on the wire after Brotli, fetched once on
+    // first navigation that hits zoom 5-7.
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
 export function useGeoRegions() {
   return useQuery({ queryKey: ["geo", "regions"], queryFn: () => api.geo.regions() });
 }

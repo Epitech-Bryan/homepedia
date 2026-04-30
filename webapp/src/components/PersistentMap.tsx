@@ -12,6 +12,7 @@ import {
   useGeoCountries,
   useGeoDepartments,
   useGeoRegions,
+  useGeoWorldAdmin1,
   useRegionStats,
 } from "@/api/hooks";
 import {
@@ -203,6 +204,10 @@ export function PersistentMap() {
   // Pre-fetch every layer so zoom-driven switching is instant.
   const { data: geoCountries } = useGeoCountries();
   const { data: geoBelgiumProvinces } = useGeoBelgiumProvinces();
+  // Lazy-load world admin1 only when the user actually leaves the world
+  // view. ~1.5 MB on the wire — no point paying for it on a Paris-only
+  // session.
+  const { data: geoWorldAdmin1 } = useGeoWorldAdmin1();
   const { data: geoRegions } = useGeoRegions();
   const { data: geoDepartments } = useGeoDepartments(); // no filter = all 101
   const { data: regionStats } = useRegionStats();
@@ -217,9 +222,10 @@ export function PersistentMap() {
     const features: GeoJSON.Feature[] = [];
     if (geoRegions) features.push(...geoRegions.features);
     if (geoBelgiumProvinces) features.push(...geoBelgiumProvinces.features);
+    if (geoWorldAdmin1) features.push(...geoWorldAdmin1.features);
     if (features.length === 0) return null;
     return { type: "FeatureCollection", features };
-  }, [geoRegions, geoBelgiumProvinces]);
+  }, [geoRegions, geoBelgiumProvinces, geoWorldAdmin1]);
 
   // At high zoom, auto-detect the department under the map center via PIP and
   // load its cities. Falls back to the URL-selected department if any.

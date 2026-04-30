@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.27.1] - 2026-04-30
+
+### Bug Fixes
+
+- fix(stats): deduplicate DVF mutations to fix avg price + price/m²
+
 ## [3.27.0] - 2026-04-30
 
 ### Features

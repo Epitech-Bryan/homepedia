@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Play, Trash2, Layers } from "lucide-react";
+import { Loader2, Play, Trash2, Layers, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,6 +13,7 @@ import {
   evictAllCaches,
   fetchPartitionStats,
   truncateDvfYear,
+  refreshDvfYearStats,
   type JobsStatus,
   type PartitionYearCount,
 } from "@/api/admin";
@@ -78,6 +79,7 @@ export function AdminPage() {
   const [dvfYear, setDvfYear] = useState<number>(DVF_LATEST_YEAR);
   const [bulkProgress, setBulkProgress] = useState<{ year: number; total: number } | null>(null);
   const [pendingTruncate, setPendingTruncate] = useState<number | null>(null);
+  const [pendingRefresh, setPendingRefresh] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/", { replace: true });
@@ -146,6 +148,20 @@ export function AdminPage() {
       setErrors((prev) => ({ ...prev, dvf: message }));
     } finally {
       setPendingTruncate(null);
+    }
+  };
+
+  const onRefreshYearStats = async (year: number) => {
+    setPendingRefresh(year);
+    setErrors((prev) => ({ ...prev, dvf: null }));
+    try {
+      await refreshDvfYearStats(year);
+      qc.invalidateQueries({ queryKey: ["admin", "partitionStats"] });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      setErrors((prev) => ({ ...prev, dvf: message }));
+    } finally {
+      setPendingRefresh(null);
     }
   };
 
@@ -365,11 +381,35 @@ export function AdminPage() {
                                         variant="ghost"
                                         className="h-6 w-6 p-0"
                                         onClick={() => onTrigger("dvf", { year: p.year })}
-                                        disabled={rowDisabled || pendingTruncate !== null}
+                                        disabled={
+                                          rowDisabled ||
+                                          pendingTruncate !== null ||
+                                          pendingRefresh !== null
+                                        }
                                         aria-label={`Importer DVF ${p.year}`}
                                         title={`Importer DVF ${p.year}`}
                                       >
                                         <Play className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() => onRefreshYearStats(p.year)}
+                                        disabled={
+                                          rowDisabled ||
+                                          pendingTruncate !== null ||
+                                          pendingRefresh !== null ||
+                                          p.approxCount === 0
+                                        }
+                                        aria-label={`Recalculer stats ${p.year}`}
+                                        title={`Recalculer city_dvf_yearly_stats pour ${p.year}`}
+                                      >
+                                        {pendingRefresh === p.year ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <RefreshCw className="h-3 w-3" />
+                                        )}
                                       </Button>
                                       <Button
                                         size="sm"
@@ -379,6 +419,7 @@ export function AdminPage() {
                                         disabled={
                                           rowDisabled ||
                                           pendingTruncate !== null ||
+                                          pendingRefresh !== null ||
                                           p.approxCount === 0
                                         }
                                         aria-label={`Vider DVF ${p.year}`}

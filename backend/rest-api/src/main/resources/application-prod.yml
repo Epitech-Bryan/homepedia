@@ -1,3 +1,13 @@
+server:
+  # GZIP responses ≥1 KB. JSON payloads (stats, geojson) compress 5-10x —
+  # /geo/regions alone drops from ~3 MB to ~400 KB per response.
+  compression:
+    enabled: true
+    mime-types: application/json,application/hal+json,application/xml,text/html,text/plain,text/css,application/javascript
+    min-response-size: 1024
+  http2:
+    enabled: true
+
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL}

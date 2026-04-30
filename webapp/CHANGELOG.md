@@ -1,5 +1,11 @@
 # app
 
+## [0.28.0] - 2026-04-30
+
+### Features
+
+- feat(map): Belgium provinces overlay + indicator top-left + restore world view
+
 ## [0.27.1] - 2026-04-30
 
 ### Bug Fixes

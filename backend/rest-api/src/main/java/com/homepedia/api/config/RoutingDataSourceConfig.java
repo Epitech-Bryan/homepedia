@@ -6,6 +6,7 @@ import javax.sql.DataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -36,6 +37,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  */
 @Slf4j
 @Configuration
+@ConditionalOnProperty(name = "spring.datasource.replica.url")
 public class RoutingDataSourceConfig {
 
 	enum Route {

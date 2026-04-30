@@ -1,5 +1,11 @@
 # app
 
+## [0.22.1] - 2026-04-30
+
+### Bug Fixes
+
+- perf: BRIN index on mutation_date + actuator dump endpoints + lazy routes
+
 ## [0.22.0] - 2026-04-30
 
 ### Features

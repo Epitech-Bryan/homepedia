@@ -319,80 +319,85 @@ export function AdminPage() {
                         : "Tout importer"}
                     </Button>
                   </div>
-                  {partitionStats && partitionStats.length > 0 && (
-                    <div className="rounded border bg-muted/30 overflow-hidden">
-                      <table className="w-full text-xs">
-                        <thead className="bg-muted/50 text-muted-foreground">
-                          <tr>
-                            <th className="px-2 py-1 text-left font-medium">Année</th>
-                            <th className="px-2 py-1 text-right font-medium">Lignes (approx.)</th>
-                            <th className="px-2 py-1 w-px font-medium" aria-label="Action" />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {partitionStats.map((p) => {
-                            const rowDisabled = disabled || bulkProgress !== null;
-                            const dur = formatDuration(p.lastDurationMs);
-                            return (
-                              <tr key={p.year} className="border-t border-border/50">
-                                <td className="px-2 py-1 font-medium">
-                                  {p.year}
-                                  {dur && (
-                                    <span
-                                      className="ml-2 font-normal tabular-nums text-muted-foreground/60"
-                                      title={
-                                        p.lastRunAt
-                                          ? `Dernier import réussi ${formatRelative(p.lastRunAt)}`
-                                          : undefined
-                                      }
+                  {partitionStats &&
+                    partitionStats.filter((p) => DVF_YEARS.includes(p.year)).length > 0 && (
+                      <div className="rounded border bg-muted/30 overflow-hidden">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/50 text-muted-foreground">
+                            <tr>
+                              <th className="px-2 py-1 text-left font-medium">Année</th>
+                              <th className="px-2 py-1 text-right font-medium">Lignes (approx.)</th>
+                              <th className="px-2 py-1 w-px font-medium" aria-label="Action" />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {partitionStats
+                              .filter((p) => DVF_YEARS.includes(p.year))
+                              .map((p) => {
+                                const rowDisabled = disabled || bulkProgress !== null;
+                                const dur = formatDuration(p.lastDurationMs);
+                                return (
+                                  <tr key={p.year} className="border-t border-border/50">
+                                    <td className="px-2 py-1 font-medium">
+                                      {p.year}
+                                      {dur && (
+                                        <span
+                                          className="ml-2 font-normal tabular-nums text-muted-foreground/60"
+                                          title={
+                                            p.lastRunAt
+                                              ? `Dernier import réussi ${formatRelative(p.lastRunAt)}`
+                                              : undefined
+                                          }
+                                        >
+                                          {dur}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td
+                                      className="px-2 py-1 text-right tabular-nums text-muted-foreground"
+                                      title={`${p.approxCount.toLocaleString("fr-FR")} lignes (estimation planner)`}
                                     >
-                                      {dur}
-                                    </span>
-                                  )}
-                                </td>
-                                <td
-                                  className="px-2 py-1 text-right tabular-nums text-muted-foreground"
-                                  title={`${p.approxCount.toLocaleString("fr-FR")} lignes (estimation planner)`}
-                                >
-                                  {p.approxCount === 0 ? "—" : formatCount(p.approxCount)}
-                                </td>
-                                <td className="px-1 py-0.5 text-right whitespace-nowrap">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0"
-                                    onClick={() => onTrigger("dvf", { year: p.year })}
-                                    disabled={rowDisabled || pendingTruncate !== null}
-                                    aria-label={`Importer DVF ${p.year}`}
-                                    title={`Importer DVF ${p.year}`}
-                                  >
-                                    <Play className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => onTruncateYear(p.year)}
-                                    disabled={
-                                      rowDisabled || pendingTruncate !== null || p.approxCount === 0
-                                    }
-                                    aria-label={`Vider DVF ${p.year}`}
-                                    title={`Vider la partition DVF ${p.year}`}
-                                  >
-                                    {pendingTruncate === p.year ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-3 w-3" />
-                                    )}
-                                  </Button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                                      {p.approxCount === 0 ? "—" : formatCount(p.approxCount)}
+                                    </td>
+                                    <td className="px-1 py-0.5 text-right whitespace-nowrap">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() => onTrigger("dvf", { year: p.year })}
+                                        disabled={rowDisabled || pendingTruncate !== null}
+                                        aria-label={`Importer DVF ${p.year}`}
+                                        title={`Importer DVF ${p.year}`}
+                                      >
+                                        <Play className="h-3 w-3" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => onTruncateYear(p.year)}
+                                        disabled={
+                                          rowDisabled ||
+                                          pendingTruncate !== null ||
+                                          p.approxCount === 0
+                                        }
+                                        aria-label={`Vider DVF ${p.year}`}
+                                        title={`Vider la partition DVF ${p.year}`}
+                                      >
+                                        {pendingTruncate === p.year ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="h-3 w-3" />
+                                        )}
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                 </div>
               )}
               {(error || (s?.lastStatus && s.lastStatus !== "COMPLETED" && !running)) && (

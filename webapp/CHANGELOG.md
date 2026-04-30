@@ -1,5 +1,12 @@
 # app
 
+## [0.21.0] - 2026-04-30
+
+### Features
+
+- feat(admin): truncate DVF year + restrict dropdown to 2021+
+- feat(dvf): resumable HTTP download with retry + Range
+
 ## [0.20.0] - 2026-04-30
 
 ### Features

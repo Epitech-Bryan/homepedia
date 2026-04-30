@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.27.0] - 2026-04-30
+
+### Features
+
+- feat(admin): truncate DVF year + restrict dropdown to 2021+
+
 ## [3.26.0] - 2026-04-30
 
 ### Features

@@ -1,5 +1,11 @@
 # app
 
+## [0.23.2] - 2026-04-30
+
+### Bug Fixes
+
+- perf(webapp): nginx tuning + pre-gzip + index.html preconnect
+
 ## [0.23.1] - 2026-04-30
 
 ### Bug Fixes

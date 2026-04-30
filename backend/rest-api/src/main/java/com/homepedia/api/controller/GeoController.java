@@ -36,6 +36,12 @@ public class GeoController {
 		return ResponseEntity.ok(countryGeoService.getCountriesGeoJson());
 	}
 
+	@Operation(summary = "Belgium provinces", description = "GADM 4.1 boundaries for the 10 Belgian provinces + the Brussels-Capital Region, with Statbel population + area baked into the properties. Browse-only — no DVF/DPE coverage for Belgium yet.")
+	@GetMapping(value = "/belgium/provinces", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<String> getBelgiumProvinces() {
+		return ResponseEntity.ok(countryGeoService.getBelgiumProvincesGeoJson());
+	}
+
 	@Operation(summary = "Region boundaries", description = "GeoJSON FeatureCollection of all French regions")
 	@GetMapping(GEO_REGIONS)
 	public ResponseEntity<FeatureCollection> getRegionBoundaries() {

@@ -150,6 +150,15 @@ export function useGeoCountries() {
   });
 }
 
+export function useGeoBelgiumProvinces() {
+  return useQuery({
+    queryKey: ["geo", "belgium", "provinces"],
+    queryFn: () => api.geo.belgiumProvinces(),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
 export function useGeoRegions() {
   return useQuery({ queryKey: ["geo", "regions"], queryFn: () => api.geo.regions() });
 }

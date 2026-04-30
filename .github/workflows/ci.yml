@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_release:
+        description: 'Run FerrFlow release after checks'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      webapp: ${{ steps.filter.outputs.webapp }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+            webapp:
+              - 'webapp/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - '.github/workflows/ci.yml'
+
+  lint-backend:
+    name: Lint backend (Spotless)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Spotless check
+        working-directory: backend
+        run: mvn -B -q spotless:check
+
+  test-backend:
+    name: Test backend (unit + Testcontainers)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Run tests
+        working-directory: backend
+        run: mvn -B verify -pl rest-api -am -Pintegration
+
+  build-backend:
+    name: Build backend jar
+    needs: [changes, lint-backend, test-backend]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Package
+        working-directory: backend
+        run: mvn -B package -DskipTests
+
+  lint-webapp:
+    name: Lint webapp
+    needs: changes
+    if: needs.changes.outputs.webapp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter webapp
+      - name: ESLint + Prettier
+        working-directory: webapp
+        run: |
+          pnpm lint
+          pnpm format:check
+
+  test-webapp:
+    name: Test webapp (Vitest)
+    needs: changes
+    if: needs.changes.outputs.webapp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter webapp
+      - name: Vitest
+        working-directory: webapp
+        run: pnpm test
+
+  build-webapp:
+    name: Build webapp bundle
+    needs: [changes, lint-webapp, test-webapp]
+    if: needs.changes.outputs.webapp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile --filter webapp
+      - name: Build
+        working-directory: webapp
+        run: pnpm build
+
+  # FerrFlow walks the conventional commits since the last tag, decides which
+  # packages need a bump (driven by ferrflow.json), writes pom.xml /
+  # package.json / CHANGELOG.md updates, commits chore(release):, pushes the
+  # tag, and creates a GitHub Release. The release publication then triggers
+  # docker.yml in this repo. GITHUB_TOKEN with contents:write is enough.
+  release:
+    name: Release with FerrFlow
+    needs: [build-backend, build-webapp]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_dispatch' || inputs.run_release != false)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: FerrLabs/FerrFlow@v4
+        with:
+          bot: true

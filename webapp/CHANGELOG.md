@@ -1,5 +1,11 @@
 # app
 
+## [0.24.0] - 2026-04-30
+
+### Features
+
+- feat: ProblemDetail + validation + Resilience4j + RUM web vitals + error boundary
+
 ## [0.23.2] - 2026-04-30
 
 ### Bug Fixes

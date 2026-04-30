@@ -1,0 +1,118 @@
+name: Docker
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to build'
+        type: choice
+        options:
+          - rest-api
+          - webapp
+      version:
+        description: 'Version to tag (e.g. 3.31.0)'
+        required: true
+
+# Push images to GitHub Container Registry under the org. Repo is public so
+# pulls don't need any imagePullSecrets in k8s.
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  rest-api:
+    name: Build & push rest-api
+    if: |
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'rest-api-v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.package == 'rest-api')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#rest-api-v}"
+          fi
+          MAJOR_MINOR=$(echo "${VERSION}" | cut -d. -f1-2)
+          NS="${IMAGE_NAMESPACE,,}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "major_minor=${MAJOR_MINOR}" >> $GITHUB_OUTPUT
+          echo "namespace=${NS}" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # build-push-action uses the registry cache (cache-from / cache-to:
+      # type=gha) so subsequent builds restore Maven download + classes
+      # layers from previous runs without bloating ghcr.io with cache tags.
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/rest-api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/rest-api:${{ steps.ver.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/rest-api:${{ steps.ver.outputs.major_minor }}
+            ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/rest-api:latest
+          cache-from: type=gha,scope=rest-api
+          cache-to: type=gha,scope=rest-api,mode=max
+          provenance: false
+
+  webapp:
+    name: Build & push webapp
+    if: |
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'webapp-v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.package == 'webapp')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#webapp-v}"
+          fi
+          MAJOR_MINOR=$(echo "${VERSION}" | cut -d. -f1-2)
+          NS="${IMAGE_NAMESPACE,,}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "major_minor=${MAJOR_MINOR}" >> $GITHUB_OUTPUT
+          echo "namespace=${NS}" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./webapp/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/webapp:${{ steps.ver.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/webapp:${{ steps.ver.outputs.major_minor }}
+            ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/webapp:latest
+          cache-from: type=gha,scope=webapp
+          cache-to: type=gha,scope=webapp,mode=max
+          provenance: false

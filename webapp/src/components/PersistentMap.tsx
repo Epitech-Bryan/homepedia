@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { FranceMap, type MapMarker, type MapStyle } from "@/components/FranceMap";
 import {
@@ -65,7 +65,16 @@ function findFeatureCodeAt(
   return null;
 }
 
+// Cache the bbox per Feature so a pan doesn't re-walk every polygon's
+// coordinate tree. Department polygons can hold thousands of points each,
+// and the previous version ran the recursion on all 101 features at every
+// move event. WeakMap garbage-collects the entries when the geojson
+// reference itself goes out of scope.
+const FEATURE_BBOX_CACHE = new WeakMap<GeoJSON.Feature, [number, number, number, number]>();
+
 function featureBbox(feature: GeoJSON.Feature): [number, number, number, number] {
+  const cached = FEATURE_BBOX_CACHE.get(feature);
+  if (cached) return cached;
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -82,7 +91,9 @@ function featureBbox(feature: GeoJSON.Feature): [number, number, number, number]
     }
   };
   visit((feature.geometry as { coordinates: unknown }).coordinates);
-  return [minX, minY, maxX, maxY];
+  const bbox: [number, number, number, number] = [minX, minY, maxX, maxY];
+  FEATURE_BBOX_CACHE.set(feature, bbox);
+  return bbox;
 }
 
 function bboxesOverlap(
@@ -149,8 +160,23 @@ export function PersistentMap() {
     setCenter([lat, lng]);
   }, []);
 
+  // Debounce bounds updates: a single pan emits several `moveend` events as
+  // Leaflet eases the inertia, and each one previously triggered the full
+  // visibleDeptCodes recompute + possibly N parallel commune-geojson fetches.
+  // 200 ms after the user stops moving is short enough to feel instant and
+  // enough to coalesce the burst into one update.
+  const boundsTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (boundsTimer.current !== null) window.clearTimeout(boundsTimer.current);
+    },
+    [],
+  );
   const onBoundsChange = useCallback((south: number, west: number, north: number, east: number) => {
-    setBounds([south, west, north, east]);
+    if (boundsTimer.current !== null) window.clearTimeout(boundsTimer.current);
+    boundsTimer.current = window.setTimeout(() => {
+      setBounds([south, west, north, east]);
+    }, 200);
   }, []);
 
   // URL drives the active feature highlight + cards below the map.

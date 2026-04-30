@@ -22,11 +22,6 @@ import {
 } from "@/components/ui/select";
 import type { CityStats, DepartmentStats, RegionStats } from "@/api/client";
 
-// Below this zoom, the world view (Natural Earth country boundaries) takes
-// over so the user can pan across continents. At/above this we switch to
-// French regions and lose the country layer — France is the data-rich
-// territory of the app, the rest is browse-only.
-const WORLD_ZOOM_THRESHOLD = 5;
 // Below this zoom, we show regions; at or above, we switch to departments.
 const DEPARTMENT_ZOOM_THRESHOLD = 7;
 // Above this zoom, we auto-detect the department under the map center and
@@ -193,7 +188,6 @@ export function PersistentMap() {
   const activeRegionCode = regionMatch?.params.code ?? department?.regionCode;
   const departmentCode = departmentMatch?.params.code;
 
-  const showWorld = zoom < WORLD_ZOOM_THRESHOLD;
   const showDepartments = zoom >= DEPARTMENT_ZOOM_THRESHOLD;
   const showCityDetail = zoom >= CITY_DETAIL_ZOOM_THRESHOLD;
   const showArrondissements = zoom >= ARRONDISSEMENT_ZOOM_THRESHOLD;
@@ -265,16 +259,17 @@ export function PersistentMap() {
     };
   }, [geoCities, showArrondissements, geoArrondissements, drilldownCityCodes]);
 
-  // 4-tier zoom: countries (world) → regions → departments → city polygons.
-  // World view stays France-agnostic; the moment we cross WORLD_ZOOM_THRESHOLD
-  // we drop into the data-rich French stack.
-  const geojson = showWorld
-    ? (geoCountries ?? null)
-    : showCityDetail
-      ? (cityLevelGeojson ?? geoDepartments ?? null)
-      : showDepartments
-        ? (geoDepartments ?? null)
-        : (geoRegions ?? null);
+  // 3-tier zoom for the foreground (data-rich) layer: regions →
+  // departments → city/arrondissement. France is always the focal subject,
+  // even at world zoom — the user can dezoom to fit the whole planet on
+  // screen and still see France's regions coloured by the selected metric.
+  // The country outlines (Natural Earth) are rendered behind via
+  // baseGeojson to give the geographic context.
+  const geojson = showCityDetail
+    ? (cityLevelGeojson ?? geoDepartments ?? null)
+    : showDepartments
+      ? (geoDepartments ?? null)
+      : (geoRegions ?? null);
 
   // Backend stats for every commune code visible on screen — used to colour
   // the choropleth by averagePrice / €m² / transactionCount at city zoom.
@@ -298,18 +293,6 @@ export function PersistentMap() {
 
   const metricByCode = useMemo(() => {
     const map: Record<string, number | null> = {};
-    if (showWorld && geoCountries) {
-      // World view: only population is universally available across all 177
-      // countries (Natural Earth POP_EST). Density/price/transactions don't
-      // map to country granularity. Default to population so the choropleth
-      // still tells a story even if the user picked another metric.
-      for (const f of geoCountries.features) {
-        const props = f.properties as { code?: string; population?: number } | null;
-        if (!props?.code) continue;
-        map[props.code] = props.population ?? null;
-      }
-      return map;
-    }
     if (showCityDetail && cityLevelGeojson) {
       // City-level: prefer backend aggregate stats (price metrics, real
       // population/area) — fall back to geo.api.gouv.fr properties for
@@ -352,8 +335,6 @@ export function PersistentMap() {
     return map;
   }, [
     metric,
-    showWorld,
-    geoCountries,
     showCityDetail,
     showDepartments,
     cityLevelGeojson,
@@ -422,10 +403,11 @@ export function PersistentMap() {
     <div className="relative h-full w-full">
       <FranceMap
         geojson={geojson}
-        // Country outlines stay rendered as a contextual backdrop the
-        // moment we leave the world view. A user zooming on Bordeaux still
-        // sees the rest of Europe sketched out behind the French stack.
-        baseGeojson={!showWorld ? geoCountries : null}
+        // Country outlines are rendered as a contextual backdrop at every
+        // zoom — at full dezoom the user still sees France coloured by the
+        // selected metric on top of the world map; at city zoom the rest
+        // of Europe stays sketched out behind for orientation.
+        baseGeojson={geoCountries}
         onFeatureClick={onFeatureClick}
         markers={markers}
         onMarkerClick={onMarkerClick}

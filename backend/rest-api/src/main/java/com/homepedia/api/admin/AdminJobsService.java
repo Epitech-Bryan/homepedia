@@ -1,5 +1,6 @@
 package com.homepedia.api.admin;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -117,6 +118,7 @@ public class AdminJobsService {
 		final boolean running = !jobExplorer.findRunningJobExecutions(beanName).isEmpty();
 		Instant lastRunAt = null;
 		String lastStatus = null;
+		Long lastDurationMs = null;
 		final List<JobInstance> instances = jobExplorer.findJobInstancesByJobName(beanName, 0, 1);
 		if (!instances.isEmpty()) {
 			final var execs = jobExplorer.getJobExecutions(instances.get(0));
@@ -124,16 +126,21 @@ public class AdminJobsService {
 				final var last = execs.get(0);
 				lastRunAt = toInstant(last.getStartTime());
 				lastStatus = last.getStatus().toString();
+				if (last.getStartTime() != null && last.getEndTime() != null) {
+					lastDurationMs = Duration.between(last.getStartTime(), last.getEndTime()).toMillis();
+				}
 			}
 		}
 		final BatchStatus state = running ? BatchStatus.STARTED : BatchStatus.UNKNOWN;
-		return new JobStatusView(running ? "RUNNING" : "IDLE", lastRunAt, lastStatus, state.toString());
+		return new JobStatusView(running ? "RUNNING" : "IDLE", lastRunAt, lastStatus, state.toString(),
+				lastDurationMs);
 	}
 
 	private static Instant toInstant(LocalDateTime ldt) {
 		return ldt == null ? null : ldt.atZone(ZoneId.systemDefault()).toInstant();
 	}
 
-	public record JobStatusView(String state, Instant lastRunAt, String lastStatus, String lastBatchStatus) {
+	public record JobStatusView(String state, Instant lastRunAt, String lastStatus, String lastBatchStatus,
+			Long lastDurationMs) {
 	}
 }

@@ -7,6 +7,7 @@ import {
   useCityStats,
   useDepartment,
   useDepartmentStats,
+  useGeoBelgiumProvinces,
   useGeoCitiesForDepartments,
   useGeoCountries,
   useGeoDepartments,
@@ -22,6 +23,12 @@ import {
 } from "@/components/ui/select";
 import type { CityStats, DepartmentStats, RegionStats } from "@/api/client";
 
+// Below this zoom, the world view: countries are the foreground (each
+// country including France appears as one shape, choropleth driven by
+// the Natural Earth POP_EST). At/above, the data-rich France stack
+// (regions → departments → cities) takes over and countries become a
+// grey backdrop.
+const WORLD_ZOOM_THRESHOLD = 5;
 // Below this zoom, we show regions; at or above, we switch to departments.
 const DEPARTMENT_ZOOM_THRESHOLD = 7;
 // Above this zoom, we auto-detect the department under the map center and
@@ -188,16 +195,31 @@ export function PersistentMap() {
   const activeRegionCode = regionMatch?.params.code ?? department?.regionCode;
   const departmentCode = departmentMatch?.params.code;
 
+  const showWorld = zoom < WORLD_ZOOM_THRESHOLD;
   const showDepartments = zoom >= DEPARTMENT_ZOOM_THRESHOLD;
   const showCityDetail = zoom >= CITY_DETAIL_ZOOM_THRESHOLD;
   const showArrondissements = zoom >= ARRONDISSEMENT_ZOOM_THRESHOLD;
 
-  // Pre-fetch BOTH layers so zoom-driven switching is instant.
+  // Pre-fetch every layer so zoom-driven switching is instant.
   const { data: geoCountries } = useGeoCountries();
+  const { data: geoBelgiumProvinces } = useGeoBelgiumProvinces();
   const { data: geoRegions } = useGeoRegions();
   const { data: geoDepartments } = useGeoDepartments(); // no filter = all 101
   const { data: regionStats } = useRegionStats();
   const { data: allDepartmentStats } = useDepartmentStats(); // all
+
+  // Stitch French regions + non-FR admin-1 (Belgian provinces today, more
+  // countries later) into a single foreground FeatureCollection at zoom
+  // 5..7. They never overlap geographically, so a single LeafletGeoJSON
+  // can render them all and the metricByCode lookup keys naturally on
+  // each feature's `code`.
+  const regionsFeatureCollection = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    const features: GeoJSON.Feature[] = [];
+    if (geoRegions) features.push(...geoRegions.features);
+    if (geoBelgiumProvinces) features.push(...geoBelgiumProvinces.features);
+    if (features.length === 0) return null;
+    return { type: "FeatureCollection", features };
+  }, [geoRegions, geoBelgiumProvinces]);
 
   // At high zoom, auto-detect the department under the map center via PIP and
   // load its cities. Falls back to the URL-selected department if any.
@@ -259,17 +281,18 @@ export function PersistentMap() {
     };
   }, [geoCities, showArrondissements, geoArrondissements, drilldownCityCodes]);
 
-  // 3-tier zoom for the foreground (data-rich) layer: regions →
-  // departments → city/arrondissement. France is always the focal subject,
-  // even at world zoom — the user can dezoom to fit the whole planet on
-  // screen and still see France's regions coloured by the selected metric.
-  // The country outlines (Natural Earth) are rendered behind via
-  // baseGeojson to give the geographic context.
-  const geojson = showCityDetail
-    ? (cityLevelGeojson ?? geoDepartments ?? null)
-    : showDepartments
-      ? (geoDepartments ?? null)
-      : (geoRegions ?? null);
+  // 4-tier zoom: world (countries) → regions+BE provinces → departments
+  // → city/arrondissement. At world zoom France is just one country shape
+  // among the others — the user is dezoomed past the point where regional
+  // detail would even be readable. As soon as we cross the threshold we
+  // drop into the data-rich stack with countries kept as a grey backdrop.
+  const geojson = showWorld
+    ? (geoCountries ?? null)
+    : showCityDetail
+      ? (cityLevelGeojson ?? geoDepartments ?? null)
+      : showDepartments
+        ? (geoDepartments ?? null)
+        : (regionsFeatureCollection ?? null);
 
   // Backend stats for every commune code visible on screen — used to colour
   // the choropleth by averagePrice / €m² / transactionCount at city zoom.
@@ -293,6 +316,21 @@ export function PersistentMap() {
 
   const metricByCode = useMemo(() => {
     const map: Record<string, number | null> = {};
+    if (showWorld && geoCountries) {
+      // Country-level: only population is universally available across
+      // every country (Natural Earth POP_EST). For other metrics fall
+      // back to None so the choropleth stays empty rather than lying.
+      for (const f of geoCountries.features) {
+        const props = f.properties as { code?: string; population?: number } | null;
+        if (!props?.code) continue;
+        if (metric === "population") {
+          map[props.code] = props.population ?? null;
+        } else {
+          map[props.code] = null;
+        }
+      }
+      return map;
+    }
     if (showCityDetail && cityLevelGeojson) {
       // City-level: prefer backend aggregate stats (price metrics, real
       // population/area) — fall back to geo.api.gouv.fr properties for
@@ -332,15 +370,40 @@ export function PersistentMap() {
     for (const s of stats) {
       map[s.code] = extractValue(s, metric);
     }
+    // Pull non-FR admin-1 (Belgian provinces today) values straight from
+    // the geojson properties — population + area are baked in there. Only
+    // population/density are supported because we don't have housing
+    // market data for those countries yet.
+    if (!showDepartments && geoBelgiumProvinces) {
+      for (const f of geoBelgiumProvinces.features) {
+        const props = f.properties as { code?: string; population?: number; area?: number } | null;
+        if (!props?.code) continue;
+        const pop = props.population ?? null;
+        const area = props.area ?? null;
+        switch (metric) {
+          case "population":
+            map[props.code] = pop;
+            break;
+          case "density":
+            map[props.code] = pop && area ? pop / area : null;
+            break;
+          default:
+            map[props.code] = null;
+        }
+      }
+    }
     return map;
   }, [
     metric,
+    showWorld,
+    geoCountries,
     showCityDetail,
     showDepartments,
     cityLevelGeojson,
     cityStatsByCode,
     regionStats,
     allDepartmentStats,
+    geoBelgiumProvinces,
   ]);
 
   // City markers are only useful when we DON'T have commune polygons yet;
@@ -403,11 +466,11 @@ export function PersistentMap() {
     <div className="relative h-full w-full">
       <FranceMap
         geojson={geojson}
-        // Country outlines are rendered as a contextual backdrop at every
-        // zoom — at full dezoom the user still sees France coloured by the
-        // selected metric on top of the world map; at city zoom the rest
-        // of Europe stays sketched out behind for orientation.
-        baseGeojson={geoCountries}
+        // Country outlines as a backdrop at every zoom EXCEPT world view
+        // (where countries are already the foreground — rendering them
+        // twice would just double-draw). Keeps the user oriented when
+        // zoomed on a French region or commune.
+        baseGeojson={!showWorld ? geoCountries : null}
         onFeatureClick={onFeatureClick}
         markers={markers}
         onMarkerClick={onMarkerClick}
@@ -446,7 +509,7 @@ export function PersistentMap() {
           </SelectContent>
         </Select>
       </div>
-      <div className="absolute bottom-3 left-3 z-[1000] pointer-events-auto">
+      <div className="absolute top-3 left-3 z-[1000] pointer-events-auto">
         <span className="inline-flex items-center gap-1.5 rounded-md bg-background/90 backdrop-blur px-2 py-1 text-xs shadow-sm">
           <span className="font-medium uppercase tracking-wide text-muted-foreground">Showing</span>
           <span className="text-foreground">{layerName}</span>

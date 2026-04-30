@@ -68,6 +68,24 @@ public class CountryGeoService {
 		return trimmedGeoJsonCache;
 	}
 
+	/**
+	 * Belgium provinces (10 provinces + Brussels-Capital region) — boundaries from
+	 * GADM 4.1, population/area baked in from Statbel 2024 estimates. Browse-only:
+	 * the metric layer can colour them by population/density, but no DVF/DPE for
+	 * Belgium yet.
+	 */
+	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'belgium-provinces'")
+	public String getBelgiumProvincesGeoJson() {
+		try {
+			final var resource = new ClassPathResource("data/belgium-provinces.geojson");
+			try (var in = resource.getInputStream()) {
+				return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException("Belgium provinces GeoJSON not available", e);
+		}
+	}
+
 	private synchronized void loadAndTrim() throws IOException {
 		if (trimmedGeoJsonCache != null) {
 			return;

@@ -5,3 +5,8 @@ project-data
 *.tmp
 target
 data
+# Allow static resources packaged into the jar (Natural Earth countries
+# GeoJSON, etc.). The bare `data` rule above was meant for runtime data
+# dirs, but it also matched our resource folder.
+!**/src/main/resources/data
+!**/src/main/resources/data/**

@@ -5,6 +5,17 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.28.0] - 2026-04-30
+
+### Features
+
+- feat(admin): hide DVF rows for years not served by data.gouv.fr
+
+### Bug Fixes
+
+- fix(stats): revert SQL refactor of computeStats, add unscoped-call guard
+- fix(stats): aggregate /transactions/stats in SQL instead of streaming rows
+
 ## [3.27.2] - 2026-04-30
 
 ### Bug Fixes

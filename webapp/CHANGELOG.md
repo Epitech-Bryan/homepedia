@@ -1,5 +1,18 @@
 # app
 
+## [0.22.0] - 2026-04-30
+
+### Features
+
+- feat(admin): hide DVF rows for years not served by data.gouv.fr
+
+### Bug Fixes
+
+- fix(stats): revert SQL refactor of computeStats, add unscoped-call guard
+- fix(stats): aggregate /transactions/stats in SQL instead of streaming rows
+- perf: pre-aggregate DVF stats + univocity parser + DPE batch insert
+- fix(stats): deduplicate DVF mutations to fix avg price + price/m²
+
 ## [0.21.0] - 2026-04-30
 
 ### Features

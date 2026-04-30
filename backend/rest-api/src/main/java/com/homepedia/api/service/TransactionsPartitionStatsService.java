@@ -3,8 +3,12 @@ package com.homepedia.api.service;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Tiny read-only helper for the admin UI: returns the row count of each yearly
@@ -20,6 +24,7 @@ import org.springframework.stereotype.Service;
  * {@code batch_job_execution} with {@code batch_job_execution_params} where
  * {@code parameter_name='year'}.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TransactionsPartitionStatsService {
@@ -53,6 +58,7 @@ public class TransactionsPartitionStatsService {
 			""";
 
 	private final JdbcTemplate jdbcTemplate;
+	private final JobExplorer jobExplorer;
 
 	public List<YearCount> countByYear() {
 		return jdbcTemplate.query(SQL, (rs, i) -> {
@@ -63,6 +69,26 @@ public class TransactionsPartitionStatsService {
 			final var lastRunTs = rs.getTimestamp("last_run_at");
 			return new YearCount(year, approxCount, lastRunTs == null ? null : lastRunTs.toInstant(), lastDurationMs);
 		});
+	}
+
+	/**
+	 * Empties the {@code transactions_<year>} partition. Refuses if a DVF import is
+	 * currently running (would race the swap). The migration provisions years
+	 * 2014..2030 — anything else would silently no-op and return success, so we
+	 * reject it explicitly.
+	 */
+	public void truncateYear(int year) {
+		if (year < 2014 || year > 2030) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Year " + year + " out of supported range [2014..2030]");
+		}
+		if (!jobExplorer.findRunningJobExecutions("dvfImportJob").isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"A DVF import is currently running — wait for it to finish before truncating");
+		}
+		final var table = "transactions_" + year;
+		log.warn("Truncating partition {} via admin endpoint", table);
+		jdbcTemplate.execute("TRUNCATE TABLE " + table);
 	}
 
 	public record YearCount(int year, long approxCount, Instant lastRunAt, Long lastDurationMs) {

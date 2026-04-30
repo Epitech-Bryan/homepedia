@@ -13,6 +13,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -90,6 +91,14 @@ public class AdminController {
 		return ResponseEntity.ok(transactionsPartitionStatsService.countByYear());
 	}
 
+	@Operation(summary = "Truncate a yearly transactions partition", description = "Empties `transactions_<year>` (DVF data for that year). Refuses with 409 if a DVF import is currently running. Use to reset before a re-import.")
+	@DeleteMapping("/transactions/{year}")
+	public ResponseEntity<TruncateResponse> truncateYear(@PathVariable int year) {
+		log.warn("Manual partition truncation triggered for year {}", year);
+		transactionsPartitionStatsService.truncateYear(year);
+		return ResponseEntity.ok(new TruncateResponse(year, "truncated", Instant.now()));
+	}
+
 	@Operation(summary = "List import jobs status", description = "Returns the current state of every Spring Batch import job (RUNNING/IDLE + last run metadata).")
 	@GetMapping("/jobs/status")
 	public ResponseEntity<Map<String, AdminJobsService.JobStatusView>> jobsStatus() {
@@ -127,5 +136,8 @@ public class AdminController {
 	}
 
 	public record TriggerResponse(String job, String state, Instant at) {
+	}
+
+	public record TruncateResponse(int year, String state, Instant at) {
 	}
 }

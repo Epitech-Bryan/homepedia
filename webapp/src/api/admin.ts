@@ -121,3 +121,16 @@ export async function fetchPartitionStats(): Promise<PartitionYearCount[]> {
   }
   return res.json();
 }
+
+export async function truncateDvfYear(year: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/transactions/${year}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (res.status === 409) {
+    throw new JobAlreadyRunningError("dvf");
+  }
+  if (!res.ok) {
+    throw new Error(`Failed to truncate year ${year}: ${res.status} ${res.statusText}`);
+  }
+}

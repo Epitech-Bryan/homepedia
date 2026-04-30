@@ -12,6 +12,7 @@ import {
   evictCache,
   evictAllCaches,
   fetchPartitionStats,
+  truncateDvfYear,
   type JobsStatus,
   type PartitionYearCount,
 } from "@/api/admin";
@@ -21,11 +22,12 @@ import { useNavigate } from "react-router-dom";
 const POLL_INTERVAL_MS = 4000;
 
 // DVF datasets are published yearly; import targets a specific year and swaps
-// just that partition. Bound = current year - 1 (data.gouv.fr publishes year N
-// in early N+1) down to the oldest yearly partition provisioned in migration
-// 005 (2014). Build the list once at module load — it doesn't change per
-// render and React's purity rules forbid Date.now()/new Date() in render.
-const DVF_OLDEST_YEAR = 2014;
+// just that partition. data.gouv.fr only serves geo-dvf for 2021+ on the
+// `latest` path (older years 404). Latest is current year - 1 (year N
+// publishes in early N+1). Build the list once at module load — it doesn't
+// change per render and React's purity rules forbid Date.now()/new Date() in
+// render.
+const DVF_OLDEST_YEAR = 2021;
 const DVF_LATEST_YEAR = new Date().getFullYear() - 1;
 const DVF_YEARS: number[] = (() => {
   const out: number[] = [];
@@ -75,6 +77,7 @@ export function AdminPage() {
   const [cacheEvictedAt, setCacheEvictedAt] = useState<Record<string, number | null>>({});
   const [dvfYear, setDvfYear] = useState<number>(DVF_LATEST_YEAR);
   const [bulkProgress, setBulkProgress] = useState<{ year: number; total: number } | null>(null);
+  const [pendingTruncate, setPendingTruncate] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/", { replace: true });
@@ -117,6 +120,32 @@ export function AdminPage() {
       setErrors((prev) => ({ ...prev, [slug]: message }));
     } finally {
       setPendingTrigger(null);
+    }
+  };
+
+  const onTruncateYear = async (year: number) => {
+    if (
+      !window.confirm(
+        `Vider toutes les données DVF de l'année ${year} ? Cette action est irréversible.`,
+      )
+    ) {
+      return;
+    }
+    setPendingTruncate(year);
+    setErrors((prev) => ({ ...prev, dvf: null }));
+    try {
+      await truncateDvfYear(year);
+      qc.invalidateQueries({ queryKey: ["admin", "partitionStats"] });
+    } catch (err) {
+      const message =
+        err instanceof JobAlreadyRunningError
+          ? "Import DVF en cours, réessayez après."
+          : err instanceof Error
+            ? err.message
+            : "Erreur inconnue";
+      setErrors((prev) => ({ ...prev, dvf: message }));
+    } finally {
+      setPendingTruncate(null);
     }
   };
 
@@ -327,17 +356,34 @@ export function AdminPage() {
                                 >
                                   {p.approxCount === 0 ? "—" : formatCount(p.approxCount)}
                                 </td>
-                                <td className="px-1 py-0.5 text-right">
+                                <td className="px-1 py-0.5 text-right whitespace-nowrap">
                                   <Button
                                     size="sm"
                                     variant="ghost"
                                     className="h-6 w-6 p-0"
                                     onClick={() => onTrigger("dvf", { year: p.year })}
-                                    disabled={rowDisabled}
+                                    disabled={rowDisabled || pendingTruncate !== null}
                                     aria-label={`Importer DVF ${p.year}`}
                                     title={`Importer DVF ${p.year}`}
                                   >
                                     <Play className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => onTruncateYear(p.year)}
+                                    disabled={
+                                      rowDisabled || pendingTruncate !== null || p.approxCount === 0
+                                    }
+                                    aria-label={`Vider DVF ${p.year}`}
+                                    title={`Vider la partition DVF ${p.year}`}
+                                  >
+                                    {pendingTruncate === p.year ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-3 w-3" />
+                                    )}
                                   </Button>
                                 </td>
                               </tr>

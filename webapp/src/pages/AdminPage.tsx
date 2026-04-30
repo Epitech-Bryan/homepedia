@@ -52,6 +52,18 @@ function formatRelative(iso: string | null): string {
   return `il y a ${days} j`;
 }
 
+function formatDuration(ms: number | null | undefined): string | null {
+  if (ms == null || ms < 0) return null;
+  const sec = Math.round(ms / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  const remSec = sec % 60;
+  if (min < 60) return remSec === 0 ? `${min}m` : `${min}m ${remSec}s`;
+  const hours = Math.floor(min / 60);
+  const remMin = min % 60;
+  return remMin === 0 ? `${hours}h` : `${hours}h ${remMin}m`;
+}
+
 export function AdminPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -204,7 +216,18 @@ export function AdminPage() {
                 <CardTitle className="text-sm font-medium flex items-center justify-between">
                   <span>{job.label}</span>
                   <span className="text-xs font-normal text-muted-foreground">
-                    {running ? "en cours…" : formatRelative(s?.lastRunAt ?? null)}
+                    {running ? (
+                      "en cours…"
+                    ) : (
+                      <>
+                        {formatRelative(s?.lastRunAt ?? null)}
+                        {formatDuration(s?.lastDurationMs) && (
+                          <span className="ml-1.5 text-muted-foreground/60 tabular-nums">
+                            ({formatDuration(s?.lastDurationMs)})
+                          </span>
+                        )}
+                      </>
+                    )}
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -280,9 +303,24 @@ export function AdminPage() {
                         <tbody>
                           {partitionStats.map((p) => {
                             const rowDisabled = disabled || bulkProgress !== null;
+                            const dur = formatDuration(p.lastDurationMs);
                             return (
                               <tr key={p.year} className="border-t border-border/50">
-                                <td className="px-2 py-1 font-medium">{p.year}</td>
+                                <td className="px-2 py-1 font-medium">
+                                  {p.year}
+                                  {dur && (
+                                    <span
+                                      className="ml-2 font-normal tabular-nums text-muted-foreground/60"
+                                      title={
+                                        p.lastRunAt
+                                          ? `Dernier import réussi ${formatRelative(p.lastRunAt)}`
+                                          : undefined
+                                      }
+                                    >
+                                      {dur}
+                                    </span>
+                                  )}
+                                </td>
                                 <td
                                   className="px-2 py-1 text-right tabular-nums text-muted-foreground"
                                   title={`${p.approxCount.toLocaleString("fr-FR")} lignes (estimation planner)`}

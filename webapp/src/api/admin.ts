@@ -7,6 +7,7 @@ export type JobStatusView = {
   lastRunAt: string | null;
   lastStatus: string | null;
   lastBatchStatus: string;
+  lastDurationMs: number | null;
 };
 
 export type JobsStatus = Record<string, JobStatusView>;
@@ -107,6 +108,8 @@ export async function evictAllCaches(): Promise<void> {
 export type PartitionYearCount = {
   year: number;
   approxCount: number;
+  lastRunAt: string | null;
+  lastDurationMs: number | null;
 };
 
 export async function fetchPartitionStats(): Promise<PartitionYearCount[]> {

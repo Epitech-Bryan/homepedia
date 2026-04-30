@@ -134,3 +134,13 @@ export async function truncateDvfYear(year: number): Promise<void> {
     throw new Error(`Failed to truncate year ${year}: ${res.status} ${res.statusText}`);
   }
 }
+
+export async function refreshDvfYearStats(year: number): Promise<void> {
+  const res = await fetch(`${BASE_URL}/transactions/${year}/refresh-stats`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to refresh stats for ${year}: ${res.status} ${res.statusText}`);
+  }
+}

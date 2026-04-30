@@ -1,6 +1,7 @@
 package com.homepedia.api.controller;
 
 import com.homepedia.api.admin.AdminJobsService;
+import com.homepedia.api.batch.dvf.CityDvfStatsAggregator;
 import com.homepedia.api.service.CacheInvalidationService;
 import com.homepedia.api.service.SparkJobLauncherService;
 import com.homepedia.api.service.StatsService;
@@ -33,6 +34,7 @@ public class AdminController {
 	private final SparkJobLauncherService sparkJobLauncherService;
 	private final AdminJobsService adminJobsService;
 	private final TransactionsPartitionStatsService transactionsPartitionStatsService;
+	private final CityDvfStatsAggregator cityDvfStatsAggregator;
 
 	@Operation(summary = "Recompute all statistics", description = "Evicts stats caches, optionally triggers Spark DVF aggregation, and warms up caches.")
 	@PostMapping("/recompute-stats")
@@ -89,6 +91,14 @@ public class AdminController {
 	@GetMapping("/transactions/partition-stats")
 	public ResponseEntity<List<TransactionsPartitionStatsService.YearCount>> partitionStats() {
 		return ResponseEntity.ok(transactionsPartitionStatsService.countByYear());
+	}
+
+	@Operation(summary = "Refresh pre-aggregated DVF stats for one year", description = "Recomputes city_dvf_yearly_stats for the given year from transactions_<year>. Useful to repair the pre-agg without re-running the full import (e.g. after an ANALYZE/aggregator failure).")
+	@PostMapping("/transactions/{year}/refresh-stats")
+	public ResponseEntity<TruncateResponse> refreshStats(@PathVariable int year) {
+		log.info("Manual stats refresh triggered for year {}", year);
+		cityDvfStatsAggregator.refreshYear(year);
+		return ResponseEntity.ok(new TruncateResponse(year, "stats refreshed", Instant.now()));
 	}
 
 	@Operation(summary = "Truncate a yearly transactions partition", description = "Empties `transactions_<year>` (DVF data for that year). Refuses with 409 if a DVF import is currently running. Use to reset before a re-import.")

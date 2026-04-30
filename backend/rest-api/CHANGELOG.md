@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.31.1] - 2026-04-30
+
+### Bug Fixes
+
+- fix(geo): commit Natural Earth countries.geojson + gitignore exception
+
 ## [3.31.0] - 2026-04-30
 
 ### Features

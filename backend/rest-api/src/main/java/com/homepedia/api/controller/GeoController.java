@@ -6,6 +6,7 @@ import static com.homepedia.api.constant.HomepediaConstant.RestPath.Geo.GEO_REGI
 import static com.homepedia.common.indicator.GeographicLevel.DEPARTMENT;
 import static com.homepedia.common.indicator.GeographicLevel.REGION;
 
+import com.homepedia.api.service.CountryGeoService;
 import com.homepedia.api.service.GeoService;
 import com.homepedia.common.geo.dto.FeatureCollection;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class GeoController {
 
 	private final GeoService geoService;
+	private final CountryGeoService countryGeoService;
+
+	@Operation(summary = "Country boundaries (world view)", description = "Natural Earth Admin 0 boundaries for every country (177), trimmed to ISO_A3 + name + population + GDP + continent. Used by the map at world-level zoom before falling back to French regions.")
+	@GetMapping(value = "/countries", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<String> getCountryBoundaries() {
+		return ResponseEntity.ok(countryGeoService.getCountriesGeoJson());
+	}
 
 	@Operation(summary = "Region boundaries", description = "GeoJSON FeatureCollection of all French regions")
 	@GetMapping(GEO_REGIONS)

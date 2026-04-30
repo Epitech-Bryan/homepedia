@@ -139,6 +139,17 @@ export function useTransactionStats(params?: Record<string, string>) {
   });
 }
 
+export function useGeoCountries() {
+  return useQuery({
+    queryKey: ["geo", "countries"],
+    queryFn: () => api.geo.countries(),
+    // Country borders are essentially immutable. Cache for the lifetime of the
+    // tab — a single ETag round-trip on revalidation is enough.
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
 export function useGeoRegions() {
   return useQuery({ queryKey: ["geo", "regions"], queryFn: () => api.geo.regions() });
 }

@@ -1,5 +1,11 @@
 # app
 
+## [0.25.0] - 2026-04-30
+
+### Features
+
+- feat(map): world view — Natural Earth country boundaries at low zoom
+
 ## [0.24.1] - 2026-04-30
 
 ### Bug Fixes

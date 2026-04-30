@@ -144,16 +144,16 @@ public class DvfBatchPersister {
 	}
 
 	/**
-	 * Refresh planner stats on the freshly attached partition. ANALYZE is cheap
-	 * and absolutely necessary — without it the planner falls back on whatever
-	 * was last computed (often nothing for a brand-new heap), which produces
-	 * disastrous plans on the first few API queries hitting the year.
+	 * Refresh planner stats on the freshly attached partition. ANALYZE is cheap and
+	 * absolutely necessary — without it the planner falls back on whatever was last
+	 * computed (often nothing for a brand-new heap), which produces disastrous
+	 * plans on the first few API queries hitting the year.
 	 *
 	 * <p>
 	 * Note: previously {@code VACUUM ANALYZE} but VACUUM cannot run inside a
 	 * transaction block, and the Spring Batch tasklet wraps everything in one
-	 * (SQLSTATE 25001). Plain ANALYZE works in-tx and is sufficient on a
-	 * brand-new heap with no dead tuples.
+	 * (SQLSTATE 25001). Plain ANALYZE works in-tx and is sufficient on a brand-new
+	 * heap with no dead tuples.
 	 */
 	public void analyzePartition(int year) {
 		final var partition = partitionName(year);

@@ -2,9 +2,7 @@ package com.homepedia.api.batch.health;
 
 import com.homepedia.api.batch.shared.ParseUtils;
 import com.homepedia.common.indicator.GeographicLevel;
-import com.homepedia.common.indicator.Indicator;
 import com.homepedia.common.indicator.IndicatorCategory;
-import com.homepedia.common.indicator.IndicatorRepository;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +14,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -24,8 +23,12 @@ import org.springframework.stereotype.Service;
 public class HealthDataImportService {
 
 	private static final int BATCH_SIZE = 1000;
+	private static final String INSERT_SQL = """
+			INSERT INTO indicators (geographic_level, geographic_code, category, label, indicator_value, unit, year)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+			""";
 
-	private final IndicatorRepository indicatorRepository;
+	private final JdbcTemplate jdbcTemplate;
 
 	// No @Transactional: aggregation runs in memory; saves use Spring Data's
 	// per-saveAll implicit transaction. Avoids holding the indicators table
@@ -72,30 +75,28 @@ public class HealthDataImportService {
 	}
 
 	private int saveIndicators(Map<AggregationKey, PrevalenceAccumulator> aggregation) {
-		final var batch = new ArrayList<Indicator>(BATCH_SIZE);
+		final var rows = new ArrayList<Object[]>(BATCH_SIZE);
+		final var level = GeographicLevel.DEPARTMENT.name();
+		final var category = IndicatorCategory.HEALTH.name();
 		var count = 0;
 
 		for (final var entry : aggregation.entrySet()) {
 			final var key = entry.getKey();
-			final var accumulator = entry.getValue();
-			final var avgPrevalence = accumulator.average();
+			final var avgPrevalence = entry.getValue().average();
+			rows.add(new Object[]{level, key.dept(), category, "Pathology: " + key.pathology(), avgPrevalence, "%",
+					key.year()});
 
-			final var indicator = Indicator.builder().geographicLevel(GeographicLevel.DEPARTMENT)
-					.geographicCode(key.dept()).category(IndicatorCategory.HEALTH)
-					.label("Pathology: " + key.pathology()).value(avgPrevalence).unit("%").year(key.year()).build();
-			batch.add(indicator);
-
-			if (batch.size() >= BATCH_SIZE) {
-				indicatorRepository.saveAll(batch);
-				count += batch.size();
-				batch.clear();
+			if (rows.size() >= BATCH_SIZE) {
+				jdbcTemplate.batchUpdate(INSERT_SQL, rows);
+				count += rows.size();
+				rows.clear();
 				log.info("Saved {} health indicators...", count);
 			}
 		}
 
-		if (!batch.isEmpty()) {
-			indicatorRepository.saveAll(batch);
-			count += batch.size();
+		if (!rows.isEmpty()) {
+			jdbcTemplate.batchUpdate(INSERT_SQL, rows);
+			count += rows.size();
 		}
 
 		log.info("Health data import complete: {} indicators saved", count);

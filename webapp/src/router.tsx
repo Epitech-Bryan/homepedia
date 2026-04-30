@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Layout } from "@/components/Layout";
+import { RouteErrorBoundary } from "@/components/RouteErrorBoundary";
 
 // Code-split routes: each page becomes its own chunk so the home page
 // (which is empty) doesn't have to download Admin / Explorer / chart
@@ -33,7 +34,11 @@ function PageFallback() {
 }
 
 function withSuspense(node: React.ReactNode) {
-  return <Suspense fallback={<PageFallback />}>{node}</Suspense>;
+  return (
+    <RouteErrorBoundary>
+      <Suspense fallback={<PageFallback />}>{node}</Suspense>
+    </RouteErrorBoundary>
+  );
 }
 
 export const router = createBrowserRouter([

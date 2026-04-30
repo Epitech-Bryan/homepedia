@@ -123,3 +123,47 @@ homepedia:
 logging:
   level:
     com.homepedia: INFO
+
+resilience4j:
+  # Defaults shared by every external API integration. Override per-name
+  # below if a provider needs different bounds (e.g. ADEME accepts more
+  # concurrent calls than INSEE).
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 2s
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.io.IOException
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+    instances:
+      insee:
+        base-config: default
+      ademe:
+        base-config: default
+      datagouv:
+        base-config: default
+      geo-api:
+        base-config: default
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+    instances:
+      insee:
+        base-config: default
+      ademe:
+        base-config: default
+      datagouv:
+        base-config: default
+      geo-api:
+        base-config: default

@@ -57,6 +57,13 @@ export type MapStyle = "choropleth" | "bubbles" | "heat" | "all";
 
 interface FranceMapProps {
   geojson: GeoJSON.FeatureCollection | null;
+  /**
+   * Optional secondary layer rendered behind {@link geojson}. Used at France
+   * zoom (5+) to keep the world country borders visible behind the French
+   * regions/departments/cities, so the user always has a sense of where the
+   * camera is on the planet. No interaction, no choropleth — just an outline.
+   */
+  baseGeojson?: GeoJSON.FeatureCollection | null;
   onFeatureClick?: (code: string, name: string) => void;
   markers?: MapMarker[];
   onMarkerClick?: (id: string) => void;
@@ -313,6 +320,7 @@ function Legend({ range, label }: { range: { min: number; max: number }; label?:
 
 function FranceMapComponent({
   geojson,
+  baseGeojson,
   onFeatureClick,
   markers,
   onMarkerClick,
@@ -495,8 +503,14 @@ function FranceMapComponent({
               <MapContainer
                 center={FRANCE_CENTER}
                 zoom={FRANCE_ZOOM}
+                minZoom={2}
                 scrollWheelZoom={true}
                 zoomControl={false}
+                // worldCopyJump teleports the camera back across the
+                // antimeridian as the user pans, so horizontal scroll feels
+                // continuous instead of slamming into a wall at the
+                // dateline.
+                worldCopyJump={true}
                 // preferCanvas: render polygons + circles via Canvas instead
                 // of SVG. At city zoom we display thousands of commune
                 // polygons; SVG creates one DOM node per shape and the
@@ -511,6 +525,23 @@ function FranceMapComponent({
                   subdomains="abcd"
                   maxZoom={20}
                 />
+                {baseGeojson && (
+                  <LeafletGeoJSON
+                    // Grey-out world country outlines as a backdrop. No
+                    // hover, no choropleth, no events — purely contextual.
+                    // Distinct key so React doesn't try to reconcile it with
+                    // the foreground layer when zoom switches.
+                    key={`base-${baseGeojson.features.length}`}
+                    data={baseGeojson}
+                    style={{
+                      color: "#94a3b8",
+                      weight: 0.5,
+                      fillColor: "#cbd5e1",
+                      fillOpacity: 0.18,
+                      interactive: false,
+                    }}
+                  />
+                )}
                 <LeafletGeoJSON
                   key={layerKey}
                   data={geojson}

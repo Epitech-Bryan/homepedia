@@ -1,5 +1,15 @@
 # app
 
+## [0.20.0] - 2026-04-30
+
+### Features
+
+- feat(admin): show last-import duration on job cards and per DVF year
+
+### Bug Fixes
+
+- fix(batch): prevent orphan JDBC sessions and stuck Spring Batch jobs
+
 ## [0.19.0] - 2026-04-29
 
 ### Features

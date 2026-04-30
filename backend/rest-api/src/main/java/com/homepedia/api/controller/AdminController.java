@@ -8,12 +8,17 @@ import com.homepedia.api.service.StatsService;
 import com.homepedia.api.service.TransactionsPartitionStatsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
+@Validated
 @Tag(name = "Admin", description = "Administrative operations (auth required)")
 @RestController
 @RequestMapping("/admin")
@@ -78,7 +84,8 @@ public class AdminController {
 
 	@Operation(summary = "Evict a single cache", description = "Clears the named Redis cache. Returns 404 if the cache name is not registered.")
 	@PostMapping("/caches/{name}/evict")
-	public ResponseEntity<EvictResponse> evictCache(@PathVariable String name) {
+	public ResponseEntity<EvictResponse> evictCache(
+			@PathVariable @NotBlank @Pattern(regexp = "[a-z][a-z0-9_-]{0,30}") String name) {
 		final var cleared = cacheInvalidationService.evictByName(name);
 		if (!cleared) {
 			return ResponseEntity.notFound().build();
@@ -95,7 +102,7 @@ public class AdminController {
 
 	@Operation(summary = "Refresh pre-aggregated DVF stats for one year", description = "Recomputes city_dvf_yearly_stats for the given year from transactions_<year>. Useful to repair the pre-agg without re-running the full import (e.g. after an ANALYZE/aggregator failure).")
 	@PostMapping("/transactions/{year}/refresh-stats")
-	public ResponseEntity<TruncateResponse> refreshStats(@PathVariable int year) {
+	public ResponseEntity<TruncateResponse> refreshStats(@PathVariable @Min(2014) @Max(2030) int year) {
 		log.info("Manual stats refresh triggered for year {}", year);
 		cityDvfStatsAggregator.refreshYear(year);
 		return ResponseEntity.ok(new TruncateResponse(year, "stats refreshed", Instant.now()));
@@ -103,7 +110,7 @@ public class AdminController {
 
 	@Operation(summary = "Truncate a yearly transactions partition", description = "Empties `transactions_<year>` (DVF data for that year). Refuses with 409 if a DVF import is currently running. Use to reset before a re-import.")
 	@DeleteMapping("/transactions/{year}")
-	public ResponseEntity<TruncateResponse> truncateYear(@PathVariable int year) {
+	public ResponseEntity<TruncateResponse> truncateYear(@PathVariable @Min(2014) @Max(2030) int year) {
 		log.warn("Manual partition truncation triggered for year {}", year);
 		transactionsPartitionStatsService.truncateYear(year);
 		return ResponseEntity.ok(new TruncateResponse(year, "truncated", Instant.now()));
@@ -117,7 +124,8 @@ public class AdminController {
 
 	@Operation(summary = "Trigger an import job", description = "Async — launches the named job (slug, e.g. 'dvf'). Any additional query parameters are forwarded as Spring Batch job parameters (e.g. ?year=2024). Returns 202 if dispatched, 409 if already running, 404 if unknown.")
 	@PostMapping("/imports/{slug}")
-	public ResponseEntity<TriggerResponse> triggerImport(@PathVariable String slug,
+	public ResponseEntity<TriggerResponse> triggerImport(
+			@PathVariable @NotBlank @Pattern(regexp = "[a-z][a-z0-9_-]{0,30}") String slug,
 			@RequestParam Map<String, String> queryParams) {
 		// Strip the path variable from the query map (Spring includes it on some
 		// configurations) so it doesn't accidentally land in JobParameters.

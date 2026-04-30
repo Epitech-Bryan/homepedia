@@ -44,6 +44,21 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      // Manual chunks isolate the slow-moving libs (react, leaflet, recharts)
+      // from app code. A deploy that only touches src/ then doesn't bust the
+      // browser cache for ~1 MB of vendor JS.
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            "vendor-react": ["react", "react-dom", "react-router-dom"],
+            "vendor-query": ["@tanstack/react-query"],
+            "vendor-leaflet": ["leaflet", "leaflet.heat", "react-leaflet"],
+            "vendor-charts": ["recharts"],
+          },
+        },
+      },
+    },
     server: {
       host: "0.0.0.0",
       port: 5173,

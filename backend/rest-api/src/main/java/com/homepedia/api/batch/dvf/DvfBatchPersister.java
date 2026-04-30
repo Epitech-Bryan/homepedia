@@ -115,6 +115,14 @@ public class DvfBatchPersister {
 		final var lower = year + "-01-01";
 		final var upper = (year + 1) + "-01-01";
 
+		// Push the planner big-job knobs up for the duration of this swap:
+		// rebuilding indexes on the shadow + ATTACH PARTITION can both benefit
+		// from a larger maintenance_work_mem (default 64 MB → 1 GB) and from
+		// parallel maintenance workers. Both are SET LOCAL so they reset at
+		// commit; pod limits are 4 cores / 20 GiB so this is safe.
+		jdbcTemplate.execute("SET LOCAL maintenance_work_mem = '1GB'");
+		jdbcTemplate.execute("SET LOCAL max_parallel_maintenance_workers = 4");
+
 		// Bring the shadow into the durable side: WAL kicks in here so the
 		// post-swap state is crash-safe.
 		jdbcTemplate.execute("ALTER TABLE " + shadow + " SET LOGGED");

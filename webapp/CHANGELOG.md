@@ -1,5 +1,13 @@
 # app
 
+## [0.23.1] - 2026-04-30
+
+### Bug Fixes
+
+- perf: GZIP compression + Mongo bulk insert + bundle analyzer
+- fix(routing): conditional on spring.datasource.replica.url
+- perf: streaming bulk inserts + HTTP cache + read replica routing
+
 ## [0.23.0] - 2026-04-30
 
 ### Features

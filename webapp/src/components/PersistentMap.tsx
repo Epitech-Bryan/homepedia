@@ -145,6 +145,7 @@ function bboxesOverlap(
 type MapMetric =
   | "population"
   | "density"
+  | "gdpPerCapita"
   | "averagePrice"
   | "averagePricePerSqm"
   | "transactionCount";
@@ -152,6 +153,7 @@ type MapMetric =
 const METRIC_LABELS: Record<MapMetric, string> = {
   population: "Population",
   density: "Density (hab/km²)",
+  gdpPerCapita: "GDP per capita (USD)",
   averagePrice: "Avg. price (€)",
   averagePricePerSqm: "Avg. €/m²",
   transactionCount: "Transactions",
@@ -166,6 +168,9 @@ function extractValue(
       return s.population ?? null;
     case "density":
       return s.population && s.area ? s.population / s.area : null;
+    case "gdpPerCapita":
+      // Backend stats don't carry GDP. Only meaningful at world zoom.
+      return null;
     case "averagePrice":
       return s.averagePrice ?? null;
     case "averagePricePerSqm":
@@ -391,16 +396,35 @@ export function PersistentMap() {
   const metricByCode = useMemo(() => {
     const map: Record<string, number | null> = {};
     if (showWorld && geoCountries) {
-      // Country-level: only population is universally available across
-      // every country (Natural Earth POP_EST). For other metrics fall
-      // back to None so the choropleth stays empty rather than lying.
+      // Country-level: population, density (computed from spherical area
+      // baked in by the backend) and GDP per capita (Natural Earth GDP_MD
+      // / population) are universally available. The DVF housing metrics
+      // are FR-only so they leave the choropleth empty at world zoom.
       for (const f of geoCountries.features) {
-        const props = f.properties as { code?: string; population?: number } | null;
+        const props = f.properties as {
+          code?: string;
+          population?: number;
+          area?: number;
+          gdp?: number;
+        } | null;
         if (!props?.code) continue;
-        if (metric === "population") {
-          map[props.code] = props.population ?? null;
-        } else {
-          map[props.code] = null;
+        const pop = props.population ?? null;
+        const areaKm2 = props.area ?? null;
+        const gdpMd = props.gdp ?? null;
+        switch (metric) {
+          case "population":
+            map[props.code] = pop;
+            break;
+          case "density":
+            map[props.code] = pop && areaKm2 ? pop / areaKm2 : null;
+            break;
+          case "gdpPerCapita":
+            // GDP_MD is in millions USD — multiply back to USD before
+            // dividing by population.
+            map[props.code] = gdpMd && pop ? (gdpMd * 1_000_000) / pop : null;
+            break;
+          default:
+            map[props.code] = null;
         }
       }
       return map;

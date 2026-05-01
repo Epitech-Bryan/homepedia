@@ -5,6 +5,17 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.36.0] - 2026-05-01
+
+### Features
+
+- feat(map): density + GDP per capita at world zoom, dispersed heatmap
+
+### Bug Fixes
+
+- fix(map): hide Natural Earth borders for countries with precise overlay
+- fix(map): restore world wrap-around with duplicated country borders
+
 ## [3.35.0] - 2026-05-01
 
 ### Features

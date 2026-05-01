@@ -151,6 +151,7 @@ public class CountryGeoService {
 
 				final var name = props.path("NAME").asText(null);
 				final var pop = props.path("POP_EST");
+				final var gdp = props.path("GDP_MD");
 
 				String code = null;
 				if (isoA3 != null && !"-99".equals(isoA3)) {
@@ -169,11 +170,85 @@ public class CountryGeoService {
 				if (!pop.isMissingNode() && !pop.isNull()) {
 					props.set("population", pop);
 				}
+				// Natural Earth ships GDP in millions USD (2019 vintage); pass
+				// it through as `gdp` so the frontend can drive a GDP-per-capita
+				// choropleth at world zoom without another payload.
+				if (!gdp.isMissingNode() && !gdp.isNull()) {
+					props.set("gdp", gdp);
+				}
+
+				// Compute a spherical-area km² for every feature so the world
+				// view can drive density (population / area) — Natural Earth
+				// itself ships no area column. Done once at boot, baked into
+				// the cached payload.
+				final var areaKm2 = computeFeatureAreaKm2(f.get("geometry"));
+				if (areaKm2 > 0) {
+					props.put("area", areaKm2);
+				}
 			}
 			trimmedGeoJsonCache = objectMapper.writeValueAsString(root);
 		}
 		log.info("Country GeoJSON trimmed: {} features, {} bytes",
 				((ArrayNode) objectMapper.readTree(trimmedGeoJsonCache).get("features")).size(),
 				trimmedGeoJsonCache.getBytes(StandardCharsets.UTF_8).length);
+	}
+
+	/**
+	 * Mean Earth radius (IUGG R1) in metres. Picked over the equatorial radius
+	 * because we need a single-value approximation for spherical area; R1 minimises
+	 * the average error against the WGS-84 ellipsoid.
+	 */
+	private static final double EARTH_RADIUS_M = 6_371_008.8;
+
+	private static double computeFeatureAreaKm2(JsonNode geometry) {
+		if (geometry == null || geometry.isNull()) {
+			return 0.0;
+		}
+		final var type = geometry.path("type").asText("");
+		final var coords = geometry.path("coordinates");
+		double areaM2 = 0.0;
+		if ("Polygon".equals(type)) {
+			areaM2 = polygonAreaM2(coords);
+		} else if ("MultiPolygon".equals(type)) {
+			for (JsonNode poly : coords) {
+				areaM2 += polygonAreaM2(poly);
+			}
+		}
+		return areaM2 / 1_000_000.0;
+	}
+
+	/**
+	 * Spherical polygon area on a sphere of radius {@link #EARTH_RADIUS_M}. Uses
+	 * Green's theorem on the sphere — accurate to within a few percent of the
+	 * WGS-84 ellipsoid result for country-sized shapes. Outer ring counts positive,
+	 * inner rings (holes) subtract.
+	 */
+	private static double polygonAreaM2(JsonNode polygonCoords) {
+		if (polygonCoords == null || !polygonCoords.isArray() || polygonCoords.isEmpty()) {
+			return 0.0;
+		}
+		double area = Math.abs(ringAreaM2(polygonCoords.get(0)));
+		for (int i = 1; i < polygonCoords.size(); i++) {
+			area -= Math.abs(ringAreaM2(polygonCoords.get(i)));
+		}
+		return Math.max(area, 0.0);
+	}
+
+	private static double ringAreaM2(JsonNode ring) {
+		if (ring == null || !ring.isArray() || ring.size() < 3) {
+			return 0.0;
+		}
+		double total = 0.0;
+		final int n = ring.size();
+		for (int i = 0; i < n; i++) {
+			final var p1 = ring.get(i);
+			final var p2 = ring.get((i + 1) % n);
+			final double lon1 = Math.toRadians(p1.get(0).asDouble());
+			final double lat1 = Math.toRadians(p1.get(1).asDouble());
+			final double lon2 = Math.toRadians(p2.get(0).asDouble());
+			final double lat2 = Math.toRadians(p2.get(1).asDouble());
+			total += (lon2 - lon1) * (2.0 + Math.sin(lat1) + Math.sin(lat2));
+		}
+		return total * EARTH_RADIUS_M * EARTH_RADIUS_M / 2.0;
 	}
 }

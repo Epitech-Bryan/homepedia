@@ -410,8 +410,50 @@ function FranceMapComponent({
     if (markers && markers.length > 0) {
       return markers.map((m) => [m.lat, m.lon, 1] as L.HeatLatLngTuple);
     }
-    return polygonCenters.map((p) => [p.lat, p.lng, p.ratio] as L.HeatLatLngTuple);
-  }, [showHeat, markers, polygonCenters]);
+    if (!geojson || !metricByCode || !choroplethRange) return [];
+    // One heat point per feature concentrates a single hot blob on each
+    // polygon's centroid — at city zoom this collapses a whole metropolis
+    // (Lille + Roubaix + Tourcoing + Villeneuve-d'Ascq …) into a single
+    // dot per commune. Spread the contribution over a small grid inside
+    // each polygon's bounding box so larger features paint a continuous
+    // zone instead. Tiny features (most communes) keep their single
+    // centroid to avoid blowing up the total point count.
+    const points: L.HeatLatLngTuple[] = [];
+    for (const feature of geojson.features) {
+      const props = feature.properties as FeatureProperties | null;
+      const code = props?.code;
+      if (!code) continue;
+      const value = metricByCode[code];
+      if (value == null || !Number.isFinite(value) || value <= 0) continue;
+      const ratio = (value - choroplethRange.min) / (choroplethRange.max - choroplethRange.min);
+      const bounds = L.geoJSON(feature).getBounds();
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+      const dLat = ne.lat - sw.lat;
+      const dLng = ne.lng - sw.lng;
+      const span = Math.max(dLat, dLng);
+      // Sub-commune (≤ ~5 km bbox): single centroid point.
+      // Department/large commune (~5-25 km): 3×3 internal grid.
+      // Region/country-sized: 5×5 grid.
+      const n = span < 0.05 ? 1 : span < 0.2 ? 3 : 5;
+      if (n === 1) {
+        const c = bounds.getCenter();
+        points.push([c.lat, c.lng, ratio] as L.HeatLatLngTuple);
+        continue;
+      }
+      const step = 1 / (n + 1);
+      for (let i = 1; i <= n; i++) {
+        for (let j = 1; j <= n; j++) {
+          points.push([
+            sw.lat + dLat * j * step,
+            sw.lng + dLng * i * step,
+            ratio,
+          ] as L.HeatLatLngTuple);
+        }
+      }
+    }
+    return points;
+  }, [showHeat, markers, geojson, metricByCode, choroplethRange]);
 
   const baseStyle = useCallback(
     (feature?: GeoJSON.Feature<GeoJSON.Geometry, FeatureProperties>): PathOptions => {

@@ -1,5 +1,11 @@
 # app
 
+## [0.30.0] - 2026-05-01
+
+### Features
+
+- feat(webapp): hide polygon borders in heat/bubbles modes and enrich CityPage
+
 ## [0.29.0] - 2026-04-30
 
 ### Features

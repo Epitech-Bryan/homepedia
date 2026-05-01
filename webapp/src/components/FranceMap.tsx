@@ -542,13 +542,14 @@ function FranceMapComponent({
                     }}
                   />
                 )}
-                {/* In pure heat mode the polygon borders compete visually
-                    with the density gradient — drop the foreground GeoJSON
-                    layer entirely (the heatmap is doing the talking).
-                    The grey country backdrop above still gives geographic
-                    context. choropleth + bubbles modes keep the polygons
-                    so hover/click + the choropleth fill keep working. */}
-                {mapStyle !== "heat" && (
+                {/* In heat and bubbles modes the polygon borders compete
+                    visually with the gradient/markers — drop the foreground
+                    GeoJSON layer entirely. Bubbles carry their own click
+                    + tooltip so interaction still works. The grey country
+                    backdrop above keeps geographic context. choropleth +
+                    "all" modes keep the polygons so hover/click + the
+                    choropleth fill keep working. */}
+                {mapStyle !== "heat" && mapStyle !== "bubbles" && (
                   <LeafletGeoJSON
                     key={layerKey}
                     data={geojson}

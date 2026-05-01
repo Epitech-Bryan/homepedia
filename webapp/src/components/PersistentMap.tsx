@@ -150,12 +150,14 @@ export function PersistentMap() {
   const { pathname } = useLocation();
   const [metric, setMetric] = useState<MapMetric>("population");
   const [style, setStyle] = useState<MapStyle>("choropleth");
-  const [zoom, setZoom] = useState(6);
-  const [center, setCenter] = useState<[number, number]>([46.6, 2.5]);
-  // Visible map bounds: [south, west, north, east]. Used to fetch commune
-  // polygons for every department that intersects the viewport, so cells
-  // along the edge don't appear truncated.
-  const [bounds, setBounds] = useState<[number, number, number, number]>([41, -5, 51, 10]);
+  // Initial state matches FranceMap's INITIAL_CENTER/INITIAL_ZOOM: world
+  // view with no upfront bias toward any country. The 4-tier zoom logic
+  // takes over as soon as the user zooms in past 5.
+  const [zoom, setZoom] = useState(2);
+  const [center, setCenter] = useState<[number, number]>([20, 10]);
+  // Visible map bounds: [south, west, north, east]. World-level bounds at
+  // boot, the map view-tracker updates them as the user pans/zooms.
+  const [bounds, setBounds] = useState<[number, number, number, number]>([-60, -180, 75, 180]);
   // Local target for in-map clicks (no URL change). Reset whenever the
   // browser URL changes so deep-links (/regions/X, /departments/X) take over.
   const [clickedFeatureCode, setClickedFeatureCode] = useState<string | undefined>(undefined);

@@ -13,8 +13,12 @@ import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
 import { Skeleton } from "@/components/ui/skeleton";
 import "leaflet/dist/leaflet.css";
 
-const FRANCE_CENTER: [number, number] = [46.6, 2.5];
-const FRANCE_ZOOM = 6;
+// Default to a world-level view on first paint. The 4-tier zoom logic in
+// PersistentMap switches to the data-rich France stack as soon as the user
+// crosses zoom 5, so starting wide keeps the homepage neutral instead of
+// pre-biasing to one country.
+const INITIAL_CENTER: [number, number] = [20, 10];
+const INITIAL_ZOOM = 2;
 
 // Sequential 7-step Carto-style "Sunset" palette — works for prices, density,
 // any positive metric. Perceptually monotone, accessible.
@@ -501,16 +505,28 @@ function FranceMapComponent({
           ) : (
             <>
               <MapContainer
-                center={FRANCE_CENTER}
-                zoom={FRANCE_ZOOM}
+                center={INITIAL_CENTER}
+                zoom={INITIAL_ZOOM}
                 minZoom={2}
                 scrollWheelZoom={true}
                 zoomControl={false}
-                // worldCopyJump teleports the camera back across the
-                // antimeridian as the user pans, so horizontal scroll feels
-                // continuous instead of slamming into a wall at the
-                // dateline.
-                worldCopyJump={true}
+                // worldCopyJump used to teleport the camera across the
+                // antimeridian for fluid horizontal scroll, but at the
+                // minimum zoom that produced a visible "ghost" world: tiles
+                // wrapped while the GeoJSON foreground stayed a single copy,
+                // so country borders looked like they were shifting around
+                // empty space. Off + noWrap on the TileLayer below keeps the
+                // world rendered exactly once on the cream background.
+                worldCopyJump={false}
+                // Stop the user from panning past the world. Slightly oversized
+                // bounds (-90→90 lat, -200→200 lon) leave a touch of breathing
+                // room around the dateline without exposing the empty
+                // duplicate world.
+                maxBounds={[
+                  [-90, -200],
+                  [90, 200],
+                ]}
+                maxBoundsViscosity={1.0}
                 // preferCanvas: render polygons + circles via Canvas instead
                 // of SVG. At city zoom we display thousands of commune
                 // polygons; SVG creates one DOM node per shape and the
@@ -524,6 +540,7 @@ function FranceMapComponent({
                   url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
                   subdomains="abcd"
                   maxZoom={20}
+                  noWrap={true}
                 />
                 {baseGeojson && (
                   <LeafletGeoJSON

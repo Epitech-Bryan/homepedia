@@ -1,5 +1,11 @@
 # app
 
+## [0.30.2] - 2026-05-01
+
+### Bug Fixes
+
+- fix(map): restore world wrap-around with duplicated country borders
+
 ## [0.30.1] - 2026-05-01
 
 ### Bug Fixes

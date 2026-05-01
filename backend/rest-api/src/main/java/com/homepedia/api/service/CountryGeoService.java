@@ -37,8 +37,8 @@ public class CountryGeoService {
 	 * Properties to keep in the trimmed FeatureCollection. Anything outside this
 	 * allow-list is dropped at parse time. ISO_A3 may be {@code -99} for disputed
 	 * or legacy entries (France, Norway, Somaliland, Kosovo, N. Cyprus) — those
-	 * cases are recovered via {@code ISO_A3_EH} / {@code ADM0_A3} when
-	 * computing {@code code}; the raw source columns themselves are not kept.
+	 * cases are recovered via {@code ISO_A3_EH} / {@code ADM0_A3} when computing
+	 * {@code code}; the raw source columns themselves are not kept.
 	 */
 	private static final List<String> KEPT_PROPS = List.of("ISO_A3", "ISO_A2", "NAME", "NAME_LONG", "POP_EST", "GDP_MD",
 			"CONTINENT", "REGION_UN", "SUBREGION");

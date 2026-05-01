@@ -1,5 +1,11 @@
 # app
 
+## [0.30.3] - 2026-05-01
+
+### Bug Fixes
+
+- fix(map): hide Natural Earth borders for countries with precise overlay
+
 ## [0.30.2] - 2026-05-01
 
 ### Bug Fixes

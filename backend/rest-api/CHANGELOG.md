@@ -5,6 +5,16 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.35.0] - 2026-05-01
+
+### Features
+
+- feat(webapp): hide polygon borders in heat/bubbles modes and enrich CityPage
+
+### Bug Fixes
+
+- fix(map): recover FR/NO/Somaliland codes, stop world wrap, default to world view
+
 ## [3.34.0] - 2026-04-30
 
 ### Features

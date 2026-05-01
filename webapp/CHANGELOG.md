@@ -1,5 +1,11 @@
 # app
 
+## [0.30.1] - 2026-05-01
+
+### Bug Fixes
+
+- fix(map): recover FR/NO/Somaliland codes, stop world wrap, default to world view
+
 ## [0.30.0] - 2026-05-01
 
 ### Features

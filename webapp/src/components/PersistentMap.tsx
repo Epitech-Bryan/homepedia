@@ -325,6 +325,36 @@ export function PersistentMap() {
   // fight a fresh reference on every render.
   const wrappedCountries = useMemo(() => wrapAcrossDateline(geoCountries), [geoCountries]);
 
+  // Countries that already have a higher-resolution overlay (FR regions +
+  // BE provinces from geo.api.gouv.fr / Statbel, plus the ~38 EU + G20
+  // states/provinces in the world-admin1 dataset). When these layers are
+  // active the Natural Earth country borders bleed through underneath
+  // and create visible "ghost" outlines next to the precise ones; filter
+  // them out of the backdrop so the precise overlay is the only thing
+  // drawing those borders.
+  const preciselyOverlaidCountries = useMemo(() => {
+    const set = new Set<string>(["FRA", "BEL"]);
+    if (geoWorldAdmin1) {
+      for (const f of geoWorldAdmin1.features) {
+        const c = (f.properties as { country?: string } | null)?.country;
+        if (c) set.add(c);
+      }
+    }
+    return set;
+  }, [geoWorldAdmin1]);
+
+  const backdropCountries = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!wrappedCountries) return null;
+    if (preciselyOverlaidCountries.size === 0) return wrappedCountries;
+    return {
+      type: "FeatureCollection",
+      features: wrappedCountries.features.filter((f) => {
+        const code = (f.properties as { code?: string } | null)?.code;
+        return !code || !preciselyOverlaidCountries.has(code);
+      }),
+    };
+  }, [wrappedCountries, preciselyOverlaidCountries]);
+
   // 4-tier zoom: world (countries) → regions+BE provinces → departments
   // → city/arrondissement. At world zoom France is just one country shape
   // among the others — the user is dezoomed past the point where regional
@@ -514,7 +544,7 @@ export function PersistentMap() {
         // (where countries are already the foreground — rendering them
         // twice would just double-draw). Keeps the user oriented when
         // zoomed on a French region or commune.
-        baseGeojson={!showWorld ? wrappedCountries : null}
+        baseGeojson={!showWorld ? backdropCountries : null}
         onFeatureClick={onFeatureClick}
         markers={markers}
         onMarkerClick={onMarkerClick}

@@ -1,5 +1,11 @@
 # app
 
+## [0.31.1] - 2026-05-01
+
+### Bug Fixes
+
+- fix(map): heatmap follows polygon shape via boundary sampling
+
 ## [0.31.0] - 2026-05-01
 
 ### Features

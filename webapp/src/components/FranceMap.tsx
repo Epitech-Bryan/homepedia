@@ -411,45 +411,60 @@ function FranceMapComponent({
       return markers.map((m) => [m.lat, m.lon, 1] as L.HeatLatLngTuple);
     }
     if (!geojson || !metricByCode || !choroplethRange) return [];
-    // One heat point per feature concentrates a single hot blob on each
-    // polygon's centroid — at city zoom this collapses a whole metropolis
-    // (Lille + Roubaix + Tourcoing + Villeneuve-d'Ascq …) into a single
-    // dot per commune. Spread the contribution over a small grid inside
-    // each polygon's bounding box so larger features paint a continuous
-    // zone instead. Tiny features (most communes) keep their single
-    // centroid to avoid blowing up the total point count.
+    // Walk each polygon's outer ring at regular intervals and add a
+    // centroid — every point is by construction on or inside the
+    // feature, no random jitter, no rejection sampling. Larger features
+    // (and features with a high metric value) emit more samples, so a
+    // métropole like Lille paints a continuous blob that follows the
+    // commune's actual shape and merges with its neighbours instead of
+    // collapsing on a single centroid.
+    const MAX_POINTS_PER_PART = 24;
     const points: L.HeatLatLngTuple[] = [];
+    const pushRingSamples = (ring: number[][], ratio: number, count: number) => {
+      if (ring.length < 3 || count <= 0) return;
+      const step = ring.length / count;
+      for (let i = 0; i < count; i++) {
+        const idx = Math.min(ring.length - 1, Math.floor(i * step));
+        const [lng, lat] = ring[idx];
+        points.push([lat, lng, ratio] as L.HeatLatLngTuple);
+      }
+    };
+    const ringCentroid = (ring: number[][]): [number, number] => {
+      let sx = 0;
+      let sy = 0;
+      const n = ring.length - 1; // last vertex usually equals the first
+      for (let i = 0; i < n; i++) {
+        sx += ring[i][0];
+        sy += ring[i][1];
+      }
+      return [sy / n, sx / n];
+    };
     for (const feature of geojson.features) {
       const props = feature.properties as FeatureProperties | null;
       const code = props?.code;
       if (!code) continue;
       const value = metricByCode[code];
       if (value == null || !Number.isFinite(value) || value <= 0) continue;
-      const ratio = (value - choroplethRange.min) / (choroplethRange.max - choroplethRange.min);
-      const bounds = L.geoJSON(feature).getBounds();
-      const sw = bounds.getSouthWest();
-      const ne = bounds.getNorthEast();
-      const dLat = ne.lat - sw.lat;
-      const dLng = ne.lng - sw.lng;
-      const span = Math.max(dLat, dLng);
-      // Sub-commune (≤ ~5 km bbox): single centroid point.
-      // Department/large commune (~5-25 km): 3×3 internal grid.
-      // Region/country-sized: 5×5 grid.
-      const n = span < 0.05 ? 1 : span < 0.2 ? 3 : 5;
-      if (n === 1) {
-        const c = bounds.getCenter();
-        points.push([c.lat, c.lng, ratio] as L.HeatLatLngTuple);
-        continue;
-      }
-      const step = 1 / (n + 1);
-      for (let i = 1; i <= n; i++) {
-        for (let j = 1; j <= n; j++) {
-          points.push([
-            sw.lat + dLat * j * step,
-            sw.lng + dLng * i * step,
-            ratio,
-          ] as L.HeatLatLngTuple);
-        }
+      const ratio = Math.max(
+        0,
+        Math.min(1, (value - choroplethRange.min) / (choroplethRange.max - choroplethRange.min)),
+      );
+      const polys: number[][][][] = [];
+      const g = feature.geometry;
+      if (g.type === "Polygon") polys.push(g.coordinates);
+      else if (g.type === "MultiPolygon") polys.push(...g.coordinates);
+      else continue;
+      for (const poly of polys) {
+        const outer = poly[0];
+        if (!outer || outer.length < 3) continue;
+        // Per-part sample count grows with the metric ratio. Tiny
+        // contributions stay at 1 sample so they don't drop out entirely.
+        const count = Math.max(1, Math.round(ratio * MAX_POINTS_PER_PART));
+        pushRingSamples(outer, ratio, count);
+        // One interior anchor so the kernel actually fills the polygon
+        // instead of just outlining its boundary.
+        const [cy, cx] = ringCentroid(outer);
+        points.push([cy, cx, ratio] as L.HeatLatLngTuple);
       }
     }
     return points;

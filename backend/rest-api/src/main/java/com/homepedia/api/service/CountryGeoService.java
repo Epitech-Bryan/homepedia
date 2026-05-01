@@ -36,8 +36,9 @@ public class CountryGeoService {
 	/**
 	 * Properties to keep in the trimmed FeatureCollection. Anything outside this
 	 * allow-list is dropped at parse time. ISO_A3 may be {@code -99} for disputed
-	 * territories — we keep them but the frontend filters those out for joins
-	 * against external datasets.
+	 * or legacy entries (France, Norway, Somaliland, Kosovo, N. Cyprus) — those
+	 * cases are recovered via {@code ISO_A3_EH} / {@code ADM0_A3} when
+	 * computing {@code code}; the raw source columns themselves are not kept.
 	 */
 	private static final List<String> KEPT_PROPS = List.of("ISO_A3", "ISO_A2", "NAME", "NAME_LONG", "POP_EST", "GDP_MD",
 			"CONTINENT", "REGION_UN", "SUBREGION");
@@ -119,6 +120,19 @@ public class CountryGeoService {
 			final var features = (ArrayNode) root.get("features");
 			for (JsonNode f : features) {
 				final var props = (ObjectNode) f.get("properties");
+
+				// Read the candidate code columns BEFORE stripping. Natural
+				// Earth flags France/Norway as ISO_A3=-99 (legacy diplomatic
+				// reasons) and Somaliland/Kosovo/N. Cyprus the same way for
+				// non-recognition. ISO_A3_EH (Even Hansen) recovers
+				// FRA/NOR; ADM0_A3 carries the de-facto code for the
+				// remaining disputed territories (SOL, KOS, CYN). Without
+				// this fallback those countries had no `code` at all and
+				// dropped out of the choropleth join entirely.
+				final var isoA3 = props.path("ISO_A3").asText(null);
+				final var isoEh = props.path("ISO_A3_EH").asText(null);
+				final var admA3 = props.path("ADM0_A3").asText(null);
+
 				// Strip everything outside the kept allow-list, then alias the
 				// Natural Earth field names to the conventions the rest of the
 				// app uses: code/name/population. The map's choropleth +
@@ -135,11 +149,19 @@ public class CountryGeoService {
 				}
 				toRemove.forEach(props::remove);
 
-				final var iso = props.path("ISO_A3").asText(null);
 				final var name = props.path("NAME").asText(null);
 				final var pop = props.path("POP_EST");
-				if (iso != null && !"-99".equals(iso)) {
-					props.put("code", iso);
+
+				String code = null;
+				if (isoA3 != null && !"-99".equals(isoA3)) {
+					code = isoA3;
+				} else if (isoEh != null && !"-99".equals(isoEh)) {
+					code = isoEh;
+				} else if (admA3 != null && !"-99".equals(admA3)) {
+					code = admA3;
+				}
+				if (code != null) {
+					props.put("code", code);
 				}
 				if (name != null) {
 					props.put("name", name);

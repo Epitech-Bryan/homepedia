@@ -35,6 +35,20 @@ export const api = {
     get: (id: number) => fetchJson<TransactionDetail>(`/transactions/${id}`),
     stats: (params?: Record<string, string>) =>
       fetchJson<TransactionStats>("/transactions/stats", params),
+    heatPoints: (params: {
+      south: number;
+      west: number;
+      north: number;
+      east: number;
+      metric?: "averagePrice" | "averagePricePerSqm" | "transactionCount";
+    }) =>
+      fetchJson<TransactionHeatPoint[]>("/transactions/heatpoints", {
+        south: String(params.south),
+        west: String(params.west),
+        north: String(params.north),
+        east: String(params.east),
+        metric: params.metric ?? "averagePricePerSqm",
+      }),
   },
   geo: {
     countries: () => fetchJson<GeoJSON.FeatureCollection>("/geo/countries"),
@@ -219,6 +233,12 @@ export interface SentimentStats {
   negativeCount: number;
   neutralCount: number;
   totalReviews: number;
+}
+
+export interface TransactionHeatPoint {
+  latitude: number;
+  longitude: number;
+  value: number;
 }
 
 export interface PagedResponse<T> {

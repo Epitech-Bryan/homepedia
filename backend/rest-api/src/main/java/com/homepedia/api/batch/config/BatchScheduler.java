@@ -36,6 +36,7 @@ public class BatchScheduler {
 	private final Job educationImportJob;
 	private final Job environmentImportJob;
 	private final Job infrastructureImportJob;
+	private final Job geocodingJob;
 
 	@Scheduled(cron = "${homepedia.scheduler.insee.cron:-}", zone = ZONE)
 	public void runInseeImport() {
@@ -85,6 +86,11 @@ public class BatchScheduler {
 	@Scheduled(cron = "${homepedia.scheduler.infrastructure.cron:-}", zone = ZONE)
 	public void runInfrastructureImport() {
 		runJob(infrastructureImportJob);
+	}
+
+	@Scheduled(cron = "${homepedia.scheduler.geocoding.cron:-}", zone = ZONE)
+	public void runGeocoding() {
+		runJob(geocodingJob);
 	}
 
 	private void runJob(Job job) {

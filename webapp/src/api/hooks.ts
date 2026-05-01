@@ -139,6 +139,45 @@ export function useTransactionStats(params?: Record<string, string>) {
   });
 }
 
+/**
+ * Pulls the per-bucket heatmap points the backend aggregates from geocoded
+ * transactions. Disabled at world/regional zoom — at that scale the polygon
+ * sampling fallback already paints the right shape and the bbox is too wide
+ * for the endpoint anyway.
+ */
+export function useTransactionHeatPoints(params: {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+  metric: "averagePrice" | "averagePricePerSqm" | "transactionCount";
+  enabled: boolean;
+}) {
+  // Snap the bbox to a coarser grid so panning doesn't refire the query for
+  // every pixel; matches the cache key precision on the backend.
+  const snap = (n: number) => Math.round(n * 100) / 100;
+  return useQuery({
+    queryKey: [
+      "transactionHeatPoints",
+      params.metric,
+      snap(params.south),
+      snap(params.west),
+      snap(params.north),
+      snap(params.east),
+    ],
+    queryFn: () =>
+      api.transactions.heatPoints({
+        south: params.south,
+        west: params.west,
+        north: params.north,
+        east: params.east,
+        metric: params.metric,
+      }),
+    enabled: params.enabled,
+    staleTime: 60_000,
+  });
+}
+
 export function useGeoCountries() {
   return useQuery({
     queryKey: ["geo", "countries"],

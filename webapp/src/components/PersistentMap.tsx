@@ -14,6 +14,7 @@ import {
   useGeoRegions,
   useGeoWorldAdmin1,
   useRegionStats,
+  useTransactionHeatPoints,
 } from "@/api/hooks";
 import {
   Select,
@@ -551,6 +552,25 @@ export function PersistentMap() {
   const urlActive = showDepartments ? departmentCode : (activeRegionCode ?? undefined);
   const activeFeatureCode = clickedFeatureCode ?? urlActive;
 
+  // Per-address heatmap layer. Only fetched when the user is at city zoom
+  // (the bbox is small enough to be useful) and has picked a metric the
+  // backend can aggregate from geocoded transactions. Other metrics fall
+  // back to the polygon-shape sampling inside FranceMap.
+  const heatBackendMetric: "averagePrice" | "averagePricePerSqm" | "transactionCount" | null =
+    metric === "averagePrice" || metric === "averagePricePerSqm" || metric === "transactionCount"
+      ? metric
+      : null;
+  const heatEnabled =
+    showCityDetail && (style === "heat" || style === "all") && heatBackendMetric != null;
+  const { data: precisionHeatPoints } = useTransactionHeatPoints({
+    south: bounds[0],
+    west: bounds[1],
+    north: bounds[2],
+    east: bounds[3],
+    metric: heatBackendMetric ?? "averagePricePerSqm",
+    enabled: heatEnabled,
+  });
+
   const hasArrondissements = showArrondissements && (geoArrondissements?.features.length ?? 0) > 0;
   const layerName = hasArrondissements
     ? "Arrondissements"
@@ -575,6 +595,7 @@ export function PersistentMap() {
         activeFeatureCode={activeFeatureCode}
         metricByCode={metricByCode}
         metricLabel={METRIC_LABELS[metric]}
+        precisionHeatPoints={heatEnabled ? precisionHeatPoints : undefined}
         mapStyle={style}
         height="100%"
         onZoomChange={setZoom}

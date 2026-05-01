@@ -74,6 +74,14 @@ interface FranceMapProps {
   activeFeatureCode?: string;
   metricByCode?: Record<string, number | null | undefined>;
   metricLabel?: string;
+  /**
+   * When provided, the heat layer feeds directly off these per-address
+   * points (latitude / longitude / value) instead of falling back to the
+   * polygon-shape sampling. Comes from the backend heatpoints endpoint
+   * and is only fetched at city zoom where individual transactions are
+   * meaningful.
+   */
+  precisionHeatPoints?: Array<{ latitude: number; longitude: number; value: number }>;
   mapStyle?: MapStyle;
   height?: string;
   onZoomChange?: (zoom: number) => void;
@@ -331,6 +339,7 @@ function FranceMapComponent({
   activeFeatureCode,
   metricByCode,
   metricLabel,
+  precisionHeatPoints,
   mapStyle = "choropleth",
   height = "500px",
   onZoomChange,
@@ -407,6 +416,18 @@ function FranceMapComponent({
 
   const heatPoints = useMemo<L.HeatLatLngTuple[]>(() => {
     if (!showHeat) return [];
+    // Highest precision: per-address aggregates fetched from the backend
+    // heatpoints endpoint. Each row is a ~100 m bucket of geocoded
+    // transactions with the metric value already averaged in. Normalise
+    // by the max so the heatmap kernel weights the hot spots correctly.
+    if (precisionHeatPoints && precisionHeatPoints.length > 0) {
+      let maxV = 0;
+      for (const p of precisionHeatPoints) if (p.value > maxV) maxV = p.value;
+      if (maxV <= 0) return [];
+      return precisionHeatPoints.map(
+        (p) => [p.latitude, p.longitude, p.value / maxV] as L.HeatLatLngTuple,
+      );
+    }
     if (markers && markers.length > 0) {
       return markers.map((m) => [m.lat, m.lon, 1] as L.HeatLatLngTuple);
     }
@@ -468,7 +489,7 @@ function FranceMapComponent({
       }
     }
     return points;
-  }, [showHeat, markers, geojson, metricByCode, choroplethRange]);
+  }, [showHeat, precisionHeatPoints, markers, geojson, metricByCode, choroplethRange]);
 
   const baseStyle = useCallback(
     (feature?: GeoJSON.Feature<GeoJSON.Geometry, FeatureProperties>): PathOptions => {

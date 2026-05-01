@@ -1,0 +1,70 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-transaction-coords
+      author: homepedia
+      comment: >
+        Add nullable latitude/longitude on transactions, populated by the
+        BAN geocoding job. Stays nullable because (a) the existing 50M
+        rows haven't been geocoded yet and (b) BAN can fail to resolve
+        ambiguous addresses (lieu-dit, missing street_number, etc.). The
+        column lives on the partitioned parent so every per-year
+        partition inherits it for free.
+
+        latitude_resolved keeps the timestamp of the last geocoding so
+        the job can re-process only stale rows without scanning the
+        whole table.
+      changes:
+        - addColumn:
+            tableName: transactions
+            columns:
+              - column:
+                  name: latitude
+                  type: double
+              - column:
+                  name: longitude
+                  type: double
+              - column:
+                  name: geocoded_at
+                  type: timestamp
+      rollback:
+        - dropColumn:
+            tableName: transactions
+            columnName: latitude
+        - dropColumn:
+            tableName: transactions
+            columnName: longitude
+        - dropColumn:
+            tableName: transactions
+            columnName: geocoded_at
+
+  - changeSet:
+      id: 010-transaction-coords-partial-index
+      author: homepedia
+      comment: >
+        Two partial indexes:
+
+        1. (latitude, longitude) WHERE latitude IS NOT NULL — used by
+           the heatpoint endpoint to filter rows by viewport bbox. Partial
+           because un-geocoded rows have nothing to look at.
+
+        2. (id) WHERE latitude IS NULL — used by the geocoding job to
+           pull the next chunk of work. Partial keeps it tiny once the
+           backfill completes (only newly-imported rows hit it).
+      changes:
+        - sql:
+            comment: bbox lookup index for the heatpoint endpoint
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_transaction_geocoded_bbox
+                ON transactions (latitude, longitude)
+                WHERE latitude IS NOT NULL;
+        - sql:
+            comment: backlog index for the geocoding job
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_transaction_geocode_backlog
+                ON transactions (id)
+                WHERE latitude IS NULL;
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_transaction_geocoded_bbox;
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_transaction_geocode_backlog;

@@ -38,6 +38,7 @@ public class AdminJobsService {
 		map.put("education", "educationImportJob");
 		map.put("environment", "environmentImportJob");
 		map.put("infrastructure", "infrastructureImportJob");
+		map.put("geocoding", "geocodingJob");
 		JOB_NAMES = Map.copyOf(map);
 	}
 

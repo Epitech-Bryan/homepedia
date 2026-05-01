@@ -41,6 +41,36 @@ const ARRONDISSEMENT_ZOOM_THRESHOLD = 12;
 // arrondissements via geo.api.gouv.fr: Paris, Marseille, Lyon.
 const DRILLDOWN_CITY_CODES = new Set(["75056", "13055", "69123"]);
 
+// worldCopyJump lets the camera glide across the antimeridian, but the
+// foreground GeoJSON is only painted once. The result is a "ghost" world
+// without country borders next to the real one. Duplicating the country
+// FeatureCollection at -360°/+360° fills both adjacent copies so borders
+// are continuous regardless of how far the user pans.
+function shiftGeometry(geom: GeoJSON.Geometry, dx: number): GeoJSON.Geometry {
+  const shiftRing = (ring: number[][]): number[][] =>
+    ring.map(([x, y, ...rest]) => [x + dx, y, ...rest]);
+  switch (geom.type) {
+    case "Polygon":
+      return { ...geom, coordinates: geom.coordinates.map(shiftRing) };
+    case "MultiPolygon":
+      return { ...geom, coordinates: geom.coordinates.map((poly) => poly.map(shiftRing)) };
+    default:
+      return geom;
+  }
+}
+
+function wrapAcrossDateline(
+  fc: GeoJSON.FeatureCollection | null | undefined,
+): GeoJSON.FeatureCollection | null {
+  if (!fc) return null;
+  const shifted = (offset: number): GeoJSON.Feature[] =>
+    fc.features.map((f) => ({ ...f, geometry: shiftGeometry(f.geometry, offset) }));
+  return {
+    type: "FeatureCollection",
+    features: [...shifted(-360), ...fc.features, ...shifted(360)],
+  };
+}
+
 function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -289,13 +319,19 @@ export function PersistentMap() {
     };
   }, [geoCities, showArrondissements, geoArrondissements, drilldownCityCodes]);
 
+  // The countries layer is the only one where wrap-around matters: it's
+  // the foreground at world zoom AND the grey backdrop at every higher
+  // zoom. Wrap once and reuse so the WeakMap-cached bbox lookups don't
+  // fight a fresh reference on every render.
+  const wrappedCountries = useMemo(() => wrapAcrossDateline(geoCountries), [geoCountries]);
+
   // 4-tier zoom: world (countries) → regions+BE provinces → departments
   // → city/arrondissement. At world zoom France is just one country shape
   // among the others — the user is dezoomed past the point where regional
   // detail would even be readable. As soon as we cross the threshold we
   // drop into the data-rich stack with countries kept as a grey backdrop.
   const geojson = showWorld
-    ? (geoCountries ?? null)
+    ? (wrappedCountries ?? null)
     : showCityDetail
       ? (cityLevelGeojson ?? geoDepartments ?? null)
       : showDepartments
@@ -478,7 +514,7 @@ export function PersistentMap() {
         // (where countries are already the foreground — rendering them
         // twice would just double-draw). Keeps the user oriented when
         // zoomed on a French region or commune.
-        baseGeojson={!showWorld ? geoCountries : null}
+        baseGeojson={!showWorld ? wrappedCountries : null}
         onFeatureClick={onFeatureClick}
         markers={markers}
         onMarkerClick={onMarkerClick}

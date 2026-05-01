@@ -510,23 +510,13 @@ function FranceMapComponent({
                 minZoom={2}
                 scrollWheelZoom={true}
                 zoomControl={false}
-                // worldCopyJump used to teleport the camera across the
-                // antimeridian for fluid horizontal scroll, but at the
-                // minimum zoom that produced a visible "ghost" world: tiles
-                // wrapped while the GeoJSON foreground stayed a single copy,
-                // so country borders looked like they were shifting around
-                // empty space. Off + noWrap on the TileLayer below keeps the
-                // world rendered exactly once on the cream background.
-                worldCopyJump={false}
-                // Stop the user from panning past the world. Slightly oversized
-                // bounds (-90→90 lat, -200→200 lon) leave a touch of breathing
-                // room around the dateline without exposing the empty
-                // duplicate world.
-                maxBounds={[
-                  [-90, -200],
-                  [90, 200],
-                ]}
-                maxBoundsViscosity={1.0}
+                // worldCopyJump teleports the camera back across the
+                // antimeridian as the user pans, so horizontal scroll feels
+                // continuous instead of slamming into a wall at the
+                // dateline. The country GeoJSON is itself duplicated at
+                // ±360° in PersistentMap so borders render on every copy
+                // of the world the tile layer paints.
+                worldCopyJump={true}
                 // preferCanvas: render polygons + circles via Canvas instead
                 // of SVG. At city zoom we display thousands of commune
                 // polygons; SVG creates one DOM node per shape and the
@@ -540,7 +530,6 @@ function FranceMapComponent({
                   url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
                   subdomains="abcd"
                   maxZoom={20}
-                  noWrap={true}
                 />
                 {baseGeojson && (
                   <LeafletGeoJSON

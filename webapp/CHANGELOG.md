@@ -1,5 +1,11 @@
 # app
 
+## [0.31.0] - 2026-05-01
+
+### Features
+
+- feat(map): density + GDP per capita at world zoom, dispersed heatmap
+
 ## [0.30.3] - 2026-05-01
 
 ### Bug Fixes

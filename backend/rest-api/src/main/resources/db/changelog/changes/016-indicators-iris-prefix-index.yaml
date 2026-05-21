@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-indicators-iris-prefix-index
+      author: homepedia
+      comment: >
+        The IRIS-indicators endpoint runs
+        `WHERE geographic_code LIKE :insee || '%'` to fetch every IRIS row
+        under a commune (changeset 014 + IndicatorRepository#findIrisIndicatorsByCommune).
+        The composite index from changeset 012 and the partial from 014 both use the
+        default B-tree opclass, which under any non-C lc_collate ignores
+        `LIKE 'literal%'` and falls back to a sequential scan.
+
+        A separate partial B-tree opclassed with `varchar_pattern_ops`
+        sidesteps the collation so the LIKE-prefix probe becomes a range
+        scan. Restricted to `geographic_level = 'IRIS'` to keep the index
+        tight (~50k rows max once Filosofi lands, vs. ~36k CITY + 100 DEP
+        + 13 REGION otherwise).
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_indicator_iris_code_prefix
+                ON indicators (geographic_code varchar_pattern_ops)
+                WHERE geographic_level = 'IRIS';
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_indicator_iris_code_prefix;

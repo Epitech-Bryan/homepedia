@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.index.TextIndexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import static lombok.AccessLevel.PRIVATE;
@@ -32,6 +33,12 @@ public class CityReview {
 	@Indexed
 	private String cityInseeCode;
 
+	// Mongo text index enables $text full-text search over review bodies
+	// (powered by the language-aware tokeniser, French stemming, stopwords).
+	// Not used yet — the word-cloud / sentiment endpoints stream raw docs —
+	// but it's cheap to keep in place so a "search reviews mentioning X"
+	// endpoint can land without a migration.
+	@TextIndexed
 	private String content;
 
 	private Double sentimentScore;

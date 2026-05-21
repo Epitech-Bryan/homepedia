@@ -51,9 +51,17 @@ public class CacheConfig implements CachingConfigurer {
 
 	@Bean
 	public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+		// EVERYTHING was deprecated in Jackson 2.18 in favour of
+		// NON_FINAL_AND_ENUMS, which still tags polymorphic types (so
+		// collections and enums round-trip) but skips final classes like
+		// String/Integer/LocalDate that don't need it. Cache payloads stay
+		// the same size in practice, the type tag just stops showing up on
+		// rows where it was redundant. flushStaleEntries below wipes the
+		// existing cache on boot so we never try to deserialise an
+		// old-format value with the new serializer.
 		final var ptv = BasicPolymorphicTypeValidator.builder().allowIfBaseType(Object.class).build();
 		final ObjectMapper mapper = JsonMapper.builder().findAndAddModules()
-				.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.EVERYTHING)
+				.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL_AND_ENUMS)
 				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
 		final var jsonSerializer = new GenericJackson2JsonRedisSerializer(mapper);
 

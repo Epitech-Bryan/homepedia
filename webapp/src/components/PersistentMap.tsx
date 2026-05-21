@@ -362,15 +362,27 @@ export function PersistentMap() {
     };
   }, [wrappedCountries, preciselyOverlaidCountries]);
 
+  // Vector tiles toggle: when on, the commune layer at city zoom is rendered
+  // by the backend MVT endpoint via Leaflet.VectorGrid (issue #6) instead
+  // of the SVG-per-polygon path coming from geo.api.gouv.fr. Off by default
+  // — flip VITE_USE_VECTOR_TILES=true to opt in once the mbtiles file is
+  // provisioned in prod.
+  const useVectorTiles = showCityDetail && import.meta.env.VITE_USE_VECTOR_TILES === "true";
+
   // 4-tier zoom: world (countries) → regions+BE provinces → departments
   // → city/arrondissement. At world zoom France is just one country shape
   // among the others — the user is dezoomed past the point where regional
   // detail would even be readable. As soon as we cross the threshold we
   // drop into the data-rich stack with countries kept as a grey backdrop.
+  // When vector tiles take over the commune layer we pass {@code null} for
+  // the geojson prop so FranceMap doesn't double-draw with its
+  // LeafletGeoJSON polygons.
   const geojson = showWorld
     ? (wrappedCountries ?? null)
     : showCityDetail
-      ? (cityLevelGeojson ?? geoDepartments ?? null)
+      ? useVectorTiles
+        ? null
+        : (cityLevelGeojson ?? geoDepartments ?? null)
       : showDepartments
         ? (geoDepartments ?? null)
         : (regionsFeatureCollection ?? null);
@@ -611,6 +623,7 @@ export function PersistentMap() {
         metricLabel={METRIC_LABELS[metric]}
         precisionHeatPoints={heatEnabled ? precisionHeatPoints : undefined}
         transactionMarkers={markersEnabled ? transactionMarkers : undefined}
+        useVectorTilesForCities={useVectorTiles}
         mapStyle={style}
         height="100%"
         onZoomChange={setZoom}

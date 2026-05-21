@@ -12,6 +12,7 @@ import L from "leaflet";
 import "leaflet.heat";
 import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CityVectorGridLayer } from "@/components/CityVectorGridLayer";
 import "leaflet/dist/leaflet.css";
 
 // Default to a world-level view on first paint. The 4-tier zoom logic in
@@ -69,7 +70,7 @@ interface FranceMapProps {
    * camera is on the planet. No interaction, no choropleth — just an outline.
    */
   baseGeojson?: GeoJSON.FeatureCollection | null;
-  onFeatureClick?: (code: string, name: string) => void;
+  onFeatureClick?: (code: string, name?: string) => void;
   markers?: MapMarker[];
   onMarkerClick?: (id: string) => void;
   activeFeatureCode?: string;
@@ -98,6 +99,14 @@ interface FranceMapProps {
     roomCount: number | null;
     mutationDate: string;
   }>;
+  /**
+   * When true, render the commune polygons through a vector-tile layer
+   * (issue #6) instead of relying on the geojson prop. The caller is
+   * still expected to pass {@code geojson=null} or a non-commune
+   * collection to avoid double-drawing; this prop only governs whether
+   * the VectorGrid overlay mounts.
+   */
+  useVectorTilesForCities?: boolean;
   mapStyle?: MapStyle;
   height?: string;
   onZoomChange?: (zoom: number) => void;
@@ -446,6 +455,7 @@ function FranceMapComponent({
   metricLabel,
   precisionHeatPoints,
   transactionMarkers,
+  useVectorTilesForCities = false,
   mapStyle = "choropleth",
   height = "500px",
   onZoomChange,
@@ -776,6 +786,14 @@ function FranceMapComponent({
                 {showHeat && <HeatLayer points={heatPoints} />}
                 {transactionMarkers && transactionMarkers.length > 0 && (
                   <TransactionMarkerLayer markers={transactionMarkers} />
+                )}
+                {useVectorTilesForCities && (
+                  <CityVectorGridLayer
+                    metricByCode={metricByCode}
+                    range={choroplethRange}
+                    palette={CHOROPLETH_SCALE}
+                    onFeatureClick={onFeatureClick}
+                  />
                 )}
                 {onZoomChange && <ZoomReporter onChange={onZoomChange} />}
                 {onCenterChange && <CenterReporter onChange={onCenterChange} />}

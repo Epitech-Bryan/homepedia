@@ -1,11 +1,17 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCity, useReviews, useWordCloud, useSentimentStats } from "@/api/hooks";
 import { StatCard } from "@/components/StatCard";
 import { WordCloud } from "@/components/WordCloud";
-import { SentimentChart } from "@/components/SentimentChart";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
+
+// Sentiment donut uses Recharts (~113 kB gzip). Lazy so the bundle only
+// loads when reviews actually exist — pages without sentiment data skip
+// the chunk fetch entirely.
+const SentimentChart = lazy(() =>
+  import("@/components/SentimentChart").then((m) => ({ default: m.SentimentChart })),
+);
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,7 +88,9 @@ export function ReviewsPage() {
 
       {sentiment && (
         <div className="space-y-3">
-          <SentimentChart stats={sentiment} />
+          <Suspense fallback={null}>
+            <SentimentChart stats={sentiment} />
+          </Suspense>
           <div className="grid grid-cols-2 gap-3">
             <StatCard label="Avg. Score" value={sentiment.averageScore.toFixed(2)} />
             <StatCard label="Total Reviews" value={sentiment.totalReviews} />

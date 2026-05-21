@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   useCity,
@@ -7,12 +8,18 @@ import {
   useReviews,
 } from "@/api/hooks";
 import { StatCard } from "@/components/StatCard";
-import { PriceChart } from "@/components/PriceChart";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+// Lazy-load the chart so Recharts (~113 kB gzip) only enters the network
+// graph when this city actually has transactions to plot. Communes without
+// DVF data skip the chunk download entirely.
+const PriceChart = lazy(() =>
+  import("@/components/PriceChart").then((m) => ({ default: m.PriceChart })),
+);
 
 function sentimentBadgeClass(label: string) {
   switch (label.toLowerCase()) {
@@ -100,7 +107,11 @@ export function CityPage() {
         </div>
       )}
 
-      {chartData.length > 0 && <PriceChart data={chartData} title="Price Overview" />}
+      {chartData.length > 0 && (
+        <Suspense fallback={null}>
+          <PriceChart data={chartData} title="Price Overview" />
+        </Suspense>
+      )}
 
       {sentiment && sentiment.totalReviews > 0 && (
         <Card>

@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             "vendor-react": ["react", "react-dom", "react-router-dom"],
             "vendor-query": ["@tanstack/react-query"],
-            "vendor-leaflet": ["leaflet", "leaflet.heat", "react-leaflet"],
+            "vendor-leaflet": ["leaflet", "leaflet.heat", "leaflet.vectorgrid", "react-leaflet"],
             "vendor-charts": ["recharts"],
           },
         },

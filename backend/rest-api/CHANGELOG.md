@@ -5,6 +5,19 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.37.0] - 2026-05-21
+
+### Features
+
+- feat(events): relay SSE batch events across pods via Redis pub/sub
+- feat(geocoding): geocode DVF transactions via BAN, expose precise heatmap
+
+### Bug Fixes
+
+- perf(http): cache /geo /regions /departments for 24h, keep stats at 5min
+- perf(db): index cities.department_code and add trigram GIN on cities.name
+- fix(map): heatmap follows polygon shape via boundary sampling
+
 ## [3.36.0] - 2026-05-01
 
 ### Features

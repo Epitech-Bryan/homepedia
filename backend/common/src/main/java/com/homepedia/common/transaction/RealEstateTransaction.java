@@ -76,4 +76,12 @@ public class RealEstateTransaction {
 	private Double landSurface;
 
 	private String streetType;
+
+	// Populated by TransactionGeocoder via the BAN /search/csv endpoint. Stays
+	// nullable: a few percent of rows resolve to lieu-dit / missing house
+	// number and BAN can't geocode them. Indexes on these columns are
+	// partial-on-NOT-NULL (changeset 010), so unmapped rows pay nothing.
+	private Double latitude;
+
+	private Double longitude;
 }

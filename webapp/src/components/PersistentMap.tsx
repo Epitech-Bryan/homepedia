@@ -15,6 +15,7 @@ import {
   useGeoWorldAdmin1,
   useRegionStats,
   useTransactionHeatPoints,
+  useTransactionMarkers,
 } from "@/api/hooks";
 import {
   Select,
@@ -571,6 +572,19 @@ export function PersistentMap() {
     enabled: heatEnabled,
   });
 
+  // Per-transaction pins, only past the arrondissement zoom — beyond that
+  // point the viewport is small enough that the backend will actually
+  // return rows (it rejects bboxes > 0.2°) and the markers add value over
+  // the heatmap alone.
+  const markersEnabled = zoom >= ARRONDISSEMENT_ZOOM_THRESHOLD;
+  const { data: transactionMarkers } = useTransactionMarkers({
+    south: bounds[0],
+    west: bounds[1],
+    north: bounds[2],
+    east: bounds[3],
+    enabled: markersEnabled,
+  });
+
   const hasArrondissements = showArrondissements && (geoArrondissements?.features.length ?? 0) > 0;
   const layerName = hasArrondissements
     ? "Arrondissements"
@@ -596,6 +610,7 @@ export function PersistentMap() {
         metricByCode={metricByCode}
         metricLabel={METRIC_LABELS[metric]}
         precisionHeatPoints={heatEnabled ? precisionHeatPoints : undefined}
+        transactionMarkers={markersEnabled ? transactionMarkers : undefined}
         mapStyle={style}
         height="100%"
         onZoomChange={setZoom}

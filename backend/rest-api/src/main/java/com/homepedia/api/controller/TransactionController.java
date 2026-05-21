@@ -3,13 +3,16 @@ package com.homepedia.api.controller;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.TRANSACTIONS;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.BY_ID;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.HEATPOINTS;
+import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.MARKERS;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.STATS;
 
 import com.homepedia.api.service.TransactionHeatPointService;
+import com.homepedia.api.service.TransactionMarkerService;
 import com.homepedia.api.service.TransactionService;
 import com.homepedia.common.transaction.PropertyType;
 import com.homepedia.common.transaction.TransactionDetail;
 import com.homepedia.common.transaction.TransactionHeatPoint;
+import com.homepedia.common.transaction.TransactionMarker;
 import com.homepedia.common.transaction.TransactionStats;
 import com.homepedia.common.transaction.TransactionSummary;
 import java.util.List;
@@ -37,6 +40,7 @@ public class TransactionController {
 
 	private final TransactionService transactionService;
 	private final TransactionHeatPointService heatPointService;
+	private final TransactionMarkerService markerService;
 	private final PagedResourcesAssembler<TransactionSummary> pagedResourcesAssembler;
 
 	@Operation(summary = "Search transactions", description = "Paginated real estate transactions with multi-criteria filtering")
@@ -83,5 +87,20 @@ public class TransactionController {
 			default -> TransactionHeatPointService.Metric.AVERAGE_PRICE_PER_SQM;
 		};
 		return ResponseEntity.ok(heatPointService.heatPoints(south, west, north, east, m));
+	}
+
+	@Operation(summary = "Transaction markers by viewport", description = "Returns individual geocoded transactions inside the viewport (id, lat/lon, price, surface, …) so the map can render clickable pins. Empty when the viewport is wider than 0.2°.")
+	@GetMapping(MARKERS)
+	public ResponseEntity<List<TransactionMarker>> markers(
+			@Parameter(description = "Viewport south latitude") @RequestParam final double south,
+			@Parameter(description = "Viewport west longitude") @RequestParam final double west,
+			@Parameter(description = "Viewport north latitude") @RequestParam final double north,
+			@Parameter(description = "Viewport east longitude") @RequestParam final double east,
+			@Parameter(description = "Property type filter") @RequestParam(required = false) final PropertyType propertyType,
+			@Parameter(description = "Minimum price") @RequestParam(required = false) final BigDecimal minPrice,
+			@Parameter(description = "Maximum price") @RequestParam(required = false) final BigDecimal maxPrice,
+			@Parameter(description = "Cap on returned markers (default 300, max 1000)") @RequestParam(required = false) final Integer limit) {
+		return ResponseEntity
+				.ok(markerService.markers(south, west, north, east, propertyType, minPrice, maxPrice, limit));
 	}
 }

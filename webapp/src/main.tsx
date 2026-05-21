@@ -2,6 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "@/App";
 import { reportWebVitals } from "@/api/webVitals";
+import { api } from "@/api/client";
+import { queryClient } from "@/api/queryClient";
 import "./index.css";
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -15,3 +17,39 @@ createRoot(document.getElementById("root")!).render(
 // largest paint, INP after the next interaction, etc.). Doesn't block
 // startup.
 reportWebVitals();
+
+// Idle-time prefetch of refdata that the map always ends up needing
+// (countries on world zoom, regions/departments past zoom 5). Persisted
+// to localStorage by App's PersistQueryClientProvider, so a second tab
+// load resolves instantly. Wrapped in requestIdleCallback so the
+// network calls don't compete with the LCP-critical bundle download;
+// degrades to setTimeout on Safari which still lacks the API.
+const schedule = (cb: () => void) => {
+  type WithRic = Window & {
+    requestIdleCallback?: (cb: IdleRequestCallback, options?: IdleRequestOptions) => number;
+  };
+  const w = window as WithRic;
+  if (typeof w.requestIdleCallback === "function") {
+    w.requestIdleCallback(cb, { timeout: 4000 });
+  } else {
+    setTimeout(cb, 1500);
+  }
+};
+
+schedule(() => {
+  queryClient.prefetchQuery({
+    queryKey: ["geo", "countries"],
+    queryFn: () => api.geo.countries(),
+    staleTime: Infinity,
+  });
+  queryClient.prefetchQuery({
+    queryKey: ["geo", "regions"],
+    queryFn: () => api.geo.regions(),
+    staleTime: Infinity,
+  });
+  queryClient.prefetchQuery({
+    queryKey: ["regions"],
+    queryFn: () => api.regions.list(),
+    staleTime: 60 * 60 * 1000,
+  });
+});

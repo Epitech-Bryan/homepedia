@@ -6,11 +6,12 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY webapp/package.json webapp/
 RUN pnpm install --frozen-lockfile --filter webapp
 COPY webapp/ webapp/
-# Issue #6: route the city polygon layer through the backend vector tile
-# endpoint (mbtiles served from the rest-api PVC) instead of fetching
-# per-department GeoJSON from geo.api.gouv.fr. To roll back, drop this
-# ENV and rebuild — the frontend transparently falls back to GeoJSON.
-ENV VITE_USE_VECTOR_TILES=true
+# Issue #6 vector tiles are disabled at build time until the frontend
+# rendering bug is rooted out — the backend MVT endpoint and the
+# CityVectorGridLayer component stay in place, just gated off. Flip
+# the ENV below back to true once browser-side debugging confirms
+# polygons render correctly.
+# ENV VITE_USE_VECTOR_TILES=true
 RUN pnpm --filter webapp build
 
 FROM docker.io/library/nginx:alpine

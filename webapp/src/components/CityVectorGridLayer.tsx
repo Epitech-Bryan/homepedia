@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import { useMap } from "react-leaflet";
-import L from "leaflet";
-// leaflet.vectorgrid mutates the global L namespace at import time. No types
-// ship with the package; declared inline in src/types/leaflet-vectorgrid.d.ts.
-import "leaflet.vectorgrid";
+// `leaflet-vectorgrid-setup` publishes Leaflet on `globalThis.L` before the
+// plugin loads, so the side-effect `L.vectorGrid = …` lands on the same
+// instance MapContainer uses. Importing directly from `"leaflet.vectorgrid"`
+// or `"leaflet"` here breaks the plugin under Vite's ESM module graph —
+// the plugin attaches to a different L and tile fetches never fire.
+// Types declared inline in src/types/leaflet-vectorgrid.d.ts.
+import L from "@/lib/leaflet-vectorgrid-setup";
 
 interface CityVectorGridLayerProps {
   /**

@@ -140,6 +140,15 @@ public class DvfBatchPersister {
 		jdbcTemplate.execute("DROP TABLE " + current);
 		jdbcTemplate.execute("ALTER TABLE " + shadow + " RENAME TO " + current);
 
+		// Per-partition autovacuum thresholds (issue #5). Defaults (vacuum 0.2,
+		// analyze 0.1) leave the freshly-swapped partition under-analyzed for
+		// hours after a 5 M-row import — first API queries hitting the year
+		// get stale stats and pick seq scans. 0.05 / 0.02 trigger autovacuum
+		// after just 5 % / 2 % of the rows change so the planner stays honest
+		// between imports.
+		jdbcTemplate.execute("ALTER TABLE " + current
+				+ " SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02)");
+
 		log.info("Swapped partition for year {} (old dropped, new attached as {})", year, current);
 	}
 

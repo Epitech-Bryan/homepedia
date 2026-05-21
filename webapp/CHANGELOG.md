@@ -1,5 +1,17 @@
 # app
 
+## [0.32.0] - 2026-05-21
+
+### Features
+
+- feat(events): relay SSE batch events across pods via Redis pub/sub
+- feat(geocoding): geocode DVF transactions via BAN, expose precise heatmap
+
+### Bug Fixes
+
+- perf(http): cache /geo /regions /departments for 24h, keep stats at 5min
+- perf(db): index cities.department_code and add trigram GIN on cities.name
+
 ## [0.31.1] - 2026-05-01
 
 ### Bug Fixes

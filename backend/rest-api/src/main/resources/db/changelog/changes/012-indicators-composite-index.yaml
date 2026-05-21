@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-indicators-composite-index
+      author: homepedia
+      comment: >
+        Composite index on indicators(geographic_level, geographic_code, category).
+        IndicatorRepository.findByGeographicLevelAndGeographicCodeAndCategory is
+        the hottest path (City/Department/Region page renders all pull indicator
+        sets by category). The existing (level, code) index already covers it,
+        but the planner still filters on category in the row store. Adding
+        category as a trailing key lets the lookup hit the index leaves
+        directly and skips the heap scan for codes that have hundreds of
+        indicators (Paris ≈ 200).
+
+        Keeping idx_indicator_geo around because (level, code) prefix lookups
+        without category — the broader findByGeographicLevelAndGeographicCode
+        method — still benefit from it.
+      changes:
+        - createIndex:
+            tableName: indicators
+            indexName: idx_indicator_geo_category
+            columns:
+              - column:
+                  name: geographic_level
+              - column:
+                  name: geographic_code
+              - column:
+                  name: category
+      rollback:
+        - dropIndex:
+            tableName: indicators
+            indexName: idx_indicator_geo_category

@@ -2,13 +2,16 @@ package com.homepedia.api.controller;
 
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.TRANSACTIONS;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.BY_ID;
+import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.COMPARABLE_SALES;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.HEATPOINTS;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.MARKERS;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.Transaction.STATS;
 
+import com.homepedia.api.service.ComparableSalesService;
 import com.homepedia.api.service.TransactionHeatPointService;
 import com.homepedia.api.service.TransactionMarkerService;
 import com.homepedia.api.service.TransactionService;
+import com.homepedia.common.transaction.ComparableSale;
 import com.homepedia.common.transaction.PropertyType;
 import com.homepedia.common.transaction.TransactionDetail;
 import com.homepedia.common.transaction.TransactionHeatPoint;
@@ -41,6 +44,7 @@ public class TransactionController {
 	private final TransactionService transactionService;
 	private final TransactionHeatPointService heatPointService;
 	private final TransactionMarkerService markerService;
+	private final ComparableSalesService comparableSalesService;
 	private final PagedResourcesAssembler<TransactionSummary> pagedResourcesAssembler;
 
 	@Operation(summary = "Search transactions", description = "Paginated real estate transactions with multi-criteria filtering")
@@ -102,5 +106,11 @@ public class TransactionController {
 			@Parameter(description = "Cap on returned markers (default 300, max 1000)") @RequestParam(required = false) final Integer limit) {
 		return ResponseEntity
 				.ok(markerService.markers(south, west, north, east, propertyType, minPrice, maxPrice, limit));
+	}
+
+	@Operation(summary = "Nearest comparable sales", description = "Top-N pre-computed comparable transactions for the requested mutation, ordered by similarity rank. Returns an empty array until the ComparableSalesAggregator Spark job populates the table; the endpoint is live now so the frontend popup can be developed against the final contract.")
+	@GetMapping(COMPARABLE_SALES)
+	public ResponseEntity<List<ComparableSale>> comparableSales(@PathVariable final Long id) {
+		return ResponseEntity.ok(comparableSalesService.findByTransactionId(id));
 	}
 }

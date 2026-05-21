@@ -1,5 +1,11 @@
 # app
 
+## [0.39.1] - 2026-05-21
+
+### Bug Fixes
+
+- fix(webapp): bind leaflet.vectorgrid to the app's Leaflet instance under Vite
+
 ## [0.39.0] - 2026-05-21
 
 ### Features

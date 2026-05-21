@@ -1,5 +1,11 @@
 # app
 
+## [0.37.1] - 2026-05-21
+
+### Bug Fixes
+
+- fix(webapp): disable vector tiles flag until frontend rendering is debugged
+
 ## [0.37.0] - 2026-05-21
 
 ### Features

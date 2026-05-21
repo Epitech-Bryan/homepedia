@@ -47,21 +47,30 @@ public class CacheConfig implements CachingConfigurer {
 	public static final String CACHE_STATS = "stats";
 	public static final String CACHE_REVIEWS = "reviews";
 
-	private static final String KEY_PREFIX = "homepedia:";
+	// Bump the version suffix whenever the on-disk serialisation format
+	// changes (Jackson typing strategy, value class shape, etc.) so the
+	// new pod reads/writes in a fresh namespace instead of trying to
+	// deserialise the previous format. Old keys expire naturally via TTL
+	// (max 24h on geo); flushStaleEntries below also tries to clean them
+	// on boot but is best-effort.
+	private static final String KEY_PREFIX = "homepedia:v2:";
 
 	@Bean
 	public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-		// EVERYTHING was deprecated in Jackson 2.18 in favour of
-		// NON_FINAL_AND_ENUMS, which still tags polymorphic types (so
-		// collections and enums round-trip) but skips final classes like
-		// String/Integer/LocalDate that don't need it. Cache payloads stay
-		// the same size in practice, the type tag just stops showing up on
-		// rows where it was redundant. flushStaleEntries below wipes the
-		// existing cache on boot so we never try to deserialise an
-		// old-format value with the new serializer.
+		// Jackson 2.18 deprecated DefaultTyping.EVERYTHING in favour of
+		// NON_FINAL_AND_ENUMS, but switching emits records (and any other
+		// implicitly-final class) WITHOUT a type wrapper, while EVERYTHING
+		// wrapped them. flushStaleEntries below is meant to wipe the
+		// previous-format cache on boot — in practice that didn't catch
+		// every key under @Cacheable, and a subset of stats / refdata
+		// payloads stayed in the old format and failed to deserialise on
+		// the next read ("Unexpected token (START_ARRAY), expected
+		// VALUE_STRING"). The webapp surfaced the failure as empty stats
+		// everywhere, so we stick to EVERYTHING until the cache flush is
+		// rebuilt around an explicit format-version marker.
 		final var ptv = BasicPolymorphicTypeValidator.builder().allowIfBaseType(Object.class).build();
 		final ObjectMapper mapper = JsonMapper.builder().findAndAddModules()
-				.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL_AND_ENUMS)
+				.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.EVERYTHING)
 				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).build();
 		final var jsonSerializer = new GenericJackson2JsonRedisSerializer(mapper);
 
@@ -84,18 +93,41 @@ public class CacheConfig implements CachingConfigurer {
 		return manager;
 	}
 
+	// Cleans any keys that still live under previous KEY_PREFIX versions
+	// (the suffix is bumped whenever the serialisation format changes).
+	// Logs at INFO even when 0 keys are found so we can tell apart "flush
+	// ran and matched nothing" from "flush silently failed", which is
+	// what made the v1→v2 cache migration painful to diagnose.
 	private void flushStaleEntries(RedisConnectionFactory connectionFactory) {
-		try {
-			final var connection = connectionFactory.getConnection();
-			final var keys = connection.keyCommands().keys((KEY_PREFIX + "*").getBytes());
-			if (keys != null && !keys.isEmpty()) {
-				connection.keyCommands().del(keys.toArray(byte[][]::new));
-				log.info("Flushed {} stale Redis cache entries on startup", keys.size());
+		final var staleRoot = "homepedia:";
+		try (final var connection = connectionFactory.getConnection()) {
+			final var keys = connection.keyCommands().keys((staleRoot + "*").getBytes());
+			final var matched = keys == null ? 0 : keys.size();
+			final var toDrop = keys == null
+					? java.util.Collections.<byte[]>emptyList()
+					: keys.stream().filter(k -> !startsWith(k, KEY_PREFIX)).toList();
+			if (!toDrop.isEmpty()) {
+				connection.keyCommands().del(toDrop.toArray(byte[][]::new));
 			}
-			connection.close();
+			log.info(
+					"Redis cache flush on startup: scanned {} entries under '{}', removed {} stale (current prefix '{}')",
+					matched, staleRoot, toDrop.size(), KEY_PREFIX);
 		} catch (Exception e) {
 			log.warn("Could not flush Redis cache on startup: {}", e.getMessage());
 		}
+	}
+
+	private static boolean startsWith(final byte[] key, final String prefix) {
+		final var pBytes = prefix.getBytes();
+		if (key.length < pBytes.length) {
+			return false;
+		}
+		for (int i = 0; i < pBytes.length; i++) {
+			if (key[i] != pBytes[i]) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**

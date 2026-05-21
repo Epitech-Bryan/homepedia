@@ -1,5 +1,11 @@
 # app
 
+## [0.33.0] - 2026-05-21
+
+### Features
+
+- feat(map): clickable markers for individual DVF transactions
+
 ## [0.32.0] - 2026-05-21
 
 ### Features

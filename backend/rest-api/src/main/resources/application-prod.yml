@@ -7,6 +7,14 @@ server:
     min-response-size: 1024
   http2:
     enabled: true
+  # Tomcat threads sized for the burst pattern: a city page fans out 4-6
+  # parallel queries, the map can trigger heatpoints + markers + stats
+  # simultaneously. 200 (default) saturates fast at p99 under load.
+  tomcat:
+    threads:
+      max: 400
+      min-spare: 50
+    accept-count: 200
 
 spring:
   datasource:
@@ -14,12 +22,21 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
-      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}
+      # Sized for the bursty page-render fan-out: city page = 4-6 queries
+      # in parallel, map endpoints can stack on top. Default 10 caps at one
+      # browser tab. 25 gives ~4 concurrent users their own connection.
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:25}
       minimum-idle: ${HIKARI_MIN_IDLE:5}
-      connection-timeout: 30000
+      # Fail fast when the pool is saturated rather than letting the request
+      # queue stack up — Tomcat returns 503 and the alert fires within 5 min
+      # (Grafana cache-miss + 5xx rules from issue #2).
+      connection-timeout: 3000
       keepalive-time: 120000
       max-lifetime: 1800000
       validation-timeout: 5000
+      # Logs a stack trace when a connection is held longer than this so the
+      # next leak shows up in Loki before it eats the whole pool.
+      leak-detection-threshold: 30000
       data-source-properties:
         reWriteBatchedInserts: true
         tcpKeepAlive: true

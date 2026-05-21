@@ -1,0 +1,160 @@
+package com.homepedia.spark;
+
+import java.util.Properties;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.expressions.Window;
+import org.apache.spark.sql.functions;
+import org.apache.spark.sql.types.DataTypes;
+
+/**
+ * Pre-computes top-10 comparable sales per geocoded transaction
+ * ({@code comparable_transactions} table, changeset 015 — issue #11). The
+ * endpoint {@code /api/transactions/{id}/comparable-sales} already serves from
+ * this table; once this job has run, it stops returning empty arrays.
+ *
+ * <p>
+ * Clustering strategy:
+ * <ul>
+ * <li><b>Property type bucket</b>: exact match on {@code property_type} (MAISON
+ * vs APPARTEMENT vs MAISON_APPARTEMENT vs other) so a flat is never compared
+ * against a house.</li>
+ * <li><b>Surface bucket</b>: 20 m² buckets so a 35 m² studio doesn't match a 95
+ * m² 4-piece.</li>
+ * <li><b>Year bucket</b>: same calendar year — the residential market shifts
+ * enough year-over-year that older comparables would mislead the price
+ * delta.</li>
+ * <li><b>Geographic bucket</b>: 6-char geohash (~1.2 km × 0.6 km cells in
+ * metropolitan France) — coarse enough to populate every bucket, fine enough to
+ * keep the comparables "in the neighbourhood".</li>
+ * </ul>
+ *
+ * <p>
+ * Inside each bucket, every transaction picks the 10 nearest neighbours by
+ * Haversine distance and stores them as (transaction_id, similarity_rank 1..10,
+ * comparable_id, distance_m, price_delta_pct).
+ *
+ * <p>
+ * The job is idempotent: {@code SaveMode.Overwrite} truncates and reloads the
+ * table each run, so re-running after a DVF import doesn't compound stale
+ * comparables.
+ */
+public final class ComparableSalesAggregateJob {
+
+	private ComparableSalesAggregateJob() {
+	}
+
+	private record Config(String jdbcUrl, String jdbcUser, String jdbcPassword) {
+	}
+
+	public static void main(String[] args) {
+		final var cfg = parseArgs(args);
+
+		try (final var spark = SparkSession.builder().appName("homepedia-comparable-sales").getOrCreate()) {
+			final var jdbcProps = jdbcProps(cfg);
+			final var transactions = loadGeocodedTransactions(spark, cfg.jdbcUrl(), jdbcProps);
+			final var withBuckets = withClusteringBuckets(transactions);
+			final var comparables = pickTopNeighbours(withBuckets, 10);
+
+			comparables.write().mode(SaveMode.Overwrite).jdbc(cfg.jdbcUrl(), "comparable_transactions", jdbcProps);
+		}
+	}
+
+	private static Properties jdbcProps(Config cfg) {
+		final var props = new Properties();
+		props.put("user", cfg.jdbcUser());
+		props.put("password", cfg.jdbcPassword());
+		props.put("driver", "org.postgresql.Driver");
+		return props;
+	}
+
+	private static Dataset<Row> loadGeocodedTransactions(SparkSession spark, String jdbcUrl, Properties jdbcProps) {
+		// Only mutations with usable price + surface + coordinates qualify as
+		// either a candidate or a comparison anchor — anything missing those
+		// would produce a degenerate "comparable" the popup couldn't render.
+		final var query = """
+				(SELECT id, property_type, property_value, built_surface, mutation_date,
+				        latitude, longitude
+				 FROM transactions
+				 WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+				   AND property_value > 10000 AND property_value < 5000000
+				   AND built_surface BETWEEN 9 AND 1000
+				   AND property_type IN ('MAISON','APPARTEMENT','MAISON_APPARTEMENT')) t
+				""";
+		return spark.read().jdbc(jdbcUrl, query, jdbcProps);
+	}
+
+	private static Dataset<Row> withClusteringBuckets(Dataset<Row> transactions) {
+		return transactions.withColumn("year_bucket", functions.year(functions.col("mutation_date")))
+				.withColumn("surface_bucket",
+						functions.floor(functions.col("built_surface").divide(20)).cast(DataTypes.IntegerType))
+				// Geohash6 ≈ 1.2 km × 0.6 km in metropolitan France. Spark has no
+				// built-in geohash so we compose it as the integer pair (lat10, lon10)
+				// rounded to ~0.01° — same effective grid, no UDF needed.
+				.withColumn("lat_bucket", functions.round(functions.col("latitude").multiply(100)))
+				.withColumn("lon_bucket", functions.round(functions.col("longitude").multiply(100)));
+	}
+
+	private static Dataset<Row> pickTopNeighbours(Dataset<Row> bucketed, int topN) {
+		// Self-join within the same bucket, exclude self-pairs, compute Haversine
+		// distance, rank, keep top-N. The bucket filter keeps the join from
+		// fanning out to N² across the whole country.
+		final var l = bucketed.as("l");
+		final var r = bucketed.as("r");
+		final var joined = l.join(r,
+				functions.col("l.property_type").equalTo(functions.col("r.property_type"))
+						.and(functions.col("l.year_bucket").equalTo(functions.col("r.year_bucket")))
+						.and(functions.col("l.surface_bucket").equalTo(functions.col("r.surface_bucket")))
+						.and(functions.col("l.lat_bucket").equalTo(functions.col("r.lat_bucket")))
+						.and(functions.col("l.lon_bucket").equalTo(functions.col("r.lon_bucket")))
+						.and(functions.col("l.id").notEqual(functions.col("r.id"))));
+
+		final var withMetrics = joined
+				.withColumn("distance_m", haversineMeters("l.latitude", "l.longitude", "r.latitude", "r.longitude"))
+				.withColumn("price_delta_pct",
+						functions.col("r.property_value").minus(functions.col("l.property_value"))
+								.divide(functions.col("l.property_value")).multiply(100));
+
+		final var ranked = withMetrics.withColumn("similarity_rank", functions.row_number()
+				.over(Window.partitionBy(functions.col("l.id")).orderBy(functions.col("distance_m"))));
+
+		return ranked.filter(functions.col("similarity_rank").leq(topN)).select(
+				functions.col("l.id").alias("transaction_id"), functions.col("similarity_rank"),
+				functions.col("r.id").alias("comparable_id"),
+				functions.col("distance_m").cast(DataTypes.IntegerType).alias("distance_m"),
+				functions.col("price_delta_pct").cast(DataTypes.createDecimalType(6, 3)).alias("price_delta_pct"),
+				functions.current_timestamp().alias("updated_at"));
+	}
+
+	private static org.apache.spark.sql.Column haversineMeters(String lat1, String lon1, String lat2, String lon2) {
+		final double earthRadiusM = 6_371_000.0;
+		final var dLat = functions.radians(functions.col(lat2).minus(functions.col(lat1)));
+		final var dLon = functions.radians(functions.col(lon2).minus(functions.col(lon1)));
+		final var a = functions.pow(functions.sin(dLat.divide(2)), 2)
+				.plus(functions.cos(functions.radians(functions.col(lat1)))
+						.multiply(functions.cos(functions.radians(functions.col(lat2))))
+						.multiply(functions.pow(functions.sin(dLon.divide(2)), 2)));
+		return functions.atan2(functions.sqrt(a), functions.sqrt(functions.lit(1.0).minus(a))).multiply(2)
+				.multiply(earthRadiusM);
+	}
+
+	private static Config parseArgs(String[] args) {
+		String jdbcUrl = null;
+		String jdbcUser = null;
+		String jdbcPassword = null;
+		for (int i = 0; i < args.length; i++) {
+			switch (args[i]) {
+				case "--jdbc-url" -> jdbcUrl = args[++i];
+				case "--jdbc-user" -> jdbcUser = args[++i];
+				case "--jdbc-password" -> jdbcPassword = args[++i];
+				default -> throw new IllegalArgumentException("Unknown argument: " + args[i]);
+			}
+		}
+		if (jdbcUrl == null || jdbcUser == null || jdbcPassword == null) {
+			throw new IllegalArgumentException("Missing required arguments: --jdbc-url, --jdbc-user, --jdbc-password");
+		}
+		return new Config(jdbcUrl, jdbcUser, jdbcPassword);
+	}
+}

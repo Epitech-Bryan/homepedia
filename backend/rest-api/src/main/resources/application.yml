@@ -18,12 +18,27 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env
+        include: health,info,metrics,env,prometheus
   endpoint:
     health:
       show-details: when-authorized
     env:
       show-values: when-authorized
+  # Per-endpoint latency histograms + SLO buckets so Grafana can plot
+  # quantile bands (p50/p95/p99) and "% of calls under 200 ms" panels
+  # without sampling. Cost: a few KB of metrics per active route.
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 50ms, 100ms, 200ms, 500ms, 1s
+    tags:
+      application: homepedia-rest-api
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 springdoc:
   api-docs:

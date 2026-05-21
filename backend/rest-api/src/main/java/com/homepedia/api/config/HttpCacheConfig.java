@@ -12,52 +12,78 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.filter.ShallowEtagHeaderFilter;
 
 /**
- * Browser/proxy cache for stats and geo responses, which are read-only and
- * change at most once per import (DVF/INSEE). Two filters chained:
+ * Browser/proxy cache for read-only endpoints. Two tiers:
  *
- * <ol>
- * <li>{@link ShallowEtagHeaderFilter} — computes a strong ETag (MD5 of the
- * response body) and short-circuits with {@code 304 Not Modified} when the
- * client sends a matching {@code If-None-Match}. Avoids re-sending the payload
- * at all on browser-cache revalidation.</li>
- * <li>{@code Cache-Control: public, max-age=300} — lets browsers and any
- * downstream proxy (Traefik) serve from cache for 5 min without a round-trip.
- * {@code public} so shared caches can store it; the data is not
- * user-specific.</li>
- * </ol>
+ * <ul>
+ * <li><b>Reference data</b> ({@code /geo}, {@code /regions},
+ * {@code /departments}) — INSEE/IGN data that changes at most once a year, on a
+ * manual import. 24h max-age so the webapp's repeated lookups (every page
+ * render fetches the region list, department dropdowns, GeoJSON boundaries) hit
+ * the browser cache instead of the server.</li>
+ * <li><b>Stats</b> ({@code /stats}) — refreshed after every DVF partition swap
+ * (~daily during active imports). 5 min max-age + ETag, same as before.</li>
+ * </ul>
  *
- * Server-side Redis cache (30 min TTL) still owns refreshing on import — the
- * browser cache is a thinner layer on top.
+ * Both tiers get a {@link ShallowEtagHeaderFilter} so revalidation
+ * short-circuits with {@code 304 Not Modified} when the body hasn't changed
+ * (cheap for the reference data, useful for stats during the 5-min window).
+ * {@code public} so Traefik can shared-cache; {@code stale-while-revalidate}
+ * lets the browser keep serving the old payload for a few seconds while it
+ * refetches.
+ *
+ * Server-side Redis cache still owns the heavy lifting; the HTTP layer is a
+ * thinner cache on top.
  */
 @Configuration
 public class HttpCacheConfig {
 
-	private static final String[] CACHEABLE_PATHS = {"/stats/*", "/geo/*"};
-	private static final String CACHE_CONTROL = "public, max-age=300, stale-while-revalidate=60";
+	private static final String[] REFDATA_PATHS = {"/geo/*", "/regions", "/regions/*", "/departments",
+			"/departments/*"};
+	private static final String[] STATS_PATHS = {"/stats/*"};
+
+	private static final String REFDATA_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=600";
+	private static final String STATS_CACHE_CONTROL = "public, max-age=300, stale-while-revalidate=60";
 
 	@Bean
 	public FilterRegistrationBean<ShallowEtagHeaderFilter> etagFilter() {
 		final var bean = new FilterRegistrationBean<>(new ShallowEtagHeaderFilter());
-		bean.addUrlPatterns(CACHEABLE_PATHS);
+		bean.addUrlPatterns(merge(REFDATA_PATHS, STATS_PATHS));
 		bean.setName("shallowEtagFilter");
 		return bean;
 	}
 
 	@Bean
-	public FilterRegistrationBean<OncePerRequestFilter> cacheControlFilter() {
+	public FilterRegistrationBean<OncePerRequestFilter> refdataCacheControlFilter() {
+		return cacheControlFilter("refdataCacheControlFilter", REFDATA_CACHE_CONTROL, REFDATA_PATHS);
+	}
+
+	@Bean
+	public FilterRegistrationBean<OncePerRequestFilter> statsCacheControlFilter() {
+		return cacheControlFilter("statsCacheControlFilter", STATS_CACHE_CONTROL, STATS_PATHS);
+	}
+
+	private FilterRegistrationBean<OncePerRequestFilter> cacheControlFilter(final String name, final String header,
+			final String[] paths) {
 		final OncePerRequestFilter filter = new OncePerRequestFilter() {
 			@Override
 			protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
 					throws ServletException, IOException {
 				if (!res.containsHeader("Cache-Control")) {
-					res.setHeader("Cache-Control", CACHE_CONTROL);
+					res.setHeader("Cache-Control", header);
 				}
 				chain.doFilter(req, res);
 			}
 		};
 		final var bean = new FilterRegistrationBean<>(filter);
-		bean.addUrlPatterns(CACHEABLE_PATHS);
-		bean.setName("cacheControlFilter");
+		bean.addUrlPatterns(paths);
+		bean.setName(name);
 		return bean;
+	}
+
+	private static String[] merge(final String[] a, final String[] b) {
+		final var out = new String[a.length + b.length];
+		System.arraycopy(a, 0, out, 0, a.length);
+		System.arraycopy(b, 0, out, a.length, b.length);
+		return out;
 	}
 }

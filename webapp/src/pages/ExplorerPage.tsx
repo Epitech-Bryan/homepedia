@@ -1,8 +1,14 @@
-import { useState, useCallback } from "react";
+import { lazy, Suspense, useState, useCallback } from "react";
 import { useTransactions, useTransactionStats, useRegions, useDepartments } from "@/api/hooks";
 import { StatCard } from "@/components/StatCard";
-import { PriceChart } from "@/components/PriceChart";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+
+// Defer Recharts until the user has actually scrolled to results that need
+// it — the explorer's first paint is the filter panel + map, which don't
+// need the chart bundle.
+const PriceChart = lazy(() =>
+  import("@/components/PriceChart").then((m) => ({ default: m.PriceChart })),
+);
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -167,7 +173,11 @@ export function ExplorerPage() {
         </div>
       )}
 
-      {chartData.length > 0 && <PriceChart data={chartData} title="Price Distribution" />}
+      {chartData.length > 0 && (
+        <Suspense fallback={null}>
+          <PriceChart data={chartData} title="Price Distribution" />
+        </Suspense>
+      )}
 
       <div>
         <h2 className="text-sm font-semibold mb-2">

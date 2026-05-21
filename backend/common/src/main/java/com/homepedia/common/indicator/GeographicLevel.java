@@ -14,5 +14,5 @@ package com.homepedia.common.indicator;
  * enum, so adding new tiers does not require a migration.
  */
 public enum GeographicLevel {
-	REGION, DEPARTMENT, CITY, COUNTRY, NUTS1, NUTS2, NUTS3
+	REGION, DEPARTMENT, CITY, IRIS, COUNTRY, NUTS1, NUTS2, NUTS3
 }

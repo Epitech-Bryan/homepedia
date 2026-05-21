@@ -25,3 +25,7 @@ databaseChangeLog:
       file: db/changelog/changes/012-indicators-composite-index.yaml
   - include:
       file: db/changelog/changes/013-city-price-quarterly-stats.yaml
+  - include:
+      file: db/changelog/changes/014-indicators-iris-support.yaml
+  - include:
+      file: db/changelog/changes/015-comparable-transactions.yaml

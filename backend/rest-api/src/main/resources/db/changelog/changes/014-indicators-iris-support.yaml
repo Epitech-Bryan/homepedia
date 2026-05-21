@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-indicators-iris-code-bump
+      author: homepedia
+      comment: >
+        Widen indicators.geographic_code to 9 chars so IRIS codes fit. IRIS is
+        the finest standardised French statistical block (~2,000 inhabitants
+        each, ~50k blocks nationwide); the code is 9 chars wide (5-char commune
+        INSEE + 4 IRIS-within-commune digits, e.g. 751010101). The existing
+        REGION / DEPARTMENT / CITY codes are 3 to 5 chars long so they still
+        fit, no data conversion needed.
+
+        Same idea for geo_boundaries since the future IRIS GeoJSON layer will
+        reuse that table.
+      changes:
+        - modifyDataType:
+            tableName: indicators
+            columnName: geographic_code
+            newDataType: VARCHAR(9)
+        - modifyDataType:
+            tableName: geo_boundaries
+            columnName: geographic_code
+            newDataType: VARCHAR(9)
+      rollback:
+        # VARCHAR(5) → VARCHAR(9) is widening, so rollback is unsafe if any
+        # IRIS row has landed. Document instead of silently truncating.
+        - sql:
+            sql: SELECT 1
+
+  - changeSet:
+      id: 014-indicators-iris-category-check
+      author: homepedia
+      comment: >
+        Helpful index for the new IRIS query path. The composite from
+        changeset 012 covers (level, code, category) lookups across every
+        level — IRIS reads will hit that same index, but a partial index
+        scoped to level='IRIS' keeps the IRIS-only scan tight (50k rows
+        of indicators per category vs 35k for CITY, so worth its own
+        partial copy).
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_indicator_iris_code_category
+                ON indicators (geographic_code, category)
+                WHERE geographic_level = 'IRIS';
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_indicator_iris_code_category;

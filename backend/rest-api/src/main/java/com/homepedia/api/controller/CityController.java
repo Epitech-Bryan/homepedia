@@ -2,10 +2,13 @@ package com.homepedia.api.controller;
 
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.CITIES;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.City.BY_INSEE_CODE;
+import static com.homepedia.api.constant.HomepediaConstant.RestPath.City.IRIS_INDICATORS;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.City.PRICE_HISTORY;
 
 import com.homepedia.api.service.CityService;
+import com.homepedia.api.service.IndicatorService;
 import com.homepedia.common.city.CitySummary;
+import com.homepedia.common.indicator.IndicatorSummary;
 import com.homepedia.common.stats.QuarterlyPricePoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CityController {
 
 	private final CityService cityService;
+	private final IndicatorService indicatorService;
 	private final PagedResourcesAssembler<CitySummary> pagedResourcesAssembler;
 
 	@Operation(summary = "Search cities", description = "Paginated list of cities, filterable by department or name query")
@@ -52,5 +56,11 @@ public class CityController {
 	@GetMapping(PRICE_HISTORY)
 	public ResponseEntity<List<QuarterlyPricePoint>> priceHistory(@PathVariable final String inseeCode) {
 		return ResponseEntity.ok(cityService.priceHistory(inseeCode));
+	}
+
+	@Operation(summary = "IRIS-level indicators (Filosofi)", description = "Sub-communal indicators (median income, poverty rate, …) for every IRIS block whose code lives under this commune. Returns an empty array until the INSEE Filosofi importer (issue #10) seeds the indicators table; the endpoint is wired now so the frontend overlay can be developed against the contract.")
+	@GetMapping(IRIS_INDICATORS)
+	public ResponseEntity<List<IndicatorSummary>> irisIndicators(@PathVariable final String inseeCode) {
+		return ResponseEntity.ok(indicatorService.findIrisIndicatorsByCommune(inseeCode));
 	}
 }

@@ -24,4 +24,13 @@ public class IndicatorService {
 				: indicatorRepository.findByGeographicLevelAndGeographicCode(level, code);
 		return IndicatorMapper.INSTANCE.convertToSummaryList(indicators);
 	}
+
+	/**
+	 * Every IRIS-level indicator whose code lives under the given commune. Empty
+	 * until the INSEE Filosofi importer (issue #10) seeds the table.
+	 */
+	public List<IndicatorSummary> findIrisIndicatorsByCommune(final String communeInseeCode) {
+		return IndicatorMapper.INSTANCE
+				.convertToSummaryList(indicatorRepository.findIrisIndicatorsByCommune(communeInseeCode));
+	}
 }

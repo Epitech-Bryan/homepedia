@@ -5,6 +5,16 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.44.0] - 2026-05-21
+
+### Features
+
+- feat(backend): perf tuning (#4 #5) + import skeletons (#7 #10 #11)
+
+### Bug Fixes
+
+- fix(webapp): bind leaflet.vectorgrid to the app's Leaflet instance under Vite
+
 ## [3.43.1] - 2026-05-21
 
 ### Bug Fixes

@@ -1,5 +1,11 @@
 # app
 
+## [0.40.0] - 2026-05-21
+
+### Features
+
+- feat(backend): perf tuning (#4 #5) + import skeletons (#7 #10 #11)
+
 ## [0.39.1] - 2026-05-21
 
 ### Bug Fixes

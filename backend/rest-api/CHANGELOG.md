@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.43.0] - 2026-05-21
+
+### Features
+
+- feat(api): foundations for comparable sales endpoint (issue #11)
+- feat(api): foundations for INSEE Filosofi IRIS indicators (issue #10)
+
 ## [3.42.0] - 2026-05-21
 
 ### Features

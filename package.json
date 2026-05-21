@@ -17,7 +17,8 @@
     ],
     "webapp/src/**/*.{css,json}": [
       "pnpm -C webapp exec prettier --write"
-    ]
+    ],
+    "backend/**/*.java": "bash -c 'cd backend && mvn -q spotless:apply'"
   },
   "packageManager": "pnpm@10.33.2",
   "devDependencies": {

@@ -1,5 +1,12 @@
 # app
 
+## [0.35.0] - 2026-05-21
+
+### Features
+
+- feat(map): ship CityVectorGridLayer component (issue #6 step 3, not wired yet)
+- feat(tiles): add vector tile endpoint scaffolding for commune polygons (issue #6 step 1)
+
 ## [0.34.0] - 2026-05-21
 
 ### Features

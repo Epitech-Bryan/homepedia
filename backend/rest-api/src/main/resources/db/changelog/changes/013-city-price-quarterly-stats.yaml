@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-city-price-quarterly-stats
+      author: homepedia
+      comment: >
+        Quarterly per-commune DVF aggregate, sibling of city_dvf_yearly_stats
+        from changeset 008. Same SUMs (transaction_count, total_price,
+        total_residential_surface) but bucketed by (insee_code, year, quarter)
+        so the API can plot a 20-point price-per-m² timeline (5 years × 4
+        quarters) without re-scanning the partitioned transactions table.
+
+        Stored values are partial sums: averages and price/m² are computed
+        at query time from SUM(total_price) / SUM(total_residential_surface).
+        Same surface-weighted formula as the yearly stats so the two views
+        stay consistent.
+      changes:
+        - createTable:
+            tableName: city_price_quarterly_stats
+            columns:
+              - column:
+                  name: insee_code
+                  type: VARCHAR(5)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: year
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quarter
+                  type: INT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: transaction_count
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_price
+                  type: NUMERIC(20,2)
+              - column:
+                  name: total_residential_surface
+                  type: DOUBLE PRECISION
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: NOW()
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: city_price_quarterly_stats
+            columnNames: insee_code, year, quarter
+            constraintName: pk_city_price_quarterly_stats
+        - addForeignKeyConstraint:
+            baseTableName: city_price_quarterly_stats
+            baseColumnNames: insee_code
+            referencedTableName: cities
+            referencedColumnNames: insee_code
+            constraintName: fk_city_price_quarterly_stats_city
+            onDelete: CASCADE
+        # CHECK constraint so a future bug can't write quarter=0 or 5 and
+        # confuse the frontend "last 20 quarters" query.
+        - sql:
+            sql: |
+              ALTER TABLE city_price_quarterly_stats
+                ADD CONSTRAINT ck_quarter_range CHECK (quarter BETWEEN 1 AND 4);
+        - createIndex:
+            tableName: city_price_quarterly_stats
+            indexName: idx_quarterly_year_q
+            columns:
+              - column:
+                  name: year
+              - column:
+                  name: quarter
+      rollback:
+        - dropTable:
+            tableName: city_price_quarterly_stats

@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   useCity,
+  useCityPriceHistory,
   useTransactionStats,
   useSentimentStats,
   useWordCloud,
@@ -14,11 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-// Lazy-load the chart so Recharts (~113 kB gzip) only enters the network
-// graph when this city actually has transactions to plot. Communes without
-// DVF data skip the chunk download entirely.
+// Lazy-load the charts so Recharts (~113 kB gzip) only enters the network
+// graph when this city actually has data to plot. Communes without DVF
+// data skip the chunk download entirely.
 const PriceChart = lazy(() =>
   import("@/components/PriceChart").then((m) => ({ default: m.PriceChart })),
+);
+const PriceHistoryChart = lazy(() =>
+  import("@/components/PriceHistoryChart").then((m) => ({ default: m.PriceHistoryChart })),
 );
 
 function sentimentBadgeClass(label: string) {
@@ -39,6 +43,7 @@ export function CityPage() {
   const { data: sentiment } = useSentimentStats(code);
   const { data: wordCloudData } = useWordCloud(code);
   const { data: reviewsPage } = useReviews(code, { page: "0", size: "3" });
+  const { data: priceHistory } = useCityPriceHistory(code);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
@@ -110,6 +115,12 @@ export function CityPage() {
       {chartData.length > 0 && (
         <Suspense fallback={null}>
           <PriceChart data={chartData} title="Price Overview" />
+        </Suspense>
+      )}
+
+      {priceHistory && priceHistory.length >= 2 && (
+        <Suspense fallback={null}>
+          <PriceHistoryChart data={priceHistory} />
         </Suspense>
       )}
 

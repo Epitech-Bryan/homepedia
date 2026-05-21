@@ -53,6 +53,7 @@ public class DvfImportService {
 	private final DvfBatchPersister persister;
 	private final CityCacheLoader cityCacheLoader;
 	private final CityDvfStatsAggregator statsAggregator;
+	private final CityQuarterlyPriceAggregator quarterlyAggregator;
 
 	public int importFromZip(int year, Path zipPath) throws IOException {
 		log.info("Starting DVF import for year {} from {}", year, zipPath);
@@ -108,6 +109,10 @@ public class DvfImportService {
 		persister.swapPartition(year);
 		persister.analyzePartition(year);
 		statsAggregator.refreshYear(year);
+		// Quarterly aggregate runs after the yearly one — same source data,
+		// independent transaction (REQUIRES_NEW), so a failure here doesn't
+		// roll back the partition swap or the yearly refresh.
+		quarterlyAggregator.refreshYear(year);
 		log.info("DVF import for year {} complete: {} transactions imported", year, totalImported);
 	}
 

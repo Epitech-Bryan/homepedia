@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/changes/011-cities-search-indexes.yaml
   - include:
       file: db/changelog/changes/012-indicators-composite-index.yaml
+  - include:
+      file: db/changelog/changes/013-city-price-quarterly-stats.yaml

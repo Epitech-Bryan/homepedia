@@ -113,6 +113,21 @@ export function useCity(code: string) {
   });
 }
 
+/**
+ * Per-commune quarterly price/m² history (issue #9). The endpoint returns
+ * one row per quarter from the {@code city_price_quarterly_stats} pre-agg,
+ * cached server-side for 30 min; we add a short client-side staleTime so a
+ * page refresh doesn't refire a request that won't have new data anyway.
+ */
+export function useCityPriceHistory(code: string) {
+  return useQuery({
+    queryKey: ["cities", code, "price-history"],
+    queryFn: () => api.cities.priceHistory(code),
+    enabled: !!code,
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 export function useTransactions(params?: Record<string, string>) {
   return useQuery({
     queryKey: ["transactions", params],

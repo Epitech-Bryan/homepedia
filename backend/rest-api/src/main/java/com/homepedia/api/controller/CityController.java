@@ -2,12 +2,15 @@ package com.homepedia.api.controller;
 
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.CITIES;
 import static com.homepedia.api.constant.HomepediaConstant.RestPath.City.BY_INSEE_CODE;
+import static com.homepedia.api.constant.HomepediaConstant.RestPath.City.PRICE_HISTORY;
 
 import com.homepedia.api.service.CityService;
 import com.homepedia.common.city.CitySummary;
+import com.homepedia.common.stats.QuarterlyPricePoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
@@ -43,5 +46,11 @@ public class CityController {
 	@GetMapping(BY_INSEE_CODE)
 	public ResponseEntity<CitySummary> findByInseeCode(@PathVariable final String inseeCode) {
 		return cityService.findByInseeCode(inseeCode).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+	}
+
+	@Operation(summary = "Quarterly price history", description = "Per-quarter price/m² and transaction count for the requested commune over every year the DVF aggregator has populated. Returns an empty array when the commune has no DVF rows.")
+	@GetMapping(PRICE_HISTORY)
+	public ResponseEntity<List<QuarterlyPricePoint>> priceHistory(@PathVariable final String inseeCode) {
+		return ResponseEntity.ok(cityService.priceHistory(inseeCode));
 	}
 }

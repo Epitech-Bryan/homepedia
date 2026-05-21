@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -14,6 +15,10 @@ interface PriceHistoryChartProps {
   data: QuarterlyPricePoint[];
 }
 
+const yTickFormatter = (v: number) => `${(v / 1000).toFixed(1)}k`;
+const tooltipFormatter = (v: unknown) =>
+  [`${Number(v).toLocaleString("fr-FR")} €/m²`, "Prix moyen"] as [string, string];
+
 /**
  * Per-commune quarterly price/m² trend. Source is the
  * {@code /api/cities/{insee}/price-history} endpoint (issue #9), which
@@ -26,13 +31,20 @@ interface PriceHistoryChartProps {
  * parent — we trust the caller to only mount the chart when there is at
  * least a handful of usable points.
  */
-export function PriceHistoryChart({ data }: PriceHistoryChartProps) {
-  const points = data
-    .filter((p) => p.averagePricePerSqm != null && p.averagePricePerSqm > 0)
-    .map((p) => ({
-      label: `${p.year} Q${p.quarter}`,
-      pricePerSqm: Math.round(p.averagePricePerSqm as number),
-    }));
+function PriceHistoryChartInner({ data }: PriceHistoryChartProps) {
+  // Memoise the recharts dataset so unrelated CityPage re-renders (hover
+  // on a marker, query refetch, …) don't rebuild the array and force
+  // recharts into a full re-layout.
+  const points = useMemo(
+    () =>
+      data
+        .filter((p) => p.averagePricePerSqm != null && p.averagePricePerSqm > 0)
+        .map((p) => ({
+          label: `${p.year} Q${p.quarter}`,
+          pricePerSqm: Math.round(p.averagePricePerSqm as number),
+        })),
+    [data],
+  );
 
   if (points.length < 2) {
     return null;
@@ -50,12 +62,10 @@ export function PriceHistoryChart({ data }: PriceHistoryChartProps) {
             <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
             <YAxis
               tick={{ fontSize: 11 }}
-              tickFormatter={(v: number) => `${(v / 1000).toFixed(1)}k`}
+              tickFormatter={yTickFormatter}
               domain={["auto", "auto"]}
             />
-            <Tooltip
-              formatter={(v) => [`${Number(v).toLocaleString("fr-FR")} €/m²`, "Prix moyen"]}
-            />
+            <Tooltip formatter={tooltipFormatter} />
             <Line
               type="monotone"
               dataKey="pricePerSqm"
@@ -70,3 +80,5 @@ export function PriceHistoryChart({ data }: PriceHistoryChartProps) {
     </Card>
   );
 }
+
+export const PriceHistoryChart = memo(PriceHistoryChartInner);

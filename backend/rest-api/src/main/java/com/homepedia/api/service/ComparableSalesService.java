@@ -6,6 +6,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 import static com.homepedia.api.config.CacheConfig.CACHE_STATS;
@@ -43,17 +44,20 @@ public class ComparableSalesService {
 			ORDER BY c.similarity_rank
 			""";
 
+	// Hoisted to static so we don't allocate a fresh lambda + closure on every
+	// popup hit. The mapper is stateless and the result of an N=10 read is
+	// dominated by the JOIN anyway, but the lambda capture is pure waste.
+	private static final RowMapper<ComparableSale> ROW_MAPPER = (rs, i) -> new ComparableSale(
+			rs.getInt("similarity_rank"), rs.getLong("comparable_id"), rs.getDate("mutation_date").toLocalDate(),
+			rs.getBigDecimal("property_value"), PropertyType.valueOf(rs.getString("property_type")),
+			(Double) rs.getObject("built_surface"), (Integer) rs.getObject("room_count"),
+			(Double) rs.getObject("latitude"), (Double) rs.getObject("longitude"), (Integer) rs.getObject("distance_m"),
+			rs.getBigDecimal("price_delta_pct"));
+
 	private final JdbcTemplate jdbcTemplate;
 
 	@Cacheable(value = CACHE_STATS, key = "'comparables:' + #transactionId")
 	public List<ComparableSale> findByTransactionId(final long transactionId) {
-		return jdbcTemplate.query(SQL,
-				(rs, i) -> new ComparableSale(rs.getInt("similarity_rank"), rs.getLong("comparable_id"),
-						rs.getDate("mutation_date").toLocalDate(), rs.getBigDecimal("property_value"),
-						PropertyType.valueOf(rs.getString("property_type")), (Double) rs.getObject("built_surface"),
-						(Integer) rs.getObject("room_count"), (Double) rs.getObject("latitude"),
-						(Double) rs.getObject("longitude"), (Integer) rs.getObject("distance_m"),
-						rs.getBigDecimal("price_delta_pct")),
-				transactionId);
+		return jdbcTemplate.query(SQL, ROW_MAPPER, transactionId);
 	}
 }

@@ -29,3 +29,5 @@ databaseChangeLog:
       file: db/changelog/changes/014-indicators-iris-support.yaml
   - include:
       file: db/changelog/changes/015-comparable-transactions.yaml
+  - include:
+      file: db/changelog/changes/016-indicators-iris-prefix-index.yaml

@@ -1,5 +1,11 @@
 # app
 
+## [0.36.0] - 2026-05-21
+
+### Features
+
+- feat(map): wire CityVectorGridLayer behind VITE_USE_VECTOR_TILES flag (issue #6)
+
 ## [0.35.0] - 2026-05-21
 
 ### Features

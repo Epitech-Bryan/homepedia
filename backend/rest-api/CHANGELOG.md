@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.38.1] - 2026-05-21
+
+### Bug Fixes
+
+- perf(webapp): lazy-load Recharts in price and sentiment charts
+
 ## [3.38.0] - 2026-05-21
 
 ### Features

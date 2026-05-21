@@ -1,5 +1,11 @@
 # app
 
+## [0.33.1] - 2026-05-21
+
+### Bug Fixes
+
+- perf(webapp): lazy-load Recharts in price and sentiment charts
+
 ## [0.33.0] - 2026-05-21
 
 ### Features

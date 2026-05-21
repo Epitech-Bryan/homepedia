@@ -37,6 +37,7 @@ public interface HomepediaConstant {
 			String STATS = "/stats";
 			String BY_ID = "/{id}";
 			String HEATPOINTS = "/heatpoints";
+			String MARKERS = "/markers";
 		}
 
 		interface Indicator {

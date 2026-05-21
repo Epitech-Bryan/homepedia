@@ -49,6 +49,28 @@ export const api = {
         east: String(params.east),
         metric: params.metric ?? "averagePricePerSqm",
       }),
+    markers: (params: {
+      south: number;
+      west: number;
+      north: number;
+      east: number;
+      propertyType?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      limit?: number;
+    }) => {
+      const query: Record<string, string> = {
+        south: String(params.south),
+        west: String(params.west),
+        north: String(params.north),
+        east: String(params.east),
+      };
+      if (params.propertyType) query.propertyType = params.propertyType;
+      if (params.minPrice !== undefined) query.minPrice = String(params.minPrice);
+      if (params.maxPrice !== undefined) query.maxPrice = String(params.maxPrice);
+      if (params.limit !== undefined) query.limit = String(params.limit);
+      return fetchJson<TransactionMarker[]>("/transactions/markers", query);
+    },
   },
   geo: {
     countries: () => fetchJson<GeoJSON.FeatureCollection>("/geo/countries"),
@@ -196,6 +218,19 @@ export interface TransactionDetail {
   planNumber: string | null;
   lotCount: number | null;
   pricePerSqm: number | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface TransactionMarker {
+  id: number;
+  latitude: number;
+  longitude: number;
+  mutationDate: string;
+  propertyValue: number;
+  propertyType: string;
+  builtSurface: number | null;
+  roomCount: number | null;
 }
 
 export interface TransactionStats {

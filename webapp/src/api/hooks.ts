@@ -178,6 +178,52 @@ export function useTransactionHeatPoints(params: {
   });
 }
 
+/**
+ * Per-transaction markers inside the current viewport. Only enabled at
+ * close-in zooms — the backend rejects bboxes wider than 0.2° anyway, so a
+ * dezoomed map would just get empty arrays. The hook snaps the bbox to the
+ * same 0.001° grid the backend uses for its cache key (~110 m).
+ */
+export function useTransactionMarkers(params: {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+  propertyType?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  limit?: number;
+  enabled: boolean;
+}) {
+  const snap = (n: number) => Math.round(n * 1000) / 1000;
+  return useQuery({
+    queryKey: [
+      "transactionMarkers",
+      snap(params.south),
+      snap(params.west),
+      snap(params.north),
+      snap(params.east),
+      params.propertyType ?? null,
+      params.minPrice ?? null,
+      params.maxPrice ?? null,
+      params.limit ?? null,
+    ],
+    queryFn: () =>
+      api.transactions.markers({
+        south: params.south,
+        west: params.west,
+        north: params.north,
+        east: params.east,
+        propertyType: params.propertyType,
+        minPrice: params.minPrice,
+        maxPrice: params.maxPrice,
+        limit: params.limit,
+      }),
+    enabled: params.enabled,
+    staleTime: 60_000,
+  });
+}
+
 export function useGeoCountries() {
   return useQuery({
     queryKey: ["geo", "countries"],

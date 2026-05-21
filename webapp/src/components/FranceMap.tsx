@@ -4,6 +4,7 @@ import {
   TileLayer,
   GeoJSON as LeafletGeoJSON,
   CircleMarker,
+  Popup,
   Tooltip,
   useMap,
 } from "react-leaflet";
@@ -82,6 +83,21 @@ interface FranceMapProps {
    * meaningful.
    */
   precisionHeatPoints?: Array<{ latitude: number; longitude: number; value: number }>;
+  /**
+   * Individual geocoded transactions to render as clickable pins over the
+   * heatmap. Same source data as {@link precisionHeatPoints} but
+   * un-bucketed, with the per-mutation metadata the popup needs.
+   */
+  transactionMarkers?: Array<{
+    id: number;
+    latitude: number;
+    longitude: number;
+    propertyValue: number;
+    propertyType: string;
+    builtSurface: number | null;
+    roomCount: number | null;
+    mutationDate: string;
+  }>;
   mapStyle?: MapStyle;
   height?: string;
   onZoomChange?: (zoom: number) => void;
@@ -253,6 +269,95 @@ function ZoomAwareCityMarkers({
   );
 }
 
+// Per-transaction pins layer. Colour scales with €/m² when the marker has
+// a built surface, falls back to a neutral pin otherwise. Popup is built
+// inline to keep the layer self-contained — the data already includes
+// everything we need to render it.
+function TransactionMarkerLayer({
+  markers,
+}: {
+  markers: NonNullable<FranceMapProps["transactionMarkers"]>;
+}) {
+  // Derive a €/m² range across the visible markers so the colour ramp
+  // adapts to the local price scale instead of using one fixed nationwide
+  // scale (a marker at 5 k€/m² in Limoges should still look "hot").
+  const priceRange = useMemo(() => {
+    const prices: number[] = [];
+    for (const m of markers) {
+      if (m.builtSurface && m.builtSurface > 0 && m.propertyValue > 0) {
+        prices.push(m.propertyValue / m.builtSurface);
+      }
+    }
+    if (prices.length === 0) return null;
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    if (min === max) return null;
+    return { min, max };
+  }, [markers]);
+
+  const colorFor = useCallback(
+    (m: (typeof markers)[number]): string => {
+      if (!priceRange || !m.builtSurface || m.builtSurface <= 0) return "#374151";
+      const pricePerSqm = m.propertyValue / m.builtSurface;
+      const ratio = (pricePerSqm - priceRange.min) / (priceRange.max - priceRange.min);
+      const idx = Math.min(
+        CHOROPLETH_SCALE.length - 1,
+        Math.floor(ratio * CHOROPLETH_SCALE.length),
+      );
+      return CHOROPLETH_SCALE[idx];
+    },
+    [priceRange],
+  );
+
+  return (
+    <>
+      {markers.map((m) => {
+        const fill = colorFor(m);
+        const pricePerSqm =
+          m.builtSurface && m.builtSurface > 0
+            ? Math.round(m.propertyValue / m.builtSurface)
+            : null;
+        const dateLabel = new Date(m.mutationDate).toLocaleDateString("fr-FR", {
+          year: "numeric",
+          month: "long",
+        });
+        return (
+          <CircleMarker
+            key={m.id}
+            center={[m.latitude, m.longitude]}
+            radius={5}
+            pathOptions={{
+              fillColor: fill,
+              color: "#1f2937",
+              fillOpacity: 0.85,
+              weight: 0.6,
+            }}
+          >
+            <Popup>
+              <div className="text-xs leading-tight">
+                <div className="font-semibold">
+                  {m.propertyValue.toLocaleString("fr-FR")} €
+                  {pricePerSqm != null && (
+                    <span className="ml-1 font-normal text-muted-foreground">
+                      ({pricePerSqm.toLocaleString("fr-FR")} €/m²)
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 text-muted-foreground">
+                  {m.propertyType}
+                  {m.builtSurface ? ` · ${Math.round(m.builtSurface)} m²` : ""}
+                  {m.roomCount ? ` · ${m.roomCount}p` : ""}
+                </div>
+                <div className="text-muted-foreground">{dateLabel}</div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+    </>
+  );
+}
+
 function HeatLayer({ points }: { points: L.HeatLatLngTuple[] }) {
   const map = useMap();
   useEffect(() => {
@@ -340,6 +445,7 @@ function FranceMapComponent({
   metricByCode,
   metricLabel,
   precisionHeatPoints,
+  transactionMarkers,
   mapStyle = "choropleth",
   height = "500px",
   onZoomChange,
@@ -668,6 +774,9 @@ function FranceMapComponent({
                   <ZoomAwareCityMarkers markers={markers} onMarkerClick={onMarkerClick} />
                 )}
                 {showHeat && <HeatLayer points={heatPoints} />}
+                {transactionMarkers && transactionMarkers.length > 0 && (
+                  <TransactionMarkerLayer markers={transactionMarkers} />
+                )}
                 {onZoomChange && <ZoomReporter onChange={onZoomChange} />}
                 {onCenterChange && <CenterReporter onChange={onCenterChange} />}
                 {onBoundsChange && <BoundsReporter onChange={onBoundsChange} />}

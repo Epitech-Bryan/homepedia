@@ -1,5 +1,16 @@
 # app
 
+## [0.39.0] - 2026-05-21
+
+### Features
+
+- feat(api): foundations for comparable sales endpoint (issue #11)
+- feat(api): foundations for INSEE Filosofi IRIS indicators (issue #10)
+
+### Bug Fixes
+
+- perf: cache + indexed prefix lookup for IRIS/comparables/quarterly endpoints
+
 ## [0.38.0] - 2026-05-21
 
 ### Features

@@ -1,5 +1,19 @@
 # app
 
+## [0.34.0] - 2026-05-21
+
+### Features
+
+- feat(geo): bake spherical area into world-admin1, extend GeographicLevel for NUTS/COUNTRY tiers
+- feat(observability): expose Prometheus metrics via Micrometer at /actuator/prometheus
+
+### Bug Fixes
+
+- perf(webapp): persist React Query cache in localStorage and prefetch refdata at idle
+- fix(cache): revert Jackson typing to EVERYTHING and bump Redis namespace to v2
+- perf(http): 60s browser cache on /transactions/heatpoints and /markers
+- perf(db): composite index indicators(level, code, category)
+
 ## [0.33.1] - 2026-05-21
 
 ### Bug Fixes

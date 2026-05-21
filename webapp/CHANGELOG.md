@@ -1,5 +1,11 @@
 # app
 
+## [0.37.0] - 2026-05-21
+
+### Features
+
+- feat(webapp): enable vector tiles in prod build (issue #6)
+
 ## [0.36.0] - 2026-05-21
 
 ### Features

@@ -40,14 +40,20 @@ public class HttpCacheConfig {
 	private static final String[] REFDATA_PATHS = {"/geo/*", "/regions", "/regions/*", "/departments",
 			"/departments/*"};
 	private static final String[] STATS_PATHS = {"/stats/*"};
+	// Viewport-driven map endpoints: same cache window as the server-side
+	// Redis cache (60 s for heatpoints / markers). Short max-age means a
+	// pan-and-come-back replays from the browser cache, but a stat refresh
+	// after an import shows up on the next request anyway.
+	private static final String[] VIEWPORT_PATHS = {"/transactions/heatpoints", "/transactions/markers"};
 
 	private static final String REFDATA_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=600";
 	private static final String STATS_CACHE_CONTROL = "public, max-age=300, stale-while-revalidate=60";
+	private static final String VIEWPORT_CACHE_CONTROL = "public, max-age=60, stale-while-revalidate=30";
 
 	@Bean
 	public FilterRegistrationBean<ShallowEtagHeaderFilter> etagFilter() {
 		final var bean = new FilterRegistrationBean<>(new ShallowEtagHeaderFilter());
-		bean.addUrlPatterns(merge(REFDATA_PATHS, STATS_PATHS));
+		bean.addUrlPatterns(merge(merge(REFDATA_PATHS, STATS_PATHS), VIEWPORT_PATHS));
 		bean.setName("shallowEtagFilter");
 		return bean;
 	}
@@ -60,6 +66,11 @@ public class HttpCacheConfig {
 	@Bean
 	public FilterRegistrationBean<OncePerRequestFilter> statsCacheControlFilter() {
 		return cacheControlFilter("statsCacheControlFilter", STATS_CACHE_CONTROL, STATS_PATHS);
+	}
+
+	@Bean
+	public FilterRegistrationBean<OncePerRequestFilter> viewportCacheControlFilter() {
+		return cacheControlFilter("viewportCacheControlFilter", VIEWPORT_CACHE_CONTROL, VIEWPORT_PATHS);
 	}
 
 	private FilterRegistrationBean<OncePerRequestFilter> cacheControlFilter(final String name, final String header,

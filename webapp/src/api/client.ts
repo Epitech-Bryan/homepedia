@@ -28,6 +28,8 @@ export const api = {
     list: (params?: Record<string, string>) =>
       fetchJson<PagedResponse<CitySummary>>("/cities", params),
     get: (code: string) => fetchJson<CitySummary>(`/cities/${code}`),
+    priceHistory: (code: string) =>
+      fetchJson<QuarterlyPricePoint[]>(`/cities/${code}/price-history`),
   },
   transactions: {
     list: (params?: Record<string, string>) =>
@@ -220,6 +222,13 @@ export interface TransactionDetail {
   pricePerSqm: number | null;
   latitude: number | null;
   longitude: number | null;
+}
+
+export interface QuarterlyPricePoint {
+  year: number;
+  quarter: number;
+  transactionCount: number;
+  averagePricePerSqm: number | null;
 }
 
 export interface TransactionMarker {

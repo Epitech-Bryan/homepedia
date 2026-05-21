@@ -87,6 +87,8 @@ public class CountryGeoService {
 		}
 	}
 
+	private String worldAdmin1Cache;
+
 	/**
 	 * Admin-1 boundaries (states/provinces/regions) for ~38 EU + G20 countries,
 	 * sourced from GADM 4.1 and Douglas-Peucker-simplified to ~5 km tolerance
@@ -97,17 +99,47 @@ public class CountryGeoService {
 	 * Belgium and France are intentionally excluded from this dataset: Belgium has
 	 * its own bundled file with Statbel population; France comes from
 	 * geo.api.gouv.fr at higher resolution.
+	 *
+	 * <p>
+	 * Spherical area km² is computed once at boot and baked into every feature so
+	 * the frontend choropleth can render an "area" or "density" metric over non-FR
+	 * admin-1 regions without yet another payload. Population is not available in
+	 * the GADM source — that's what the future Eurostat NUTS 2 importer is for.
 	 */
 	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'world-admin1'")
 	public String getWorldAdmin1GeoJson() {
+		if (worldAdmin1Cache != null) {
+			return worldAdmin1Cache;
+		}
 		try {
-			final var resource = new ClassPathResource("data/world-admin1.geojson");
-			try (var in = resource.getInputStream()) {
-				return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-			}
+			loadAndEnrichWorldAdmin1();
+			return worldAdmin1Cache;
 		} catch (IOException e) {
 			throw new IllegalStateException("World admin-1 GeoJSON not available", e);
 		}
+	}
+
+	private synchronized void loadAndEnrichWorldAdmin1() throws IOException {
+		if (worldAdmin1Cache != null) {
+			return;
+		}
+		final var resource = new ClassPathResource("data/world-admin1.geojson");
+		try (var in = resource.getInputStream()) {
+			final var root = (ObjectNode) objectMapper.readTree(in);
+			final var features = (ArrayNode) root.get("features");
+			for (JsonNode f : features) {
+				final var props = (ObjectNode) f.get("properties");
+				if (props == null) {
+					continue;
+				}
+				final var areaKm2 = computeFeatureAreaKm2(f.get("geometry"));
+				if (areaKm2 > 0) {
+					props.put("area", areaKm2);
+				}
+			}
+			worldAdmin1Cache = objectMapper.writeValueAsString(root);
+		}
+		log.info("World admin-1 GeoJSON enriched with spherical area");
 	}
 
 	private synchronized void loadAndTrim() throws IOException {

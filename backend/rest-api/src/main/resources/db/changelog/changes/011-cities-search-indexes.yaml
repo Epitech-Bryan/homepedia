@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-enable-pg-trgm
+      author: homepedia
+      comment: >
+        pg_trgm extension powers the trigram GIN index on cities(name) below.
+        Idempotent: CREATE EXTENSION IF NOT EXISTS so the changeset is safe on
+        clusters where another deployment already enabled it.
+      changes:
+        - sql:
+            sql: CREATE EXTENSION IF NOT EXISTS pg_trgm
+      rollback:
+        - sql:
+            sql: SELECT 1
+
+  - changeSet:
+      id: 011-cities-department-code-index
+      author: homepedia
+      comment: >
+        Index on cities(department_code). PostgreSQL does NOT auto-create an
+        index for FK columns, and CityRepository.findByDepartmentCode is the
+        listing-by-dept hot path (DepartmentPage on the webapp + region/dept
+        stats CTEs). Without this index the planner falls back to a seq scan
+        over 35k rows on every dept page render.
+      changes:
+        - createIndex:
+            tableName: cities
+            indexName: idx_cities_department_code
+            columns:
+              - column:
+                  name: department_code
+      rollback:
+        - dropIndex:
+            tableName: cities
+            indexName: idx_cities_department_code
+
+  - changeSet:
+      id: 011-cities-name-trgm-index
+      author: homepedia
+      comment: >
+        Trigram GIN index on cities(name) for CityRepository.searchByName,
+        which uses LOWER(name) LIKE LOWER('%' || :query || '%'). A plain
+        B-tree can't help LIKE with a leading wildcard; the planner ends up
+        doing a seq scan over 35k cities for every keystroke of the search
+        autocomplete. The gin_trgm_ops operator class lets PG short-list
+        candidates by trigram overlap and recheck via the LIKE filter.
+
+        Stored on lower(name) so the operator matches the query (which
+        lowercases both sides). Cost: roughly the size of the table again
+        in index pages (~5-10 MB for 35k cities), well worth it.
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_cities_name_trgm
+                ON cities USING GIN (LOWER(name) gin_trgm_ops);
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_cities_name_trgm;

@@ -29,6 +29,7 @@ public interface HomepediaConstant {
 		interface City {
 			String BY_INSEE_CODE = "/{inseeCode}";
 			String PRICE_HISTORY = "/{inseeCode}/price-history";
+			String IRIS_INDICATORS = "/{inseeCode}/iris-indicators";
 			String REVIEWS = CITIES + "/{inseeCode}/reviews";
 			String WORD_CLOUD = REVIEWS + "/word-cloud";
 			String SENTIMENT_STATS = REVIEWS + "/sentiment-stats";
@@ -39,6 +40,7 @@ public interface HomepediaConstant {
 			String BY_ID = "/{id}";
 			String HEATPOINTS = "/heatpoints";
 			String MARKERS = "/markers";
+			String COMPARABLE_SALES = "/{id}/comparable-sales";
 		}
 
 		interface Indicator {

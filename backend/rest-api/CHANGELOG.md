@@ -5,6 +5,19 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.42.0] - 2026-05-21
+
+### Features
+
+- feat(stats): quarterly price /m² timeline per commune (issue #9)
+- feat(webapp): enable vector tiles in prod build (issue #6)
+- feat(map): wire CityVectorGridLayer behind VITE_USE_VECTOR_TILES flag (issue #6)
+- feat(map): ship CityVectorGridLayer component (issue #6 step 3, not wired yet)
+
+### Bug Fixes
+
+- fix(webapp): disable vector tiles flag until frontend rendering is debugged
+
 ## [3.41.0] - 2026-05-21
 
 ### Features

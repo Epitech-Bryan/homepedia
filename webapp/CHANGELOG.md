@@ -1,5 +1,11 @@
 # app
 
+## [0.38.0] - 2026-05-21
+
+### Features
+
+- feat(stats): quarterly price /m² timeline per commune (issue #9)
+
 ## [0.37.1] - 2026-05-21
 
 ### Bug Fixes

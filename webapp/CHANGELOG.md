@@ -1,5 +1,11 @@
 # app
 
+## [0.50.0] - 2026-05-22
+
+### Features
+
+- feat(map): revert departments to zoom 7, push city detail to zoom 10
+
 ## [0.49.0] - 2026-05-22
 
 ### Features

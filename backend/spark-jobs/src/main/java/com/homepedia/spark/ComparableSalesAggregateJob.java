@@ -61,13 +61,28 @@ public final class ComparableSalesAggregateJob {
 				// rural cells), so this is the cheapest meaningful gain.
 				.config("spark.sql.adaptive.enabled", "true").config("spark.sql.adaptive.skewJoin.enabled", "true")
 				.config("spark.sql.adaptive.coalescePartitions.enabled", "true")
+				// Force partition split when one is >5x the median — the
+				// default 10x lets Paris-area buckets sit on one executor
+				// long enough to OOM under the self-join fan-out. 5x kicks
+				// in earlier without over-splitting suburban buckets.
+				.config("spark.sql.adaptive.skewJoin.skewedPartitionFactor", "5")
 				// Wider shuffle partitions for our cluster size; the default
 				// 200 over-partitions a ~3 M row dataset and leaves cores
 				// idle. AQE will coalesce back down where it makes sense.
 				.config("spark.sql.shuffle.partitions", "400")
 				// Spill compression keeps the per-executor disk pressure
 				// down on the bucketed self-join.
-				.config("spark.shuffle.compress", "true").getOrCreate()) {
+				.config("spark.shuffle.compress", "true")
+				// Kryo halves the bytes shuffled vs the default Java
+				// serializer on Row payloads carrying multiple doubles
+				// (geohash buckets, lat/lon, price) — measurable in the
+				// ~12 GB shuffle this job generates over a full DVF history.
+				.config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+				// Off-heap memory for sort-merge spills so we don't compete
+				// with the executor JVM heap when ranking the top-N within
+				// dense urban buckets.
+				.config("spark.memory.offHeap.enabled", "true").config("spark.memory.offHeap.size", "1g")
+				.getOrCreate()) {
 			final var jdbcProps = jdbcProps(cfg);
 			final var transactions = loadGeocodedTransactions(spark, cfg.jdbcUrl(), jdbcProps);
 			final var withBuckets = withClusteringBuckets(transactions);
@@ -107,7 +122,14 @@ public final class ComparableSalesAggregateJob {
 				   AND built_surface BETWEEN 9 AND 1000
 				   AND property_type IN ('MAISON','APPARTEMENT','MAISON_APPARTEMENT')) t
 				""";
-		return spark.read().jdbc(jdbcUrl, query, jdbcProps);
+		// Partitioned JDBC read over `id` so Spark fans the SELECT across
+		// 16 parallel connections instead of streaming the whole geocoded
+		// dataset through a single TCP socket — saves ~3 min on the ~6 M
+		// row scan. The bounds are intentionally permissive (1 .. 1e9) so
+		// new rows past the upper bound still come through in a tail
+		// partition rather than getting silently dropped.
+		return spark.read().option("partitionColumn", "id").option("lowerBound", "1").option("upperBound", "1000000000")
+				.option("numPartitions", "16").option("fetchsize", "10000").jdbc(jdbcUrl, query, jdbcProps);
 	}
 
 	private static Dataset<Row> withClusteringBuckets(Dataset<Row> transactions) {

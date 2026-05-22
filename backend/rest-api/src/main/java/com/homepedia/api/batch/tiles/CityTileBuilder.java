@@ -122,6 +122,45 @@ public class CityTileBuilder {
 	}
 
 	/**
+	 * Persist {@link #metricRanges} to JSON next to the mbtiles so a pod restart
+	 * doesn't blank the choropleth — without this, the field resets to {@code
+	 * Map.of()} on every boot and the layer paints everything gray until the next
+	 * DVF import triggers a rebuild. Load is best-effort: a missing or corrupt file
+	 * falls back to "no ranges known" and the choropleth uses its frontend-derived
+	 * fallback.
+	 */
+	private Path metricRangesPath() {
+		return Path.of(mbtilesPath).resolveSibling("metric-ranges.json");
+	}
+
+	@jakarta.annotation.PostConstruct
+	void loadPersistedRanges() {
+		final var path = metricRangesPath();
+		if (!Files.exists(path)) {
+			return;
+		}
+		try (var in = Files.newInputStream(path)) {
+			final var typeRef = MAPPER.getTypeFactory().constructMapType(java.util.LinkedHashMap.class,
+					MAPPER.getTypeFactory().constructType(String.class),
+					MAPPER.getTypeFactory().constructType(MetricRange.class));
+			final Map<String, MetricRange> loaded = MAPPER.readValue(in, typeRef);
+			metricRanges = Map.copyOf(loaded);
+			log.info("loaded {} metric ranges from {}", metricRanges.size(), path);
+		} catch (IOException e) {
+			log.warn("failed to load metric-ranges.json: {}", e.getMessage());
+		}
+	}
+
+	private void persistRanges() {
+		final var path = metricRangesPath();
+		try (var out = Files.newOutputStream(path)) {
+			MAPPER.writerWithDefaultPrettyPrinter().writeValue(out, metricRanges);
+		} catch (IOException e) {
+			log.warn("failed to persist metric-ranges.json: {}", e.getMessage());
+		}
+	}
+
+	/**
 	 * Min/max of a metric across every commune plus 6 internal quantile
 	 * break-points (matching the 7-color choropleth palette). With one Paris
 	 * outlier at 2.1 M and a long tail of villages under 1 k, the linear (min..max)
@@ -140,6 +179,19 @@ public class CityTileBuilder {
 	@Async
 	@EventListener(ApplicationReadyEvent.class)
 	public void onStartup() {
+		// Even when the mbtiles is fresh, the in-memory metricRanges starts
+		// empty after a pod restart — recompute from the DB so the choropleth
+		// has its ranges without waiting for the next DVF import.
+		if (metricRanges.isEmpty() && Files.exists(Path.of(mbtilesPath))) {
+			try {
+				final var stats = loadStatsByCode();
+				metricRanges = computeRanges(stats.values());
+				persistRanges();
+				log.info("rebuilt metric ranges from DB for existing mbtiles ({} metrics)", metricRanges.size());
+			} catch (Exception e) {
+				log.warn("failed to rebuild metric ranges on startup: {}", e.getMessage());
+			}
+		}
 		if (!rebuildOnStartup) {
 			return;
 		}
@@ -191,6 +243,7 @@ public class CityTileBuilder {
 			try {
 				final var stats = loadStatsByCode();
 				metricRanges = computeRanges(stats.values());
+				persistRanges();
 				enrich(source, enrichedTmp, stats);
 				runTippecanoe(enrichedTmp, mbtilesTmp);
 				Files.move(mbtilesTmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);

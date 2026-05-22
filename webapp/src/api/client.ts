@@ -30,6 +30,8 @@ export const api = {
     get: (code: string) => fetchJson<CitySummary>(`/cities/${code}`),
     priceHistory: (code: string) =>
       fetchJson<QuarterlyPricePoint[]>(`/cities/${code}/price-history`),
+    irisIndicators: (code: string) =>
+      fetchJson<IndicatorSummary[]>(`/cities/${code}/iris-indicators`),
   },
   transactions: {
     list: (params?: Record<string, string>) =>

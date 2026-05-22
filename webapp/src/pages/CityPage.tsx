@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import {
   useCity,
   useCityPriceHistory,
+  useCityIrisIndicators,
   useTransactionStats,
   useSentimentStats,
   useWordCloud,
@@ -44,6 +45,7 @@ export function CityPage() {
   const { data: wordCloudData } = useWordCloud(code);
   const { data: reviewsPage } = useReviews(code, { page: "0", size: "3" });
   const { data: priceHistory } = useCityPriceHistory(code);
+  const { data: irisIndicators } = useCityIrisIndicators(code);
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
@@ -122,6 +124,50 @@ export function CityPage() {
         <Suspense fallback={null}>
           <PriceHistoryChart data={priceHistory} />
         </Suspense>
+      )}
+
+      {irisIndicators && irisIndicators.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Indicateurs IRIS (Filosofi)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Disparités infra-communales — revenu médian, taux de pauvreté, gini par IRIS (~2 000
+              habitants). Source : INSEE Filosofi.
+            </p>
+            <div className="max-h-72 overflow-y-auto rounded-md border">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/40 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Catégorie</th>
+                    <th className="px-3 py-2 text-left font-medium">Indicateur</th>
+                    <th className="px-3 py-2 text-right font-medium">Valeur</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {irisIndicators.slice(0, 50).map((i) => (
+                    <tr key={i.id} className="border-t">
+                      <td className="px-3 py-1.5 text-muted-foreground">{i.category}</td>
+                      <td className="px-3 py-1.5">{i.name}</td>
+                      <td className="px-3 py-1.5 text-right font-mono">
+                        {i.value}
+                        {i.unit ? (
+                          <span className="text-muted-foreground ml-1">{i.unit}</span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {irisIndicators.length > 50 && (
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                Affichage limité à 50 lignes ({irisIndicators.length} au total).
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {sentiment && sentiment.totalReviews > 0 && (

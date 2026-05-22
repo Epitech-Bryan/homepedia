@@ -17,6 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -61,5 +62,12 @@ public class GeoController {
 		return ResponseEntity.ok(StringUtils.isNotBlank(regionCode)
 				? geoService.findDepartmentBoundariesByRegion(regionCode)
 				: geoService.findBoundariesByLevel(DEPARTMENT));
+	}
+
+	@Operation(summary = "IRIS boundaries under a commune", description = "GeoJSON FeatureCollection of every IRIS polygon whose 9-char code starts with the given 5-char commune INSEE. Empty FC if the Filosofi IRIS dataset hasn't been imported yet — the frontend can plug it into a Leaflet layer unconditionally.")
+	@GetMapping(value = "/iris/{communeInseeCode}", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<FeatureCollection> getIrisBoundariesByCommune(
+			@Parameter(description = "5-char INSEE code of the parent commune") @PathVariable final String communeInseeCode) {
+		return ResponseEntity.ok(geoService.findIrisBoundariesByCommune(communeInseeCode));
 	}
 }

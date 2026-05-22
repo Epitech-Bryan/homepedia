@@ -694,7 +694,7 @@ function FranceMapComponent({
           className="relative h-full"
           style={{ minHeight: height === "100%" ? undefined : height, height }}
         >
-          {!geojson ? (
+          {!geojson && !useVectorTilesForCities ? (
             <Skeleton className="h-full w-full" />
           ) : (
             <>
@@ -749,7 +749,7 @@ function FranceMapComponent({
                     backdrop above keeps geographic context. choropleth +
                     "all" modes keep the polygons so hover/click + the
                     choropleth fill keep working. */}
-                {mapStyle !== "heat" && mapStyle !== "bubbles" && (
+                {geojson && mapStyle !== "heat" && mapStyle !== "bubbles" && (
                   <LeafletGeoJSON
                     key={layerKey}
                     data={geojson}

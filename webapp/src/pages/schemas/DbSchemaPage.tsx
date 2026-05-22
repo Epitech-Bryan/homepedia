@@ -321,6 +321,75 @@ const MONGO_INDEXES = [
   { name: "content (text)", purpose: "@TextIndexed — full-text FR, stemming" },
 ];
 
+const INDEX_RATIONALE = [
+  {
+    table: "transactions",
+    name: "PK (id, mutation_date)",
+    cols: "id, mutation_date",
+    why: "Clé composite obligatoire dès qu'une table est partitionnée par mutation_date — Postgres exige la colonne de partition dans toute contrainte unique.",
+  },
+  {
+    table: "transactions",
+    name: "idx_transaction_mutation_id",
+    cols: "mutation_id",
+    why: "Dédup multi-lots DVF. Un même bien vendu via plusieurs lignes partage un mutation_id ; l'agrégateur groupe sur cet ID pour éviter de compter le bien N fois.",
+  },
+  {
+    table: "transactions",
+    name: "idx_transaction_mutation_date_brin",
+    cols: "BRIN (mutation_date)",
+    why: "BRIN compact (~10 KB / 20M rows) pour les requêtes date-range qui scannent une plage triée. La table est insérée par année (COPY into shadow partition) donc les pages physiques sont déjà ordonnées — BRIN est plus efficace qu'un B-tree dans ce cas.",
+  },
+  {
+    table: "transactions",
+    name: "idx_transaction_geocoded_bbox",
+    cols: "(latitude, longitude) WHERE lat IS NOT NULL",
+    why: "Heatmap viewport. Index partiel qui exclut les ~30% de rows non géocodés pour rester < 50 MB ; sert le predicate AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?.",
+  },
+  {
+    table: "transactions",
+    name: "idx_transaction_geocode_backlog",
+    cols: "id WHERE latitude IS NULL",
+    why: "Inverse du précédent : le job de geocoding fait un SELECT id FROM transactions WHERE latitude IS NULL LIMIT 1000 toutes les 30s. Sans cet index partiel, il ferait un seq scan complet.",
+  },
+  {
+    table: "indicators",
+    name: "idx_indicator_geo_category",
+    cols: "(level, code, category)",
+    why: "Hot path /api/indicators/{level}/{code}?category=X. Avant cet index, la query générait 200ms de latence p95 sur les pages ville ; ramené à 5ms.",
+  },
+  {
+    table: "indicators",
+    name: "idx_indicator_iris_code_prefix",
+    cols: "code varchar_pattern_ops WHERE level='IRIS'",
+    why: "Les IRIS d'une commune partagent le préfixe INSEE 5-chars (ex: '75101%' pour Paris 1er). varchar_pattern_ops permet à Postgres d'utiliser l'index pour un LIKE prefix sans full text search.",
+  },
+  {
+    table: "cities",
+    name: "idx_cities_name_trgm",
+    cols: "GIN LOWER(name) gin_trgm_ops",
+    why: "Autocomplete villes 'Sain' → 'Saint-Étienne'. pg_trgm GIN match les sous-chaînes ; sans lui, le LIKE prefix mature en seq scan dès le 2e caractère sur 35k rows.",
+  },
+  {
+    table: "cities",
+    name: "idx_cities_department_code",
+    cols: "department_code",
+    why: "Hot path /api/departments/{code}/cities. Sans cet index, la jointure communes ↔ département itère sur tous les 35k INSEE.",
+  },
+  {
+    table: "city_dvf_yearly_stats",
+    name: "idx_city_dvf_yearly_stats_year",
+    cols: "year",
+    why: "Le rebuild par année (CityDvfStatsAggregator.refreshYear) commence par un DELETE WHERE year = ?. Sans index, ce DELETE devient un full scan de la pré-agg (~70k rows × 10 ans).",
+  },
+  {
+    table: "city_price_quarterly_stats",
+    name: "idx_quarterly_year_q",
+    cols: "(year, quarter)",
+    why: "Timeline €/m² historique sur N années. La query SELECT … WHERE year IN (?,?,?) AND quarter IN (1,2,3,4) ORDER BY year,quarter parcours l'index trié au lieu de trier 4×N rows à la volée.",
+  },
+];
+
 const REDIS_CACHES = [
   { name: "geo", ttl: "24 h", note: "GeoJSON pays + admin-1" },
   { name: "refdata", ttl: "12 h", note: "Régions / départements / villes" },
@@ -362,6 +431,38 @@ export function DbSchemaPage() {
             <Controls showInteractive={false} />
             <MiniMap pannable zoomable className="!bg-card" />
           </ReactFlow>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold mb-3">Index — choix techniques</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Pour chaque index non-trivial, le pattern de query qu'il sert et pourquoi cette stratégie
+          a été retenue. Les index FK évidents (un par colonne <code>*_code</code>) sont omis.
+        </p>
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-left">Table</th>
+                <th className="px-3 py-2 text-left">Index</th>
+                <th className="px-3 py-2 text-left">Colonnes</th>
+                <th className="px-3 py-2 text-left w-1/2">Raison</th>
+              </tr>
+            </thead>
+            <tbody>
+              {INDEX_RATIONALE.map((i) => (
+                <tr key={`${i.table}-${i.name}`} className="border-t align-top">
+                  <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{i.table}</td>
+                  <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{i.name}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                    {i.cols}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{i.why}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 

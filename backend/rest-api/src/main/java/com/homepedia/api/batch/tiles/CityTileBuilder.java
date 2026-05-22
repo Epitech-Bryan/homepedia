@@ -81,6 +81,14 @@ public class CityTileBuilder {
 	// {@code GET /departements} endpoint enumerates.
 	private static final List<String> DEPARTMENTS = buildDepartmentCodes();
 
+	// Communes that publish municipal arrondissements through geo.api.gouv.fr
+	// (Paris, Marseille, Lyon). At commune zoom the frontend wants the 20/16/9
+	// arrondissement polygons rather than a single giant box covering the
+	// whole city — those polygons are richer for the DVF heatmap and match
+	// what the in-app drilldown already shows when MVT is off.
+	private static final java.util.Map<String, String> ARRONDISSEMENT_PARENTS = java.util.Map.of("75", "75056", "13",
+			"13055", "69", "69123");
+
 	@Value("${homepedia.tiles.cities-path:/data/tiles/cities.mbtiles}")
 	private String mbtilesPath;
 
@@ -355,6 +363,7 @@ public class CityTileBuilder {
 				if (response.statusCode() != 200) {
 					throw new IOException("geo.api.gouv.fr returned " + response.statusCode() + " for " + dept);
 				}
+				final var skipParentCode = ARRONDISSEMENT_PARENTS.get(dept);
 				try (var body = response.body();
 						var reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8));
 						var parser = JSON_FACTORY.createParser(reader)) {
@@ -368,7 +377,21 @@ public class CityTileBuilder {
 							while (parser.nextToken() != JsonToken.END_ARRAY) {
 								// Copy each feature node straight through. Avoids
 								// allocating a Map per commune.
-								generator.writeTree(parser.readValueAsTree());
+								final var tree = parser.readValueAsTree();
+								// Drop the parent commune of Paris/Lyon/Marseille
+								// — its arrondissements are added below with
+								// proper per-district codes (75101..). Without
+								// this, the tile would draw a giant overlapping
+								// polygon on top of the arrondissements and the
+								// click target would always resolve to the parent.
+								if (skipParentCode != null) {
+									final var node = (com.fasterxml.jackson.databind.JsonNode) tree;
+									final var code = node.path("properties").path("code").asText("");
+									if (skipParentCode.equals(code)) {
+										continue;
+									}
+								}
+								generator.writeTree(tree);
 								totalFeatures++;
 							}
 						} else {
@@ -377,6 +400,10 @@ public class CityTileBuilder {
 					}
 				}
 				log.info("fetched polygons for dept {}", dept);
+
+				if (skipParentCode != null) {
+					totalFeatures += fetchArrondissements(http, generator, skipParentCode);
+				}
 			}
 
 			generator.writeEndArray();
@@ -385,6 +412,48 @@ public class CityTileBuilder {
 			log.info("polygons source fetched: {} features", totalFeatures);
 		}
 		Files.move(tmp, source, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+	}
+
+	/**
+	 * Pull the arrondissement polygons for one of the three drilldown parent
+	 * communes (Paris/Lyon/Marseille) and stream them into the in-flight
+	 * FeatureCollection generator. Each arrondissement keeps its own INSEE code
+	 * (75101..75120 etc.) so the frontend's click handler routes to the correct
+	 * city page rather than the parent.
+	 */
+	private int fetchArrondissements(HttpClient http, com.fasterxml.jackson.core.JsonGenerator generator,
+			String parentCode) throws IOException, InterruptedException {
+		final var url = URI.create(geoApiBaseUrl + "/communes/" + parentCode
+				+ "/arrondissements-municipaux?fields=nom,code,population,surface&format=geojson&geometry=contour");
+		final var request = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(60)).GET().build();
+		final var response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+		if (response.statusCode() != 200) {
+			log.warn("arrondissement fetch for {} returned {} — keeping parent commune polygon", parentCode,
+					response.statusCode());
+			return 0;
+		}
+		var count = 0;
+		try (var body = response.body();
+				var reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8));
+				var parser = JSON_FACTORY.createParser(reader)) {
+			parser.setCodec(MAPPER);
+			expect(parser.nextToken(), JsonToken.START_OBJECT);
+			while (parser.nextToken() != JsonToken.END_OBJECT) {
+				final var field = parser.currentName();
+				parser.nextToken();
+				if ("features".equals(field)) {
+					expect(parser.currentToken(), JsonToken.START_ARRAY);
+					while (parser.nextToken() != JsonToken.END_ARRAY) {
+						generator.writeTree(parser.readValueAsTree());
+						count++;
+					}
+				} else {
+					parser.skipChildren();
+				}
+			}
+		}
+		log.info("fetched {} arrondissements for parent {}", count, parentCode);
+		return count;
 	}
 
 	private void runTippecanoe(Path source, Path destination) throws IOException, InterruptedException {

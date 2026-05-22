@@ -35,6 +35,9 @@ const DbSchemaPage = lazy(() =>
 const DevopsSchemaPage = lazy(() =>
   import("@/pages/schemas/DevopsSchemaPage").then((m) => ({ default: m.DevopsSchemaPage })),
 );
+const DataSchemaPage = lazy(() =>
+  import("@/pages/schemas/DataSchemaPage").then((m) => ({ default: m.DataSchemaPage })),
+);
 const NotFoundPage = lazy(() =>
   import("@/pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })),
 );
@@ -74,6 +77,7 @@ export const router = createBrowserRouter([
           { index: true, element: withSuspense(<ArchitectureSchemaPage />) },
           { path: "architecture", element: withSuspense(<ArchitectureSchemaPage />) },
           { path: "db", element: withSuspense(<DbSchemaPage />) },
+          { path: "data", element: withSuspense(<DataSchemaPage />) },
           { path: "devops", element: withSuspense(<DevopsSchemaPage />) },
         ],
       },

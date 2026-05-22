@@ -123,10 +123,12 @@ public class CountryGeoService {
 		if (worldAdmin1Cache != null) {
 			return;
 		}
+		final var populationByCode = loadAdmin1Populations();
 		final var resource = new ClassPathResource("data/world-admin1.geojson");
 		try (var in = resource.getInputStream()) {
 			final var root = (ObjectNode) objectMapper.readTree(in);
 			final var features = (ArrayNode) root.get("features");
+			var withPopulation = 0;
 			for (JsonNode f : features) {
 				final var props = (ObjectNode) f.get("properties");
 				if (props == null) {
@@ -136,10 +138,42 @@ public class CountryGeoService {
 				if (areaKm2 > 0) {
 					props.put("area", areaKm2);
 				}
+				// Wikidata-sourced population for 94 % of admin-1 entries
+				// (manual overrides for the localised-name minority that
+				// the SPARQL label-EN binding can't match against GADM).
+				// Unlocks the choropleth on density / population for
+				// non-FR admin-1 zoom; missing entries fall back to "no
+				// data" gray like before.
+				final var code = props.path("code").asText(null);
+				if (code != null) {
+					final var pop = populationByCode.get(code);
+					if (pop != null) {
+						props.put("population", pop.longValue());
+						withPopulation++;
+					}
+				}
 			}
 			worldAdmin1Cache = objectMapper.writeValueAsString(root);
+			log.info("World admin-1 GeoJSON enriched: {} features, {} with population", features.size(),
+					withPopulation);
 		}
-		log.info("World admin-1 GeoJSON enriched with spherical area");
+	}
+
+	private java.util.Map<String, Long> loadAdmin1Populations() {
+		final var resource = new ClassPathResource("data/world-admin1-population.json");
+		if (!resource.exists()) {
+			log.warn("world-admin1-population.json missing — admin-1 choropleth will fall back to area only");
+			return java.util.Map.of();
+		}
+		try (var in = resource.getInputStream()) {
+			final var node = (ObjectNode) objectMapper.readTree(in);
+			final var out = new java.util.HashMap<String, Long>();
+			node.fields().forEachRemaining(e -> out.put(e.getKey(), e.getValue().asLong()));
+			return out;
+		} catch (IOException e) {
+			log.error("Failed to parse world-admin1-population.json: {}", e.getMessage());
+			return java.util.Map.of();
+		}
 	}
 
 	private synchronized void loadAndTrim() throws IOException {

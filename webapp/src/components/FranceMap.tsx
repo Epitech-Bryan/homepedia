@@ -793,6 +793,7 @@ function FranceMapComponent({
                     range={choroplethRange}
                     palette={CHOROPLETH_SCALE}
                     onFeatureClick={onFeatureClick}
+                    metricLabel={metricLabel}
                   />
                 )}
                 {onZoomChange && <ZoomReporter onChange={onZoomChange} />}

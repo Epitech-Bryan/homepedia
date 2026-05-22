@@ -34,6 +34,18 @@ interface CityVectorGridLayerProps {
    * the tile's `code` feature property.
    */
   onFeatureClick?: (code: string, name?: string) => void;
+  /**
+   * Optional label appended to the hover tooltip value (e.g. "Population",
+   * "Avg. €/m²"). Kept in parity with the LeafletGeoJSON path so users
+   * see the same metric context whether vector tiles are on or off.
+   */
+  metricLabel?: string;
+}
+
+function formatValue(value: number): string {
+  if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + "M";
+  if (value >= 1_000) return (value / 1_000).toFixed(1) + "k";
+  return Math.round(value).toLocaleString("fr-FR");
 }
 
 /**
@@ -54,6 +66,7 @@ export function CityVectorGridLayer({
   range,
   palette,
   onFeatureClick,
+  metricLabel,
 }: CityVectorGridLayerProps) {
   const map = useMap();
 
@@ -67,11 +80,13 @@ export function CityVectorGridLayer({
   const rangeRef = useRef(range);
   const paletteRef = useRef(palette);
   const onFeatureClickRef = useRef(onFeatureClick);
+  const metricLabelRef = useRef(metricLabel);
   useEffect(() => {
     metricByCodeRef.current = metricByCode;
     rangeRef.current = range;
     paletteRef.current = palette;
     onFeatureClickRef.current = onFeatureClick;
+    metricLabelRef.current = metricLabel;
   });
 
   // Mount the layer once per (map, url) pair. Style updates flow through
@@ -105,13 +120,20 @@ export function CityVectorGridLayer({
     };
 
     // `L.vectorGrid` exists at runtime via the side-effect import above.
+    // VectorGrid features live inside a Canvas, so they don't carry
+    // `bindTooltip`/`bindPopup` like real Leaflet layers — we have to drive
+    // a single floating tooltip + per-feature style swap manually through
+    // the layer's mouse events.
+    type VGLayer = L.Layer & {
+      on: (ev: string, cb: unknown) => VGLayer;
+      redraw?: () => void;
+      setFeatureStyle: (id: string, style: L.PathOptions) => void;
+      resetFeatureStyle: (id: string) => void;
+    };
     const layer = (
       L as unknown as {
         vectorGrid: {
-          protobuf: (
-            url: string,
-            options: unknown,
-          ) => L.Layer & { on: (ev: string, cb: unknown) => void; redraw?: () => void };
+          protobuf: (url: string, options: unknown) => VGLayer;
         };
       }
     ).vectorGrid.protobuf(url, {
@@ -141,10 +163,69 @@ export function CityVectorGridLayer({
       }
     });
 
+    // Single floating tooltip shared across the layer — cheaper than
+    // creating one per feature and avoids the canvas/DOM hit-test mismatch
+    // that VectorGrid's per-feature bindTooltip workarounds suffer from.
+    const tooltip = L.tooltip({
+      sticky: true,
+      direction: "top",
+      offset: [0, -8],
+      className: "leaflet-tooltip",
+    });
+    let hoveredId: string | null = null;
+
+    const buildTooltipHtml = (code: string, name: string | undefined): string => {
+      const label = name ?? code;
+      const value = metricByCodeRef.current?.[code];
+      const ml = metricLabelRef.current;
+      if (value != null && Number.isFinite(value)) {
+        return `<strong>${label}</strong><br/>${formatValue(value)}${ml ? ` · ${ml}` : ""}`;
+      }
+      return `<strong>${label}</strong>`;
+    };
+
+    layer.on(
+      "mouseover",
+      (e: {
+        layer: { properties?: { code?: string; name?: string } };
+        latlng: L.LatLng;
+      }) => {
+        const code = e.layer?.properties?.code;
+        if (!code) return;
+        if (hoveredId && hoveredId !== code) {
+          layer.resetFeatureStyle(hoveredId);
+        }
+        hoveredId = code;
+        layer.setFeatureStyle(code, {
+          fill: true,
+          fillOpacity: 0.92,
+          weight: 2.5,
+          color: "#1f2937",
+        });
+        tooltip
+          .setLatLng(e.latlng)
+          .setContent(buildTooltipHtml(code, e.layer.properties?.name));
+        if (!tooltip.isOpen()) tooltip.addTo(map);
+      },
+    );
+
+    layer.on("mousemove", (e: { latlng: L.LatLng }) => {
+      if (hoveredId) tooltip.setLatLng(e.latlng);
+    });
+
+    layer.on("mouseout", () => {
+      if (hoveredId) {
+        layer.resetFeatureStyle(hoveredId);
+        hoveredId = null;
+      }
+      map.closeTooltip(tooltip);
+    });
+
     layer.addTo(map);
     layerRef.current = layer;
     return () => {
       layerRef.current = null;
+      map.closeTooltip(tooltip);
       // Tile fetches in flight may resolve after remove(); swallow the
       // resulting null-pane crash so React keeps the MapContainer alive.
       try {

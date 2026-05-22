@@ -1,5 +1,15 @@
 # app
 
+## [0.51.0] - 2026-05-22
+
+### Features
+
+- feat(map): zoom-aware country border weight
+
+### Bug Fixes
+
+- fix(tiles): return 204 for empty tiles to silence DevTools 404 noise
+
 ## [0.50.0] - 2026-05-22
 
 ### Features

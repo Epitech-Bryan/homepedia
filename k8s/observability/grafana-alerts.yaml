@@ -1,0 +1,106 @@
+# Prometheus / Grafana alert rules for homepedia rest-api (issue #2).
+#
+# Routes via the existing alerting configmap in the monitoring namespace —
+# channel = Telegram/email already wired in Grafana. The thresholds below
+# come from the 2026-05-21 incident retrospective: 41 minutes of empty
+# payloads were missed because no rule fired. Each rule below would have
+# caught it within 5-10 min.
+#
+# Apply alongside the existing dashboard ConfigMap. The dashboard repo
+# expects a PrometheusRule CR (kube-prometheus-stack).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homepedia-rest-api
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: kube-prometheus-stack
+    role: alert-rules
+spec:
+  groups:
+    - name: homepedia.rest-api
+      interval: 30s
+      rules:
+        - alert: RestApi5xxBurst
+          # >1 req/s of 5xx for 5 min. A short blip during a deploy is normal,
+          # 5 min sustained is a real outage.
+          expr: |
+            sum(rate(http_server_requests_seconds_count{job="homepedia-rest-api",status=~"5.."}[5m])) > 1
+          for: 5m
+          labels:
+            severity: page
+            service: rest-api
+          annotations:
+            summary: "rest-api: sustained 5xx errors"
+            description: |
+              {{ $value | printf "%.2f" }} 5xx/s sustained for 5 min. Check pod logs
+              + the Postgres connection pool dashboard (HikariCP active / pending).
+
+        - alert: RestApiP95Latency
+          expr: |
+            histogram_quantile(0.95,
+              sum by (uri, le) (rate(http_server_requests_seconds_bucket{job="homepedia-rest-api"}[5m]))
+            ) > 1
+          for: 10m
+          labels:
+            severity: warning
+            service: rest-api
+          annotations:
+            summary: "rest-api {{ $labels.uri }}: p95 > 1s"
+            description: |
+              Endpoint {{ $labels.uri }} at p95 = {{ $value | printf "%.2f" }} s.
+              Either a DB regression (check pg_stat_statements) or cache miss
+              storm (see CacheMissBurst below).
+
+        - alert: CacheMissBurst
+          # The 2026-05-21 incident: a Jackson typing change broke
+          # deserialisation, every @Cacheable lookup returned MISS and the
+          # endpoints recomputed from PG. CPU + DB CPU both spiked.
+          expr: |
+            sum(rate(cache_gets_total{job="homepedia-rest-api",result="miss"}[5m]))
+              /
+            clamp_min(sum(rate(cache_gets_total{job="homepedia-rest-api"}[5m])), 0.001)
+              > 0.95
+          for: 10m
+          labels:
+            severity: warning
+            service: rest-api
+          annotations:
+            summary: "rest-api: cache hit rate < 5% — broken cache?"
+            description: |
+              {{ $value | printf "%.0f" }}% of cache lookups are MISS over 10 min.
+              Either a cold deploy (acceptable, will quiet within 30 min) or
+              a serialisation regression (the 2026-05-21 incident pattern).
+
+        - alert: JvmHeapPressure
+          expr: |
+            sum by (pod) (jvm_memory_used_bytes{job="homepedia-rest-api",area="heap"})
+              /
+            sum by (pod) (jvm_memory_max_bytes{job="homepedia-rest-api",area="heap"})
+              > 0.8
+          for: 5m
+          labels:
+            severity: warning
+            service: rest-api
+          annotations:
+            summary: "rest-api {{ $labels.pod }}: heap > 80%"
+            description: |
+              Heap at {{ $value | printf "%.0f" }}% sustained for 5 min. If GC
+              pause panel also shows p99 > 150 ms, the pod is approaching OOM —
+              capture a heapdump via the /actuator/heapdump endpoint before
+              the kubelet restarts it.
+
+        - alert: HikariPoolSaturation
+          expr: |
+            (hikaricp_connections_active{job="homepedia-rest-api"}
+              / hikaricp_connections_max{job="homepedia-rest-api"}) > 0.9
+          for: 5m
+          labels:
+            severity: warning
+            service: rest-api
+          annotations:
+            summary: "rest-api {{ $labels.pod }}: HikariCP > 90% saturated"
+            description: |
+              Pool at {{ $value | printf "%.0f" }}% used. Either a leak (check
+              leak-detection-threshold logs) or genuine traffic burst (consider
+              scaling out before raising HIKARI_MAX_POOL_SIZE).

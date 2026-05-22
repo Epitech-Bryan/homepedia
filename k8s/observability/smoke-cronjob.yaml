@@ -1,0 +1,76 @@
+# Post-deploy smoke test CronJob (issue #2). Hits a handful of
+# representative endpoints every 5 minutes and exits non-zero on:
+#   - non-2xx HTTP status
+#   - empty / falsy response body (catches the "no data partout" pattern)
+#   - latency > 2 s
+#
+# CronJob failures surface in the kube-state-metrics alerts the cluster
+# already has — no extra alerting plumbing needed. The job uses curl from
+# an alpine image so we don't carry a custom build.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: homepedia-smoke
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: homepedia-smoke
+    app.kubernetes.io/part-of: homepedia
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 600
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: smoke
+              image: docker.io/curlimages/curl:8.10.1
+              env:
+                - name: BASE_URL
+                  value: "http://homepedia-rest-api.homepedia.svc.cluster.local:8080"
+                - name: MAX_LATENCY_MS
+                  value: "2000"
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  fail=0
+                  probe() {
+                    url="$1"; min_size="${2:-2}"
+                    start=$(date +%s%3N)
+                    body=$(curl -sf --max-time 5 -w '\nSTATUS=%{http_code}\n' "${BASE_URL}${url}") || {
+                      echo "FAIL ${url}: non-2xx or curl error"
+                      fail=$((fail+1))
+                      return
+                    }
+                    end=$(date +%s%3N)
+                    latency=$((end - start))
+                    size=$(printf '%s' "$body" | wc -c)
+                    if [ "$latency" -gt "${MAX_LATENCY_MS}" ]; then
+                      echo "FAIL ${url}: ${latency} ms > ${MAX_LATENCY_MS}"
+                      fail=$((fail+1))
+                    elif [ "$size" -lt "$min_size" ]; then
+                      echo "FAIL ${url}: body too small (${size} bytes < ${min_size}) — empty response?"
+                      fail=$((fail+1))
+                    else
+                      echo "OK   ${url}: ${latency} ms, ${size} B"
+                    fi
+                  }
+                  probe /stats/regions 100
+                  probe /cities/75056 50
+                  probe /regions 100
+                  probe '/transactions/heatpoints?south=48.8&west=2.2&north=48.9&east=2.4' 2
+                  exit $fail
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi

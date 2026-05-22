@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.50.1] - 2026-05-22
+
+### Bug Fixes
+
+- fix(map): arrondissements URL + VectorGrid z=8 storm
+- fix(map): stitch Russia/Fiji across the antimeridian
+
 ## [3.50.0] - 2026-05-22
 
 ### Features

@@ -120,7 +120,7 @@ export const api = {
   },
   tiles: {
     metricRanges: () =>
-      fetchJson<Record<string, { min: number | null; max: number | null }>>(
+      fetchJson<Record<string, { min: number | null; max: number | null; breaks?: number[] }>>(
         "/tiles/cities/metric-ranges",
       ),
   },

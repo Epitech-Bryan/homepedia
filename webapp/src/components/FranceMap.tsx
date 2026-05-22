@@ -87,10 +87,12 @@ interface FranceMapProps {
    * Overrides the choropleth min/max range that would otherwise be derived
    * from {@link metricByCode}. Used when the commune values aren't in
    * {@link metricByCode} but in tile feature properties — the global
-   * min/max comes pre-computed from the backend's
-   * {@code /api/tiles/cities/metric-ranges} endpoint.
+   * min/max + 6 quantile breakpoints come pre-computed from the backend's
+   * {@code /api/tiles/cities/metric-ranges} endpoint so the gradient bins
+   * communes by rank rather than by raw value (Paris doesn't wash out the
+   * rest of France).
    */
-  choroplethRange?: { min: number; max: number } | null;
+  choroplethRange?: { min: number; max: number; breaks?: number[] } | null;
   metricLabel?: string;
   /**
    * When provided, the heat layer feeds directly off these per-address
@@ -574,14 +576,25 @@ function FranceMapComponent({
   const choroplethRange = useMemo(() => {
     if (choroplethRangeOverride) return choroplethRangeOverride;
     if (!metricByCode) return null;
-    const values = Object.values(metricByCode).filter(
-      (v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0,
-    );
+    const values = Object.values(metricByCode)
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0)
+      .sort((a, b) => a - b);
     if (values.length === 0) return null;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
+    const min = values[0];
+    const max = values[values.length - 1];
     if (min === max) return null;
-    return { min, max };
+    // Compute the same 6 quantile cuts as CityTileBuilder so SVG layers
+    // (regions / departments) get binned the same way as the MVT commune
+    // layer — keeps the gradient consistent when the user zooms across
+    // levels and stops Paris / Île-de-France from dominating the scale.
+    const breaks =
+      values.length >= 7
+        ? Array.from(
+            { length: 6 },
+            (_, i) => values[Math.round(((i + 1) / 7) * (values.length - 1))],
+          )
+        : [];
+    return { min, max, breaks };
   }, [choroplethRangeOverride, metricByCode]);
 
   const colorForCode = useCallback(
@@ -589,11 +602,21 @@ function FranceMapComponent({
       if (!code || !metricByCode || !choroplethRange || !showChoropleth) return null;
       const value = metricByCode[code];
       if (value == null || !Number.isFinite(value) || value <= 0) return null;
-      const ratio = (value - choroplethRange.min) / (choroplethRange.max - choroplethRange.min);
-      const idx = Math.min(
-        CHOROPLETH_SCALE.length - 1,
-        Math.floor(ratio * CHOROPLETH_SCALE.length),
-      );
+      const breaks = choroplethRange.breaks;
+      let idx: number;
+      if (breaks && breaks.length > 0) {
+        idx = breaks.length;
+        for (let i = 0; i < breaks.length; i++) {
+          if (value <= breaks[i]) {
+            idx = i;
+            break;
+          }
+        }
+        idx = Math.min(CHOROPLETH_SCALE.length - 1, idx);
+      } else {
+        const ratio = (value - choroplethRange.min) / (choroplethRange.max - choroplethRange.min);
+        idx = Math.min(CHOROPLETH_SCALE.length - 1, Math.floor(ratio * CHOROPLETH_SCALE.length));
+      }
       return CHOROPLETH_SCALE[idx];
     },
     [metricByCode, choroplethRange, showChoropleth],

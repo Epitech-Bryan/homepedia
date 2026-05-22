@@ -2,7 +2,9 @@ package com.homepedia.api.controller;
 
 import com.homepedia.api.admin.AdminJobsService;
 import com.homepedia.api.batch.dvf.CityDvfStatsAggregator;
+import com.homepedia.api.batch.tiles.CityTileBuilder;
 import com.homepedia.api.service.CacheInvalidationService;
+import org.springframework.beans.factory.ObjectProvider;
 import com.homepedia.api.service.SparkJobLauncherService;
 import com.homepedia.api.service.StatsService;
 import com.homepedia.api.service.TransactionsPartitionStatsService;
@@ -41,6 +43,7 @@ public class AdminController {
 	private final AdminJobsService adminJobsService;
 	private final TransactionsPartitionStatsService transactionsPartitionStatsService;
 	private final CityDvfStatsAggregator cityDvfStatsAggregator;
+	private final ObjectProvider<CityTileBuilder> cityTileBuilder;
 
 	@Operation(summary = "Recompute all statistics", description = "Evicts stats caches, optionally triggers Spark DVF aggregation, and warms up caches.")
 	@PostMapping("/recompute-stats")
@@ -98,6 +101,21 @@ public class AdminController {
 	@GetMapping("/transactions/partition-stats")
 	public ResponseEntity<List<TransactionsPartitionStatsService.YearCount>> partitionStats() {
 		return ResponseEntity.ok(transactionsPartitionStatsService.countByYear());
+	}
+
+	@Operation(summary = "Rebuild commune vector tiles", description = "Triggers CityTileBuilder.rebuildAsync — pulls fresh polygons + stats, runs tippecanoe and atomic-swaps cities.mbtiles. Returns 202 immediately; the build itself takes 2-4 min in the pod. Useful when the live mbtiles is older than the deployed pipeline (e.g. arrondissements were added after the last build).")
+	@PostMapping("/tiles/rebuild")
+	public ResponseEntity<TriggerResponse> rebuildTiles() {
+		final var builder = cityTileBuilder.getIfAvailable();
+		if (builder == null) {
+			return ResponseEntity.status(503).body(new TriggerResponse("tiles", "builder disabled", Instant.now()));
+		}
+		if (builder.isRunning()) {
+			return ResponseEntity.status(409).body(new TriggerResponse("tiles", "already running", Instant.now()));
+		}
+		log.info("Manual tile rebuild triggered");
+		builder.rebuildAsync();
+		return ResponseEntity.accepted().body(new TriggerResponse("tiles", "dispatched", Instant.now()));
 	}
 
 	@Operation(summary = "Refresh pre-aggregated DVF stats for one year", description = "Recomputes city_dvf_yearly_stats for the given year from transactions_<year>. Useful to repair the pre-agg without re-running the full import (e.g. after an ANALYZE/aggregator failure).")

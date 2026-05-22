@@ -31,9 +31,13 @@ interface CityVectorGridLayerProps {
    */
   metricByCode?: Record<string, number | null | undefined>;
   /**
-   * Min/max of the visible metric — required for the colour ramp.
+   * Min/max of the visible metric plus optional quantile break-points
+   * (6 internal cuts → 7 buckets matching the palette). When {@code breaks}
+   * is provided the layer bins each feature against the cuts rather than
+   * computing a linear ratio, so a single outlier (Paris at 2 M pop) can't
+   * collapse every other commune onto the lightest colour.
    */
-  range?: { min: number; max: number } | null;
+  range?: { min: number; max: number; breaks?: number[] } | null;
   /**
    * Sequential palette to map ratio → fill. Caller's choice so the colour
    * scheme stays consistent with the rest of the map.
@@ -140,8 +144,26 @@ export function CityVectorGridLayer({
           interactive: true,
         };
       }
-      const ratio = (value - r.min) / Math.max(r.max - r.min, 1);
-      const idx = Math.min(p.length - 1, Math.max(0, Math.floor(ratio * p.length)));
+      let idx: number;
+      const breaks = r.breaks;
+      if (breaks && breaks.length > 0) {
+        // Quantile binning: each break-point separates 1/7 of the communes
+        // from the next. Iterate until we land in our bucket — the array is
+        // short enough (6 cuts) that a linear scan beats Array#findIndex.
+        idx = breaks.length;
+        for (let i = 0; i < breaks.length; i++) {
+          if (value <= breaks[i]) {
+            idx = i;
+            break;
+          }
+        }
+        idx = Math.min(p.length - 1, idx);
+      } else {
+        // Fallback: linear ratio over [min..max] when the backend hasn't
+        // shipped breakpoints yet (older API or empty distribution).
+        const ratio = (value - r.min) / Math.max(r.max - r.min, 1);
+        idx = Math.min(p.length - 1, Math.max(0, Math.floor(ratio * p.length)));
+      }
       return {
         fillColor: p[idx],
         fill: true,

@@ -209,10 +209,11 @@ export function PersistentMap() {
   }, []);
 
   // Debounce bounds updates: a single pan emits several `moveend` events as
-  // Leaflet eases the inertia, and each one previously triggered the full
-  // visibleDeptCodes recompute + possibly N parallel commune-geojson fetches.
-  // 200 ms after the user stops moving is short enough to feel instant and
-  // enough to coalesce the burst into one update.
+  // Leaflet eases the inertia, and each one fires a heatpoints + a
+  // transaction-markers bbox query against the backend. 50 ms is enough to
+  // coalesce the inertia burst into one update while staying invisible to
+  // the user — the vector-tile commune layer means we no longer pay the
+  // multi-department GeoJSON fetch the original 200 ms was sized for.
   const boundsTimer = useRef<number | null>(null);
   useEffect(
     () => () => {
@@ -224,7 +225,7 @@ export function PersistentMap() {
     if (boundsTimer.current !== null) window.clearTimeout(boundsTimer.current);
     boundsTimer.current = window.setTimeout(() => {
       setBounds([south, west, north, east]);
-    }, 200);
+    }, 50);
   }, []);
 
   // URL drives the active feature highlight + cards below the map.

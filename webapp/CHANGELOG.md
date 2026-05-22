@@ -1,5 +1,12 @@
 # app
 
+## [0.46.0] - 2026-05-22
+
+### Features
+
+- feat: arrondissements MVT + Data schema page + index rationale
+- feat(geo): bake admin-1 population for 39 EU/G20 countries (94% coverage)
+
 ## [0.45.0] - 2026-05-22
 
 ### Features

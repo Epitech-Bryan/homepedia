@@ -5,9 +5,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.homepedia.api.service.TransactionService;
+import com.homepedia.common.stats.StatsRepository;
+import com.homepedia.common.stats.StatsRepository.TransactionStatsProjection;
 import com.homepedia.common.transaction.RealEstateTransaction;
 import com.homepedia.common.transaction.TransactionRepository;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Collections;
 import java.util.List;
 import org.assertj.core.data.Offset;
@@ -16,7 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.jpa.domain.Specification;
 
 /**
  * REGRESSION TEST — DO NOT MODIFY WITH AI AGENTS.
@@ -24,12 +26,23 @@ import org.springframework.data.jpa.domain.Specification;
  * Contract tests for transaction stats aggregation. Expected values are locked
  * to known inputs and must not change unless the business logic intentionally
  * changes.
+ *
+ * <p>
+ * Issue #3 ported the aggregation from a JVM-side stream of {@code
+ * transactionRepository.findAll(spec)} to a single DB-side aggregate via
+ * {@code StatsRepository.aggregateTransactionStats}. The mocks below now feed a
+ * {@code TransactionStatsProjection} computed from the same known inputs —
+ * every assertion value is preserved verbatim.
  */
 @ExtendWith(MockitoExtension.class)
 class TransactionStatsRegressionTest {
 
+	@SuppressWarnings("unused")
 	@Mock
 	private TransactionRepository transactionRepository;
+
+	@Mock
+	private StatsRepository statsRepository;
 
 	@InjectMocks
 	private TransactionService transactionService;
@@ -40,7 +53,7 @@ class TransactionStatsRegressionTest {
 				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
 				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
+		when(statsRepository.aggregateTransactionStats(any(), any(), any())).thenReturn(projectionFor(transactions));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -54,7 +67,7 @@ class TransactionStatsRegressionTest {
 				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
 				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
+		when(statsRepository.aggregateTransactionStats(any(), any(), any())).thenReturn(projectionFor(transactions));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -67,7 +80,7 @@ class TransactionStatsRegressionTest {
 				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
 				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
+		when(statsRepository.aggregateTransactionStats(any(), any(), any())).thenReturn(projectionFor(transactions));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -81,7 +94,7 @@ class TransactionStatsRegressionTest {
 				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
 				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
+		when(statsRepository.aggregateTransactionStats(any(), any(), any())).thenReturn(projectionFor(transactions));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -94,7 +107,7 @@ class TransactionStatsRegressionTest {
 				transaction(new BigDecimal("150000"), 55.0), transaction(new BigDecimal("200000"), 70.0),
 				transaction(new BigDecimal("250000"), 90.0), transaction(new BigDecimal("400000"), 120.0));
 
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
+		when(statsRepository.aggregateTransactionStats(any(), any(), any())).thenReturn(projectionFor(transactions));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -105,7 +118,8 @@ class TransactionStatsRegressionTest {
 
 	@Test
 	void computeStats_emptyTransactionList_returnsZeroedStats() {
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(Collections.emptyList());
+		when(statsRepository.aggregateTransactionStats(any(), any(), any()))
+				.thenReturn(projectionFor(Collections.emptyList()));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -122,7 +136,7 @@ class TransactionStatsRegressionTest {
 	void computeStats_singleTransaction_allStatsEqualThatTransaction() {
 		final var transactions = List.of(transaction(new BigDecimal("175000"), 65.0));
 
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
+		when(statsRepository.aggregateTransactionStats(any(), any(), any())).thenReturn(projectionFor(transactions));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -141,7 +155,7 @@ class TransactionStatsRegressionTest {
 				transaction(new BigDecimal("200000"), 60.0), transaction(new BigDecimal("300000"), 80.0),
 				transaction(new BigDecimal("400000"), 100.0));
 
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
+		when(statsRepository.aggregateTransactionStats(any(), any(), any())).thenReturn(projectionFor(transactions));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -153,7 +167,7 @@ class TransactionStatsRegressionTest {
 		final var transactions = List.of(transaction(new BigDecimal("100000"), 50.0), transaction(null, 60.0),
 				transaction(BigDecimal.ZERO, 40.0), transaction(new BigDecimal("300000"), 80.0));
 
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
+		when(statsRepository.aggregateTransactionStats(any(), any(), any())).thenReturn(projectionFor(transactions));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -169,7 +183,7 @@ class TransactionStatsRegressionTest {
 		final var transactions = List.of(transaction(new BigDecimal("200000"), 80.0),
 				transaction(new BigDecimal("100000"), null), transaction(new BigDecimal("150000"), 0.0));
 
-		when(transactionRepository.findAll(any(Specification.class))).thenReturn(transactions);
+		when(statsRepository.aggregateTransactionStats(any(), any(), any())).thenReturn(projectionFor(transactions));
 
 		final var stats = transactionService.computeStats("75056", null, null);
 
@@ -179,5 +193,77 @@ class TransactionStatsRegressionTest {
 
 	private static RealEstateTransaction transaction(BigDecimal price, Double surface) {
 		return RealEstateTransaction.builder().propertyValue(price).builtSurface(surface).build();
+	}
+
+	/**
+	 * Builds a {@link TransactionStatsProjection} mirroring the DB-side aggregate
+	 * the new {@code aggregateTransactionStats} query returns — driven by the exact
+	 * same input list the legacy mock used to feed
+	 * {@code transactionRepository.findAll}. Keeps the test cases pure input-output
+	 * and the assertion values locked.
+	 */
+	private static TransactionStatsProjection projectionFor(final List<RealEstateTransaction> transactions) {
+		final long total = transactions.size();
+		final var validPrices = transactions.stream().map(RealEstateTransaction::getPropertyValue)
+				.filter(v -> v != null && v.compareTo(BigDecimal.ZERO) > 0).sorted().toList();
+		final BigDecimal avg;
+		final BigDecimal min;
+		final BigDecimal max;
+		final BigDecimal median;
+		if (validPrices.isEmpty()) {
+			avg = null;
+			min = null;
+			max = null;
+			median = null;
+		} else {
+			final var sum = validPrices.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+			avg = sum.divide(BigDecimal.valueOf(validPrices.size()), 2, RoundingMode.HALF_UP);
+			min = validPrices.getFirst();
+			max = validPrices.getLast();
+			median = validPrices.get(validPrices.size() / 2);
+		}
+		final Double avgSurface = transactions.stream().map(RealEstateTransaction::getBuiltSurface)
+				.filter(s -> s != null && s > 0).mapToDouble(Double::doubleValue).average().orElse(Double.NaN);
+		final Double avgPricePerSqm = transactions.stream()
+				.filter(t -> t.getPropertyValue() != null && t.getBuiltSurface() != null && t.getBuiltSurface() > 0
+						&& t.getPropertyValue().compareTo(BigDecimal.ZERO) > 0)
+				.mapToDouble(t -> t.getPropertyValue().doubleValue() / t.getBuiltSurface()).average()
+				.orElse(Double.NaN);
+		return new TransactionStatsProjection() {
+			@Override
+			public Long getTotalTransactions() {
+				return total;
+			}
+
+			@Override
+			public BigDecimal getAveragePrice() {
+				return avg;
+			}
+
+			@Override
+			public BigDecimal getMinPrice() {
+				return min;
+			}
+
+			@Override
+			public BigDecimal getMaxPrice() {
+				return max;
+			}
+
+			@Override
+			public BigDecimal getMedianPrice() {
+				return median;
+			}
+
+			@Override
+			public Double getAverageSurface() {
+				return Double.isNaN(avgSurface) ? null : avgSurface;
+			}
+
+			@Override
+			public Double getAveragePricePerSqm() {
+				return Double.isNaN(avgPricePerSqm) ? null : avgPricePerSqm;
+			}
+		};
 	}
 }

@@ -1,6 +1,7 @@
 package com.homepedia.api.service;
 
 import com.homepedia.api.mapper.TransactionMapper;
+import com.homepedia.common.stats.StatsRepository;
 import com.homepedia.common.transaction.PropertyType;
 import com.homepedia.common.transaction.RealEstateTransaction;
 import com.homepedia.common.transaction.TransactionDetail;
@@ -23,7 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.homepedia.api.config.CacheConfig.CACHE_STATS;
-import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +31,8 @@ import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 public class TransactionService {
 
 	private final TransactionRepository transactionRepository;
+
+	private final StatsRepository statsRepository;
 
 	public Page<TransactionSummary> search(final String cityInseeCode, final String departmentCode, final Integer year,
 			final BigDecimal minPrice, final BigDecimal maxPrice, final PropertyType propertyType,
@@ -45,42 +47,34 @@ public class TransactionService {
 	}
 
 	public TransactionStats computeStats(final String cityInseeCode, final String departmentCode, final Integer year) {
-		// Refuse a fully-unscoped call: that streamed the entire 20 M-row
+		// Refuse a fully-unscoped call: the old impl streamed the entire 20 M-row
 		// transactions table into the JVM heap and reliably OOM-killed the
-		// pod. All real callers pass at least a commune, a department, or a
-		// year — so this is safe.
+		// pod. The new pre-agg path wouldn't OOM but a full-France scan is
+		// still meaningless — the guard stays as belt-and-braces.
 		if (StringUtils.isBlank(cityInseeCode) && StringUtils.isBlank(departmentCode) && year == null) {
 			return TransactionMapper.INSTANCE.emptyStats();
 		}
-		final var spec = buildSpecification(cityInseeCode, departmentCode, year, null, null, null);
-		final var transactions = transactionRepository.findAll(spec);
-
-		if (isEmpty(transactions)) {
+		final var p = statsRepository.aggregateTransactionStats(StringUtils.trimToNull(cityInseeCode),
+				StringUtils.trimToNull(departmentCode), year);
+		if (p == null || p.getTotalTransactions() == null || p.getTotalTransactions() == 0L
+				|| p.getAveragePrice() == null) {
+			// Either no rows matched, or every match had a null/zero price —
+			// the old in-JVM path collapsed both into emptyStats(), keep it.
 			return TransactionMapper.INSTANCE.emptyStats();
 		}
+		final var avg = scaleOrZero(p.getAveragePrice());
+		return new TransactionStats(p.getTotalTransactions(), avg, nonNull(p.getMedianPrice()),
+				nonNull(p.getMinPrice()), nonNull(p.getMaxPrice()),
+				Optional.ofNullable(p.getAverageSurface()).orElse(0.0),
+				Optional.ofNullable(p.getAveragePricePerSqm()).orElse(0.0));
+	}
 
-		final var prices = transactions.stream().map(RealEstateTransaction::getPropertyValue)
-				.filter(v -> v != null && v.compareTo(BigDecimal.ZERO) > 0).sorted().toList();
+	private static BigDecimal scaleOrZero(final BigDecimal value) {
+		return value == null ? BigDecimal.ZERO : value.setScale(2, RoundingMode.HALF_UP);
+	}
 
-		if (isEmpty(prices)) {
-			return TransactionMapper.INSTANCE.emptyStats();
-		}
-
-		final var sum = prices.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-		final var avg = sum.divide(BigDecimal.valueOf(prices.size()), 2, RoundingMode.HALF_UP);
-		final var median = prices.get(prices.size() / 2);
-		final var min = prices.getFirst();
-		final var max = prices.getLast();
-
-		final double avgSurface = transactions.stream().map(RealEstateTransaction::getBuiltSurface)
-				.filter(s -> s != null && s > 0).mapToDouble(Double::doubleValue).average().orElse(0.0);
-
-		final double avgPricePerM2 = transactions.stream()
-				.filter(t -> t.getPropertyValue() != null && t.getBuiltSurface() != null && t.getBuiltSurface() > 0
-						&& t.getPropertyValue().compareTo(BigDecimal.ZERO) > 0)
-				.mapToDouble(t -> t.getPropertyValue().doubleValue() / t.getBuiltSurface()).average().orElse(0.0);
-
-		return new TransactionStats(transactions.size(), avg, median, min, max, avgSurface, avgPricePerM2);
+	private static BigDecimal nonNull(final BigDecimal value) {
+		return value == null ? BigDecimal.ZERO : value;
 	}
 
 	private Specification<RealEstateTransaction> buildSpecification(final String cityInseeCode,

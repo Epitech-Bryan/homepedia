@@ -533,7 +533,7 @@ export function PersistentMap() {
     const r = tileMetricRanges?.[metric];
     if (!r || r.min == null || r.max == null) return null;
     if (r.min === r.max) return null;
-    return { min: r.min, max: r.max };
+    return { min: r.min, max: r.max, breaks: r.breaks ?? [] };
   }, [useVectorTiles, tileMetricRanges, metric]);
 
   const metricByCode = useMemo(() => {

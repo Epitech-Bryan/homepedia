@@ -121,7 +121,14 @@ public class CityTileBuilder {
 		return metricRanges;
 	}
 
-	public record MetricRange(Double min, Double max) {
+	/**
+	 * Min/max of a metric across every commune plus 6 internal quantile
+	 * break-points (matching the 7-color choropleth palette). With one Paris
+	 * outlier at 2.1 M and a long tail of villages under 1 k, the linear (min..max)
+	 * ratio painted everything beige; quantile binning gives each colour ~1/7 of
+	 * the communes so the gradient actually reads.
+	 */
+	public record MetricRange(Double min, Double max, java.util.List<Double> breaks) {
 	}
 
 	// ApplicationReadyEvent + @Async dispatches through the Spring proxy so
@@ -225,23 +232,30 @@ public class CityTileBuilder {
 
 	private static MetricRange rangeOf(java.util.Collection<CityTileStatsProjection> rows,
 			java.util.function.Function<CityTileStatsProjection, Double> extractor) {
-		double min = Double.POSITIVE_INFINITY;
-		double max = Double.NEGATIVE_INFINITY;
-		var hasAny = false;
+		final var values = new java.util.ArrayList<Double>(rows.size());
 		for (final var r : rows) {
 			final var v = extractor.apply(r);
-			if (v == null || !Double.isFinite(v) || v <= 0) {
-				continue;
+			if (v != null && Double.isFinite(v) && v > 0) {
+				values.add(v);
 			}
-			if (v < min) {
-				min = v;
-			}
-			if (v > max) {
-				max = v;
-			}
-			hasAny = true;
 		}
-		return hasAny ? new MetricRange(min, max) : new MetricRange(null, null);
+		if (values.isEmpty()) {
+			return new MetricRange(null, null, java.util.List.of());
+		}
+		java.util.Collections.sort(values);
+		final var min = values.get(0);
+		final var max = values.get(values.size() - 1);
+		// 6 internal break-points partition the sorted values into 7 equal-
+		// sized buckets — one per colour in CHOROPLETH_SCALE. Using indices
+		// rather than interpolated percentiles avoids floating-point drift
+		// when the frontend bisects: every commune ends up in exactly one
+		// bucket and Paris stops painting France beige.
+		final var breaks = new java.util.ArrayList<Double>(6);
+		for (int i = 1; i <= 6; i++) {
+			final var idx = (int) Math.round((double) i / 7.0 * (values.size() - 1));
+			breaks.add(values.get(idx));
+		}
+		return new MetricRange(min, max, java.util.List.copyOf(breaks));
 	}
 
 	private Map<String, CityTileStatsProjection> loadStatsByCode() {

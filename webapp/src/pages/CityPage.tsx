@@ -43,7 +43,10 @@ export function CityPage() {
   const { data: stats } = useTransactionStats(code ? { cityInseeCode: code } : undefined);
   const { data: sentiment } = useSentimentStats(code);
   const { data: wordCloudData } = useWordCloud(code);
-  const { data: reviewsPage } = useReviews(code, { page: "0", size: "3" });
+  const { data: reviewsPage, isPending: reviewsPending } = useReviews(code, {
+    page: "0",
+    size: "3",
+  });
   const { data: priceHistory } = useCityPriceHistory(code);
   const { data: irisIndicators } = useCityIrisIndicators(code);
 
@@ -229,23 +232,32 @@ export function CityPage() {
         </Card>
       )}
 
-      {previewReviews.length > 0 && (
+      {(reviewsPending || previewReviews.length > 0) && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Latest reviews</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {previewReviews.map((review) => (
-              <div key={review.id} className="border-l-2 border-border pl-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium">{review.author}</span>
-                  <Badge className={sentimentBadgeClass(review.sentimentLabel)} variant="secondary">
-                    {review.sentimentLabel}
-                  </Badge>
-                </div>
-                <p className="mt-1 line-clamp-2 text-xs text-foreground/80">{review.content}</p>
+            {reviewsPending ? (
+              <div className="flex justify-center py-2">
+                <LoadingSpinner />
               </div>
-            ))}
+            ) : (
+              previewReviews.map((review) => (
+                <div key={review.id} className="border-l-2 border-border pl-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium">{review.author}</span>
+                    <Badge
+                      className={sentimentBadgeClass(review.sentimentLabel)}
+                      variant="secondary"
+                    >
+                      {review.sentimentLabel}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-xs text-foreground/80">{review.content}</p>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       )}

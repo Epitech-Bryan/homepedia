@@ -155,14 +155,19 @@ export function CityVectorGridLayer({
     };
   }, [map, url]);
 
-  // Re-render polygons when the choropleth inputs change. Reads the current
-  // values via refs and asks VectorGrid to repaint — no remount needed.
+  // Re-render polygons only when the colour ramp actually shifts. Using
+  // primitive min/max as deps avoids redrawing on every pan: panning gives
+  // metricByCode a fresh object reference (new visible commune codes) but
+  // the min/max usually stay put — and newly-loaded tiles already pick up
+  // the latest metricByCode through the styleFor refs above. Without this,
+  // VectorGrid wipes its tile cache and re-fetches the whole viewport on
+  // every drag.
   useEffect(() => {
     const layer = layerRef.current;
     if (layer && typeof layer.redraw === "function") {
       layer.redraw();
     }
-  }, [metricByCode, range, palette]);
+  }, [range?.min, range?.max]);
 
   return null;
 }

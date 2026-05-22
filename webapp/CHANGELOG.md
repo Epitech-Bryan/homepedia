@@ -1,5 +1,16 @@
 # app
 
+## [0.52.0] - 2026-05-22
+
+### Features
+
+- feat(tiles): multi-layer mbtiles (regions+departments+cities)
+
+### Bug Fixes
+
+- fix(geo): patch 5 NA/? entries in world admin-1 (UK England, Munster, Zuid-Holland, Kyiv)
+- fix(tiles): persist metric-ranges + recompute on startup
+
 ## [0.51.1] - 2026-05-22
 
 ### Bug Fixes

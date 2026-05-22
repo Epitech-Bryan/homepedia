@@ -51,7 +51,7 @@ public class TileController {
 	// computation off the API stats.
 	private final ObjectProvider<CityTileBuilder> cityTileBuilder;
 
-	@Operation(summary = "Commune vector tile", description = "MVT/PBF tile of French commune polygons at the requested (z, x, y) — XYZ scheme. Returns 404 when the tile is absent (sea, outside bbox) or when the mbtiles file is not yet provisioned.")
+	@Operation(summary = "Commune vector tile", description = "MVT/PBF tile of French commune polygons at the requested (z, x, y) — XYZ scheme. Returns 204 No Content when the tile is absent (sea, outside bbox) so the browser console stays clean while leaflet.vectorgrid keeps drawing the rest. Returns 400 only on malformed coordinates.")
 	@GetMapping(value = "/cities/{z}/{x}/{y}.pbf", produces = "application/vnd.mapbox-vector-tile")
 	public ResponseEntity<byte[]> cityTile(@Parameter(description = "Zoom level") @PathVariable final int z,
 			@Parameter(description = "Tile column (XYZ)") @PathVariable final int x,
@@ -60,10 +60,21 @@ public class TileController {
 		// into surprising behaviour. zoom 0..14 covers everything we
 		// generate for communes.
 		if (z < 0 || z > 22 || x < 0 || y < 0) {
-			return ResponseEntity.notFound().build();
+			return ResponseEntity.badRequest().build();
 		}
-		return vectorTileService.getCityTile(z, x, y).map(this::okPbf)
-				.orElseGet(() -> ResponseEntity.notFound().build());
+		return vectorTileService.getCityTile(z, x, y).map(this::okPbf).orElseGet(this::noContentPbf);
+	}
+
+	/**
+	 * Empty-tile response used when {@code (z, x, y)} doesn't exist in the mbtiles
+	 * (sea, polar regions, outside the France bbox). 204 instead of 404 keeps
+	 * DevTools console quiet — Chrome flags 404 in red even when the JS handles it.
+	 * Cache the empty answer for an hour so the browser doesn't re-ask every pan;
+	 * the inner-tile distribution is fixed by the Tippecanoe pipeline so this is
+	 * safe.
+	 */
+	private ResponseEntity<byte[]> noContentPbf() {
+		return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "public, max-age=3600").build();
 	}
 
 	@Operation(summary = "Per-metric min/max for the choropleth legend", description = "Returns the global min/max across every commune for each supported metric (population, density, transactionCount, averagePrice, averagePricePerSqm). Computed once per tile rebuild and cached in memory — the response is sub-millisecond. Frontend uses these ranges to colour the vector-tile commune layer without needing to fetch /stats/cities per viewport.")

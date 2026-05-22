@@ -1,5 +1,11 @@
 # app
 
+## [0.48.0] - 2026-05-22
+
+### Features
+
+- feat(map): quantile choropleth scale + admin tile rebuild trigger
+
 ## [0.47.0] - 2026-05-22
 
 ### Features

@@ -1,0 +1,58 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-autovacuum-on-existing-partitions
+      author: homepedia
+      comment: >
+        Per-partition autovacuum tuning. Partitions imported via
+        DvfBatchPersister.swapPartition already get
+        autovacuum_vacuum_scale_factor=0.05 / autovacuum_analyze_scale_factor=0.02
+        set as part of the swap (issue #5 step 1), but the historical
+        partitions created statically in changeset 005 (transactions_2014
+        .. transactions_2030) inherit the cluster defaults (0.2 / 0.1) and
+        get under-vacuumed/analysed after large bulk loads — first API
+        queries hitting a year then see stale planner stats and pick seq
+        scans.
+
+        This applies the same thresholds to every existing child partition
+        of `transactions`. It's idempotent (postgres just overwrites the
+        reloption) and runs in milliseconds. Future swaps continue to set
+        the same values, so the two paths converge.
+      changes:
+        - sql:
+            sql: |
+              DO $$
+              DECLARE
+                p text;
+              BEGIN
+                FOR p IN
+                  SELECT inhrelid::regclass::text
+                  FROM pg_inherits
+                  WHERE inhparent = 'transactions'::regclass
+                LOOP
+                  EXECUTE format(
+                    'ALTER TABLE %s SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02)',
+                    p
+                  );
+                END LOOP;
+              END$$;
+        - sql:
+            sql: |
+              ANALYZE transactions;
+      rollback:
+        - sql:
+            sql: |
+              DO $$
+              DECLARE
+                p text;
+              BEGIN
+                FOR p IN
+                  SELECT inhrelid::regclass::text
+                  FROM pg_inherits
+                  WHERE inhparent = 'transactions'::regclass
+                LOOP
+                  EXECUTE format(
+                    'ALTER TABLE %s RESET (autovacuum_vacuum_scale_factor, autovacuum_analyze_scale_factor)',
+                    p
+                  );
+                END LOOP;
+              END$$;

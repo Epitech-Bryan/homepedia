@@ -1,5 +1,16 @@
 # app
 
+## [0.41.0] - 2026-05-22
+
+### Features
+
+- feat(webapp): hover tooltip + highlight on CityVectorGridLayer
+
+### Bug Fixes
+
+- perf(webapp): drop bounds debounce from 200ms to 50ms
+- fix(webapp): mark VectorGrid features interactive so clicks fire
+
 ## [0.40.4] - 2026-05-22
 
 ### Bug Fixes

@@ -1,5 +1,11 @@
 # app
 
+## [0.40.3] - 2026-05-22
+
+### Bug Fixes
+
+- fix(webapp): keep MapContainer mounted when vector tiles drive the city layer
+
 ## [0.40.2] - 2026-05-22
 
 ### Bug Fixes

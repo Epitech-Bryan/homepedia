@@ -26,4 +26,13 @@ RUN addgroup -S app && adduser -S app -G app
 COPY --from=build /app/rest-api/target/*.jar app.jar
 USER app
 EXPOSE 8080
+# JVM tuning (issue #4): G1GC with a 100 ms pause target tightens p99
+# request latency — the default ParallelGC throws 300+ ms pauses under
+# the heatpoints workload and they showed up in the Grafana p95 panel.
+# Initial/MaxRAMPercentage scales the heap with the K8s pod memory limit
+# so we don't have to re-flag per environment. HeapDumpOnOOM dumps to
+# /tmp (tmpfs in the pod) for post-mortem after a kubelet restart.
+# JAVA_TOOL_OPTIONS so anything inherited from the parent image stays
+# intact.
+ENV JAVA_TOOL_OPTIONS="-XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=75 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof"
 CMD ["java", "-jar", "app.jar"]

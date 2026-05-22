@@ -95,6 +95,12 @@ public class CityTileBuilder {
 	@Value("${homepedia.tiles.source-geojson:/data/tiles/communes-fr.geojson}")
 	private String sourceGeojsonPath;
 
+	@Value("${homepedia.tiles.regions-geojson:/data/tiles/regions-fr.geojson}")
+	private String regionsGeojsonPath;
+
+	@Value("${homepedia.tiles.departments-geojson:/data/tiles/departments-fr.geojson}")
+	private String departmentsGeojsonPath;
+
 	@Value("${homepedia.tiles.geo-api-base-url:https://geo.api.gouv.fr}")
 	private String geoApiBaseUrl;
 
@@ -231,8 +237,12 @@ public class CityTileBuilder {
 		}
 		final var start = System.currentTimeMillis();
 		try {
-			final var source = Path.of(sourceGeojsonPath);
-			ensurePolygonSource(source);
+			final var communesSrc = Path.of(sourceGeojsonPath);
+			final var regionsSrc = Path.of(regionsGeojsonPath);
+			final var departmentsSrc = Path.of(departmentsGeojsonPath);
+			ensurePolygonSource(communesSrc);
+			ensureRegionsSource(regionsSrc);
+			ensureDepartmentsSource(departmentsSrc);
 
 			final var target = Path.of(mbtilesPath);
 			Files.createDirectories(target.getParent());
@@ -244,8 +254,8 @@ public class CityTileBuilder {
 				final var stats = loadStatsByCode();
 				metricRanges = computeRanges(stats.values());
 				persistRanges();
-				enrich(source, enrichedTmp, stats);
-				runTippecanoe(enrichedTmp, mbtilesTmp);
+				enrich(communesSrc, enrichedTmp, stats);
+				runTippecanoe(regionsSrc, departmentsSrc, enrichedTmp, mbtilesTmp);
 				Files.move(mbtilesTmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 				vectorTileService.reload();
 				log.info("city tiles rebuilt at {} in {} ms", target, System.currentTimeMillis() - start);
@@ -404,6 +414,68 @@ public class CityTileBuilder {
 		}
 	}
 
+	/**
+	 * Fetch the 13 régions / 101 départements GeoJSON once from
+	 * {@code geo.api.gouv.fr} and cache on the PVC. Refetching costs ~50 KB for
+	 * regions and ~250 KB for departments — cheap, but skipping on a present file
+	 * lets the pod restart instantly. Both endpoints already carry
+	 * {@code code, nom, population, surface} so no further enrichment is needed
+	 * before tippecanoe.
+	 */
+	private void ensureRegionsSource(Path source) throws IOException, InterruptedException {
+		if (Files.exists(source)) {
+			return;
+		}
+		log.info("regions source missing at {}, fetching", source);
+		Files.createDirectories(source.getParent());
+		fetchGeoApiCollection(
+				URI.create(
+						geoApiBaseUrl + "/regions?fields=nom,code,population,surface&format=geojson&geometry=contour"),
+				source);
+	}
+
+	private void ensureDepartmentsSource(Path source) throws IOException, InterruptedException {
+		if (Files.exists(source)) {
+			return;
+		}
+		log.info("departments source missing at {}, fetching", source);
+		Files.createDirectories(source.getParent());
+		fetchGeoApiCollection(URI.create(
+				geoApiBaseUrl + "/departements?fields=nom,code,population,surface&format=geojson&geometry=contour"),
+				source);
+	}
+
+	private void fetchGeoApiCollection(URI url, Path destination) throws IOException, InterruptedException {
+		final var http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+				.followRedirects(HttpClient.Redirect.NORMAL).build();
+		final var request = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(90)).GET().build();
+		final var response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+		if (response.statusCode() != 200) {
+			throw new IOException(url + " returned " + response.statusCode());
+		}
+		final var tmp = destination.resolveSibling(destination.getFileName() + ".tmp");
+		try (var body = response.body(); var out = Files.newOutputStream(tmp)) {
+			body.transferTo(out);
+		}
+		// geo.api.gouv.fr emits {nom: "Île-de-France"} ; rename to {name: ...}
+		// so the frontend can share the same styleFor closure across all
+		// three layers without per-layer key gymnastics.
+		try (var in = Files.newInputStream(tmp); var parser = JSON_FACTORY.createParser(in)) {
+			parser.setCodec(MAPPER);
+			final var fc = (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(parser);
+			final var features = (com.fasterxml.jackson.databind.node.ArrayNode) fc.get("features");
+			for (var node : features) {
+				final var props = (com.fasterxml.jackson.databind.node.ObjectNode) node.get("properties");
+				if (props != null && props.has("nom") && !props.has("name")) {
+					props.set("name", props.get("nom"));
+				}
+			}
+			Files.writeString(tmp, MAPPER.writeValueAsString(fc), StandardCharsets.UTF_8);
+		}
+		Files.move(tmp, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		log.info("fetched {} → {}", url, destination);
+	}
+
 	private void ensurePolygonSource(Path source) throws IOException, InterruptedException {
 		if (Files.exists(source)) {
 			return;
@@ -530,13 +602,31 @@ public class CityTileBuilder {
 		return count;
 	}
 
-	private void runTippecanoe(Path source, Path destination) throws IOException, InterruptedException {
-		// Same flags as docs/vector-tiles.md so feature.id stability and zoom
-		// coverage match what the frontend already expects. `--force`
-		// overwrites the temp file if a previous run died mid-build.
-		final var pb = new ProcessBuilder(tippecanoeBin, "--output=" + destination, "--force", "--layer=cities",
-				"--minimum-zoom=9", "--maximum-zoom=14", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping",
-				"--simplification=10", "--no-tile-size-limit", source.toString());
+	/**
+	 * Bake three layers into a single mbtiles using tippecanoe's per-layer JSON
+	 * spec. Each level only appears at its useful zoom band — regions at z=4..7,
+	 * departments at z=7..10, communes at z=10..14 — so the browser never downloads
+	 * commune polygons when the user is staring at the whole country and never
+	 * fights with region polygons when zoomed into a single city. Saves a couple of
+	 * MB on first paint vs three separate JSON endpoints.
+	 */
+	private void runTippecanoe(Path regionsSrc, Path departmentsSrc, Path communesSrc, Path destination)
+			throws IOException, InterruptedException {
+		// Per-layer JSON keeps each level under its own simplification curve
+		// so regions stay readable past z=4 while communes don't dissolve
+		// before z=12. `extend-zooms-if-still-dropping` lets tippecanoe push
+		// past --maximum-zoom on dense city blocks if dropping would lose
+		// data — important for Paris arrondissements.
+		final var pb = new ProcessBuilder(tippecanoeBin, "--output=" + destination, "--force", "--minimum-zoom=4",
+				"--maximum-zoom=14", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping",
+				"--no-tile-size-limit", "-L",
+				"{\"layer\":\"regions\",\"file\":\"" + regionsSrc
+						+ "\",\"minzoom\":4,\"maxzoom\":7,\"simplification\":12}",
+				"-L",
+				"{\"layer\":\"departments\",\"file\":\"" + departmentsSrc
+						+ "\",\"minzoom\":6,\"maxzoom\":10,\"simplification\":10}",
+				"-L", "{\"layer\":\"cities\",\"file\":\"" + communesSrc
+						+ "\",\"minzoom\":10,\"maxzoom\":14,\"simplification\":8}");
 		pb.redirectErrorStream(true);
 		final var process = pb.start();
 		try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {

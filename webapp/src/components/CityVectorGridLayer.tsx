@@ -192,24 +192,27 @@ export function CityVectorGridLayer({
         };
       }
     ).vectorGrid.protobuf(url, {
-      // Tippecanoe writes the source layer under the name we pass to
-      // `--layer` in the generation script. Keep this in sync with
-      // docs/vector-tiles.md.
+      // The mbtiles ships three layers: regions (z 4-7), departments
+      // (z 6-10), cities (z 10-14). Each level shares the same styleFor
+      // closure — the `code` property is the join key across all three,
+      // so a metric lookup by region code / department code / INSEE
+      // commune code all resolve the same way. Tippecanoe drops layers
+      // outside their zoom band, so departments don't fight cities at
+      // z=12 even though the style is registered.
       vectorTileLayerStyles: {
-        cities: (props: { code?: string }) => styleFor(props),
+        regions: (props: Record<string, unknown> & { code?: string }) => styleFor(props),
+        departments: (props: Record<string, unknown> & { code?: string }) => styleFor(props),
+        cities: (props: Record<string, unknown> & { code?: string }) => styleFor(props),
       },
       interactive: true,
-      // The mbtiles ship z=9..14 (TileController guard line, kept in sync
-      // with the Tippecanoe `--minimum-zoom=9 --maximum-zoom=14` pipeline).
-      // Without these caps VectorGrid would request z=8 tiles during the
-      // brief windows where Leaflet's zoom transition falls below 9 — every
-      // request 404s and floods the console with errors that also nuke
-      // hover hit-testing while the tile cache is being rebuilt. min/max
-      // upsample/downsample the available z=9 / z=14 tiles instead.
-      minNativeZoom: 9,
+      // The mbtiles span z=4..14 across the three layers (TileController
+      // bounds checks). Cap with min/maxNativeZoom so Leaflet upsamples
+      // z=14 tiles past z=18 instead of 404-storming the console — same
+      // reason as before, just with the extended min bound.
+      minNativeZoom: 4,
       maxNativeZoom: 14,
-      // Allow the canvas to extend slightly past the tile edge so polygon
-      // borders don't show pixel gaps at tile boundaries.
+      // Stable feature id across all three layers — the choropleth
+      // highlight + tooltip both key off `code`.
       getFeatureId: (f: { properties?: { code?: string } }) => f.properties?.code,
     });
 

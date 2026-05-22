@@ -177,12 +177,14 @@ export function CityVectorGridLayer({
         cities: (props: { code?: string }) => styleFor(props),
       },
       interactive: true,
-      // The mbtiles ship z=0..14 (TileController guard line, kept in sync
-      // with the Tippecanoe `-zg --maximum-zoom=14` pipeline). Without
-      // maxNativeZoom, VectorGrid would request z=15+ tiles, hit a 404,
-      // and the whole layer would vanish past street-level zoom. Capping
-      // here makes the z=14 tile rasterise up to the basemap's z=20 — a
-      // bit pixellated past z=18 but commune polygons stay visible.
+      // The mbtiles ship z=9..14 (TileController guard line, kept in sync
+      // with the Tippecanoe `--minimum-zoom=9 --maximum-zoom=14` pipeline).
+      // Without these caps VectorGrid would request z=8 tiles during the
+      // brief windows where Leaflet's zoom transition falls below 9 — every
+      // request 404s and floods the console with errors that also nuke
+      // hover hit-testing while the tile cache is being rebuilt. min/max
+      // upsample/downsample the available z=9 / z=14 tiles instead.
+      minNativeZoom: 9,
       maxNativeZoom: 14,
       // Allow the canvas to extend slightly past the tile edge so polygon
       // borders don't show pixel gaps at tile boundaries.

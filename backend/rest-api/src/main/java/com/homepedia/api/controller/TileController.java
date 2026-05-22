@@ -1,10 +1,14 @@
 package com.homepedia.api.controller;
 
+import com.homepedia.api.batch.tiles.CityTileBuilder;
+import com.homepedia.api.batch.tiles.CityTileBuilder.MetricRange;
 import com.homepedia.api.service.VectorTileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +45,12 @@ public class TileController {
 
 	private final VectorTileService vectorTileService;
 
+	// Optional: only present when the tile builder is wired in (default in
+	// prod, off in dev/test). When absent, /metric-ranges responds with an
+	// empty map so the frontend just falls back to its existing range
+	// computation off the API stats.
+	private final ObjectProvider<CityTileBuilder> cityTileBuilder;
+
 	@Operation(summary = "Commune vector tile", description = "MVT/PBF tile of French commune polygons at the requested (z, x, y) — XYZ scheme. Returns 404 when the tile is absent (sea, outside bbox) or when the mbtiles file is not yet provisioned.")
 	@GetMapping(value = "/cities/{z}/{x}/{y}.pbf", produces = "application/vnd.mapbox-vector-tile")
 	public ResponseEntity<byte[]> cityTile(@Parameter(description = "Zoom level") @PathVariable final int z,
@@ -54,6 +64,14 @@ public class TileController {
 		}
 		return vectorTileService.getCityTile(z, x, y).map(this::okPbf)
 				.orElseGet(() -> ResponseEntity.notFound().build());
+	}
+
+	@Operation(summary = "Per-metric min/max for the choropleth legend", description = "Returns the global min/max across every commune for each supported metric (population, density, transactionCount, averagePrice, averagePricePerSqm). Computed once per tile rebuild and cached in memory — the response is sub-millisecond. Frontend uses these ranges to colour the vector-tile commune layer without needing to fetch /stats/cities per viewport.")
+	@GetMapping("/cities/metric-ranges")
+	public ResponseEntity<Map<String, MetricRange>> metricRanges() {
+		final var builder = cityTileBuilder.getIfAvailable();
+		return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
+				.body(builder != null ? builder.getMetricRanges() : Map.of());
 	}
 
 	private ResponseEntity<byte[]> okPbf(final byte[] body) {

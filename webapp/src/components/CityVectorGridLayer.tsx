@@ -15,7 +15,17 @@ interface CityVectorGridLayerProps {
    */
   url?: string;
   /**
-   * Map of (commune code → metric value) used to colour each polygon.
+   * Reads the choropleth value out of a feature's MVT properties. Used when
+   * stats are baked into the tile by `CityTileBuilder` so the layer can
+   * colour each polygon without an out-of-band `/stats/cities` request.
+   * Returning {@code null}/{@code undefined} falls through to
+   * {@link CityVectorGridLayerProps.metricByCode}, which keeps the layer
+   * working on legacy tiles that ship `code` only.
+   */
+  metricFromFeature?: (props: Record<string, unknown>) => number | null | undefined;
+  /**
+   * Map of (commune code → metric value) used to colour each polygon when
+   * {@link CityVectorGridLayerProps.metricFromFeature} returns nothing.
    * The same shape `FranceMap` uses for its choropleth, so the parent can
    * pass `metricByCode` straight through.
    */
@@ -62,6 +72,7 @@ function formatValue(value: number): string {
  */
 export function CityVectorGridLayer({
   url = "/api/tiles/cities/{z}/{x}/{y}.pbf",
+  metricFromFeature,
   metricByCode,
   range,
   palette,
@@ -76,12 +87,14 @@ export function CityVectorGridLayer({
   // stats), the effect tears down VectorGrid, and pending MVT tile fetches
   // resolve against a dead canvas pane — crashing the whole MapContainer
   // with `Cannot read properties of undefined (reading '_leaflet_pos')`.
+  const metricFromFeatureRef = useRef(metricFromFeature);
   const metricByCodeRef = useRef(metricByCode);
   const rangeRef = useRef(range);
   const paletteRef = useRef(palette);
   const onFeatureClickRef = useRef(onFeatureClick);
   const metricLabelRef = useRef(metricLabel);
   useEffect(() => {
+    metricFromFeatureRef.current = metricFromFeature;
     metricByCodeRef.current = metricByCode;
     rangeRef.current = range;
     paletteRef.current = palette;
@@ -93,12 +106,23 @@ export function CityVectorGridLayer({
   // a redraw triggered by the second effect below.
   const layerRef = useRef<(L.Layer & { redraw?: () => void }) | null>(null);
   useEffect(() => {
-    const styleFor = (props: { code?: string }) => {
+    const styleFor = (props: Record<string, unknown> & { code?: string }) => {
       const code = props.code;
       const m = metricByCodeRef.current;
       const r = rangeRef.current;
       const p = paletteRef.current;
-      const value = code != null ? m?.[code] : null;
+      // Prefer tile-embedded stats when available (CityTileBuilder bakes
+      // them into the MVT properties). Fall back to the parent-supplied
+      // map so legacy tiles without baked stats still render — useful
+      // during the rolling deploy where the new mbtiles hasn't shipped
+      // to the PVC yet.
+      const fromFeature = metricFromFeatureRef.current?.(props);
+      const value =
+        fromFeature != null && Number.isFinite(fromFeature)
+          ? fromFeature
+          : code != null
+            ? m?.[code]
+            : null;
       // `interactive: true` on every feature is what actually wires hit
       // testing in leaflet-vectorgrid — the top-level `interactive` option
       // gates the layer's event dispatch but the per-feature flag is what
@@ -183,9 +207,19 @@ export function CityVectorGridLayer({
     });
     let hoveredId: string | null = null;
 
-    const buildTooltipHtml = (code: string, name: string | undefined): string => {
+    const buildTooltipHtml = (
+      code: string,
+      name: string | undefined,
+      props: Record<string, unknown>,
+    ): string => {
       const label = name ?? code;
-      const value = metricByCodeRef.current?.[code];
+      // Same precedence as styleFor: tile-baked value first, parent map
+      // second. Prevents a "no value" tooltip on a polygon that's already
+      // coloured by the embedded stats.
+      const fromFeature = metricFromFeatureRef.current?.(props);
+      const fallback = metricByCodeRef.current?.[code];
+      const value =
+        fromFeature != null && Number.isFinite(fromFeature) ? fromFeature : (fallback ?? null);
       const ml = metricLabelRef.current;
       if (value != null && Number.isFinite(value)) {
         return `<strong>${label}</strong><br/>${formatValue(value)}${ml ? ` · ${ml}` : ""}`;
@@ -195,7 +229,10 @@ export function CityVectorGridLayer({
 
     layer.on(
       "mouseover",
-      (e: { layer: { properties?: { code?: string; name?: string } }; latlng: L.LatLng }) => {
+      (e: {
+        layer: { properties?: Record<string, unknown> & { code?: string; name?: string } };
+        latlng: L.LatLng;
+      }) => {
         const code = e.layer?.properties?.code;
         if (!code) return;
         if (hoveredId && hoveredId !== code) {
@@ -208,7 +245,15 @@ export function CityVectorGridLayer({
           weight: 2.5,
           color: "#1f2937",
         });
-        tooltip.setLatLng(e.latlng).setContent(buildTooltipHtml(code, e.layer.properties?.name));
+        tooltip
+          .setLatLng(e.latlng)
+          .setContent(
+            buildTooltipHtml(
+              code,
+              e.layer.properties?.name,
+              (e.layer.properties ?? {}) as Record<string, unknown>,
+            ),
+          );
         if (!tooltip.isOpen()) tooltip.addTo(map);
       },
     );

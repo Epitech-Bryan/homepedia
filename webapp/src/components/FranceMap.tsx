@@ -76,6 +76,21 @@ interface FranceMapProps {
   onMarkerClick?: (id: string) => void;
   activeFeatureCode?: string;
   metricByCode?: Record<string, number | null | undefined>;
+  /**
+   * When set, the vector-tile commune layer prefers values read from the
+   * MVT feature properties over {@link metricByCode}. Lets the choropleth
+   * colour each polygon from tile-baked stats (population, avg €/m², …)
+   * with zero {@code /stats/cities} round-trips.
+   */
+  metricFromFeature?: (props: Record<string, unknown>) => number | null | undefined;
+  /**
+   * Overrides the choropleth min/max range that would otherwise be derived
+   * from {@link metricByCode}. Used when the commune values aren't in
+   * {@link metricByCode} but in tile feature properties — the global
+   * min/max comes pre-computed from the backend's
+   * {@code /api/tiles/cities/metric-ranges} endpoint.
+   */
+  choroplethRange?: { min: number; max: number } | null;
   metricLabel?: string;
   /**
    * When provided, the heat layer feeds directly off these per-address
@@ -535,6 +550,8 @@ function FranceMapComponent({
   onMarkerClick,
   activeFeatureCode,
   metricByCode,
+  metricFromFeature,
+  choroplethRange: choroplethRangeOverride,
   metricLabel,
   precisionHeatPoints,
   transactionMarkers,
@@ -551,6 +568,7 @@ function FranceMapComponent({
   const showHeat = mapStyle === "heat" || mapStyle === "all";
 
   const choroplethRange = useMemo(() => {
+    if (choroplethRangeOverride) return choroplethRangeOverride;
     if (!metricByCode) return null;
     const values = Object.values(metricByCode).filter(
       (v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0,
@@ -560,7 +578,7 @@ function FranceMapComponent({
     const max = Math.max(...values);
     if (min === max) return null;
     return { min, max };
-  }, [metricByCode]);
+  }, [choroplethRangeOverride, metricByCode]);
 
   const colorForCode = useCallback(
     (code: string | undefined): string | null => {
@@ -872,6 +890,7 @@ function FranceMapComponent({
                 )}
                 {useVectorTilesForCities && (
                   <CityVectorGridLayer
+                    metricFromFeature={metricFromFeature}
                     metricByCode={metricByCode}
                     range={choroplethRange}
                     palette={CHOROPLETH_SCALE}

@@ -42,11 +42,37 @@ public class VectorTileService {
 	@Value("${homepedia.tiles.cities-path:/data/tiles/cities.mbtiles}")
 	private String citiesMbtilesPath;
 
-	private Connection connection;
-	private boolean available;
+	private volatile Connection connection;
+	private volatile boolean available;
+	private final Object reloadLock = new Object();
 
 	@PostConstruct
 	void init() {
+		openOrLogMissing();
+	}
+
+	/**
+	 * Re-opens the SQLite connection against the file at
+	 * {@link #citiesMbtilesPath}. Called by {@code CityTileBuilder} after it
+	 * atomic-renames a fresh mbtiles in place so subsequent tile lookups read the
+	 * new content. Safe to call concurrently with {@link #getCityTile}; the old
+	 * connection is closed only once the new one is in place.
+	 */
+	public void reload() {
+		synchronized (reloadLock) {
+			final var previous = connection;
+			openOrLogMissing();
+			if (previous != null && previous != connection) {
+				try {
+					previous.close();
+				} catch (SQLException ignored) {
+					// Same as close(): nothing actionable.
+				}
+			}
+		}
+	}
+
+	private void openOrLogMissing() {
 		final var path = Path.of(citiesMbtilesPath);
 		if (!Files.exists(path)) {
 			log.warn("Cities mbtiles not found at {} — vector tile endpoint will return 404. Generate the file with"

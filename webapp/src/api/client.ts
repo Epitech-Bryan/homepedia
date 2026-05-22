@@ -116,6 +116,12 @@ export const api = {
     byLevelAndCode: (level: string, code: string, params?: Record<string, string>) =>
       fetchJson<IndicatorSummary[]>(`/indicators/${level}/${code}`, params),
   },
+  tiles: {
+    metricRanges: () =>
+      fetchJson<Record<string, { min: number | null; max: number | null }>>(
+        "/tiles/cities/metric-ranges",
+      ),
+  },
   reviews: {
     list: (inseeCode: string, params?: Record<string, string>) =>
       fetchJson<PagedResponse<ReviewSummary>>(`/cities/${inseeCode}/reviews`, params),

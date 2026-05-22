@@ -5,6 +5,17 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.47.0] - 2026-05-22
+
+### Features
+
+- feat(tiles): bake DVF stats into commune MVT features
+
+### Bug Fixes
+
+- fix(tiles): include batch.tiles package in JPA repository scan
+- fix(webapp): catch VectorGrid fetch rejections so failed tiles don't leak as unhandled promises
+
 ## [3.46.1] - 2026-05-22
 
 ### Bug Fixes

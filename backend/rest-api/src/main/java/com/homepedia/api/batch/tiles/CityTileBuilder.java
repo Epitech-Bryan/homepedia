@@ -621,10 +621,10 @@ public class CityTileBuilder {
 				"--maximum-zoom=14", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping",
 				"--no-tile-size-limit", "-L",
 				"{\"layer\":\"regions\",\"file\":\"" + regionsSrc
-						+ "\",\"minzoom\":4,\"maxzoom\":7,\"simplification\":12}",
+						+ "\",\"minzoom\":4,\"maxzoom\":6,\"simplification\":12}",
 				"-L",
 				"{\"layer\":\"departments\",\"file\":\"" + departmentsSrc
-						+ "\",\"minzoom\":6,\"maxzoom\":10,\"simplification\":10}",
+						+ "\",\"minzoom\":7,\"maxzoom\":9,\"simplification\":10}",
 				"-L", "{\"layer\":\"cities\",\"file\":\"" + communesSrc
 						+ "\",\"minzoom\":10,\"maxzoom\":14,\"simplification\":8}");
 		pb.redirectErrorStream(true);

@@ -134,6 +134,55 @@ interface FranceMapProps {
   bleed?: boolean;
 }
 
+/**
+ * Backdrop world-country outlines with a stroke weight that thickens as the
+ * user zooms in. The previous fixed {@code weight: 0.5} disappeared past
+ * region zoom — country boundaries are still the relevant geographic
+ * context when you're staring at French communes; scaling avoids losing
+ * them while staying light enough not to compete with the foreground at
+ * world zoom.
+ */
+function BackdropCountriesLayer({ data }: { data: GeoJSON.FeatureCollection }) {
+  const map = useMap();
+  const layerRef = useRef<L.GeoJSON | null>(null);
+  const weightForZoom = (z: number): number => {
+    // Linear from 0.5 at world (z=2) to ~2.5 at city zoom (z=14), capped
+    // either side. Hand-tuned so the borders read on a 13" laptop without
+    // turning into a thick line that distracts from the choropleth.
+    if (z <= 4) return 0.5;
+    if (z >= 13) return 2.5;
+    return 0.5 + (z - 4) * (2 / 9);
+  };
+  useEffect(() => {
+    const update = () => {
+      const layer = layerRef.current;
+      if (layer) layer.setStyle({ weight: weightForZoom(map.getZoom()) });
+    };
+    map.on("zoomend", update);
+    return () => {
+      map.off("zoomend", update);
+    };
+  }, [map]);
+  return (
+    <LeafletGeoJSON
+      ref={(r) => {
+        layerRef.current = r;
+      }}
+      // Grey-out world country outlines as a backdrop. No hover, no
+      // choropleth, no events — purely contextual.
+      key={`base-${data.features.length}`}
+      data={data}
+      style={{
+        color: "#64748b",
+        weight: weightForZoom(map.getZoom()),
+        fillColor: "#cbd5e1",
+        fillOpacity: 0.18,
+        interactive: false,
+      }}
+    />
+  );
+}
+
 function ZoomReporter({ onChange }: { onChange: (z: number) => void }) {
   const map = useMap();
   useEffect(() => {
@@ -853,23 +902,7 @@ function FranceMapComponent({
                   subdomains="abcd"
                   maxZoom={20}
                 />
-                {baseGeojson && (
-                  <LeafletGeoJSON
-                    // Grey-out world country outlines as a backdrop. No
-                    // hover, no choropleth, no events — purely contextual.
-                    // Distinct key so React doesn't try to reconcile it with
-                    // the foreground layer when zoom switches.
-                    key={`base-${baseGeojson.features.length}`}
-                    data={baseGeojson}
-                    style={{
-                      color: "#94a3b8",
-                      weight: 0.5,
-                      fillColor: "#cbd5e1",
-                      fillOpacity: 0.18,
-                      interactive: false,
-                    }}
-                  />
-                )}
+                {baseGeojson && <BackdropCountriesLayer data={baseGeojson} />}
                 {/* In heat and bubbles modes the polygon borders compete
                     visually with the gradient/markers — drop the foreground
                     GeoJSON layer entirely. Bubbles carry their own click

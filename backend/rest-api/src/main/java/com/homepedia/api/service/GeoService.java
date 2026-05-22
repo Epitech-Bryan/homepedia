@@ -47,4 +47,18 @@ public class GeoService {
 		return geoJsonBoundaryRepository.findByGeographicLevelAndGeographicCode(level, code)
 				.map(geoMapper::convertToFeature);
 	}
+
+	/**
+	 * IRIS boundaries that sit under one commune — keyed on the 5-char INSEE prefix
+	 * of the 9-char IRIS code (e.g. {@code 75101} → all 992 Paris-1 IRIS rows).
+	 * Cached for 24 h (CACHE_GEO) since boundaries don't change between Filosofi
+	 * snapshots.
+	 *
+	 * @see GeoJsonBoundaryRepository#findIrisBoundariesByCommune(String)
+	 */
+	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'iris-of-commune:' + #communeInseeCode")
+	public FeatureCollection findIrisBoundariesByCommune(final String communeInseeCode) {
+		final var boundaries = geoJsonBoundaryRepository.findIrisBoundariesByCommune(communeInseeCode + "%");
+		return geoMapper.convertToFeatureCollection(boundaries);
+	}
 }

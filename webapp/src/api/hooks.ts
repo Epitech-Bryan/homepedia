@@ -128,6 +128,22 @@ export function useCityPriceHistory(code: string) {
   });
 }
 
+/**
+ * IRIS-level indicators (median income, poverty rate, …) under a given
+ * commune — fetched from the {@code /cities/{insee}/iris-indicators}
+ * endpoint. Empty until the Filosofi import job has run, so the consumer
+ * should treat an empty list as "data not yet available" rather than an
+ * error. 12 h cache matches CACHE_REFDATA on the backend.
+ */
+export function useCityIrisIndicators(code: string) {
+  return useQuery({
+    queryKey: ["cities", code, "iris-indicators"],
+    queryFn: () => api.cities.irisIndicators(code),
+    enabled: !!code,
+    staleTime: 12 * 60 * 60 * 1000,
+  });
+}
+
 export function useTransactions(params?: Record<string, string>) {
   return useQuery({
     queryKey: ["transactions", params],

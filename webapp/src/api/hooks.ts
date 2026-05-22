@@ -356,6 +356,26 @@ export function useCityStats(codes: string[]) {
  * communes (only Paris/Lyon/Marseille have any) and merges them into a single
  * FeatureCollection.
  */
+/**
+ * Top-N nearest comparable sales for a given transaction. The endpoint is
+ * stable (returns []) before the Spark job has populated the pre-agg, so
+ * the hook can be wired in the popup unconditionally and simply renders
+ * "no comparables yet" when the array is empty.
+ */
+export function useComparableSales(transactionId: number | null) {
+  return useQuery({
+    queryKey: ["comparableSales", transactionId],
+    queryFn: () => {
+      if (transactionId == null) {
+        return Promise.reject(new Error("transactionId is required"));
+      }
+      return api.transactions.comparableSales(transactionId);
+    },
+    enabled: transactionId != null,
+    staleTime: 30 * 60_000,
+  });
+}
+
 export function useArrondissementsForCities(
   communeCodes: string[],
 ): GeoJSON.FeatureCollection | null {

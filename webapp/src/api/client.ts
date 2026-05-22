@@ -73,6 +73,8 @@ export const api = {
       if (params.limit !== undefined) query.limit = String(params.limit);
       return fetchJson<TransactionMarker[]>("/transactions/markers", query);
     },
+    comparableSales: (id: number) =>
+      fetchJson<ComparableSale[]>(`/transactions/${id}/comparable-sales`),
   },
   geo: {
     countries: () => fetchJson<GeoJSON.FeatureCollection>("/geo/countries"),
@@ -240,6 +242,20 @@ export interface TransactionMarker {
   propertyType: string;
   builtSurface: number | null;
   roomCount: number | null;
+}
+
+export interface ComparableSale {
+  similarityRank: number;
+  comparableId: number;
+  mutationDate: string;
+  propertyValue: number;
+  propertyType: string;
+  builtSurface: number | null;
+  roomCount: number | null;
+  latitude: number;
+  longitude: number;
+  distanceM: number;
+  priceDeltaPct: number;
 }
 
 export interface TransactionStats {

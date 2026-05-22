@@ -195,10 +195,7 @@ export function CityVectorGridLayer({
 
     layer.on(
       "mouseover",
-      (e: {
-        layer: { properties?: { code?: string; name?: string } };
-        latlng: L.LatLng;
-      }) => {
+      (e: { layer: { properties?: { code?: string; name?: string } }; latlng: L.LatLng }) => {
         const code = e.layer?.properties?.code;
         if (!code) return;
         if (hoveredId && hoveredId !== code) {
@@ -211,9 +208,7 @@ export function CityVectorGridLayer({
           weight: 2.5,
           color: "#1f2937",
         });
-        tooltip
-          .setLatLng(e.latlng)
-          .setContent(buildTooltipHtml(code, e.layer.properties?.name));
+        tooltip.setLatLng(e.latlng).setContent(buildTooltipHtml(code, e.layer.properties?.name));
         if (!tooltip.isOpen()) tooltip.addTo(map);
       },
     );

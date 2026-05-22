@@ -1,5 +1,11 @@
 # app
 
+## [0.45.0] - 2026-05-22
+
+### Features
+
+- feat(webapp): React Flow schemas + K8s/Flux pipeline + tippecanoe bash fix
+
 ## [0.44.0] - 2026-05-22
 
 ### Features

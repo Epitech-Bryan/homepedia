@@ -19,7 +19,11 @@ RUN mvn package -DskipTests -B -pl rest-api --am
 # enough that copying it directly into the runtime is cheaper than apk-add
 # a whole toolchain — Alpine community doesn't ship a tippecanoe package.
 FROM docker.io/library/alpine:3.20 AS tippecanoe
-RUN apk add --no-cache git build-base sqlite-dev zlib-dev \
+# bash: required by tippecanoe's Makefile (recipes use `set -e` and process
+# substitution). musl-headers / linux-headers: pulled in by build-base on
+# most Alpine versions but the 3.20 image trims them — adding explicitly
+# so the C++ build doesn't blow up on missing endian.h.
+RUN apk add --no-cache bash git build-base linux-headers sqlite-dev zlib-dev \
     && git clone --depth 1 --branch 2.62.0 https://github.com/felt/tippecanoe.git /src \
     && make -C /src -j"$(nproc)" \
     && strip /src/tippecanoe /src/tile-join

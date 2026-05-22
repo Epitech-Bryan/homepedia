@@ -53,7 +53,7 @@ export function TransactionDetailDialog({
               <span className="text-2xl font-bold">
                 {tx.propertyValue?.toLocaleString("fr-FR")} €
               </span>
-              <Badge>{tx.propertyType}</Badge>
+              {tx.propertyType && <Badge>{tx.propertyType}</Badge>}
             </div>
 
             {tx.pricePerSqm != null && (

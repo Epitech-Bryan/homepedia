@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.55.1] - 2026-05-22
+
+### Bug Fixes
+
+- fix(tiles): no zoom overlap between layers (regions z4-6, depts z7-9, cities z10-14)
+- perf(spark): broadcast cities, partition JDBC reads, kryo serializer
+
 ## [3.55.0] - 2026-05-22
 
 ### Features

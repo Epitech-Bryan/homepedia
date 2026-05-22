@@ -1,5 +1,11 @@
 # app
 
+## [0.40.1] - 2026-05-22
+
+### Bug Fixes
+
+- fix(webapp): cap VectorGrid at maxNativeZoom=14 to keep polygons visible past z14
+
 ## [0.40.0] - 2026-05-21
 
 ### Features

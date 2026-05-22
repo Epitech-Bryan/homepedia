@@ -1,5 +1,11 @@
 # app
 
+## [0.46.2] - 2026-05-22
+
+### Bug Fixes
+
+- fix(map): arrondissements URL + VectorGrid z=8 storm
+
 ## [0.46.1] - 2026-05-22
 
 ### Bug Fixes

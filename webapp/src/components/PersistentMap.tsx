@@ -35,7 +35,7 @@ import type { CityStats, DepartmentStats, RegionStats } from "@/api/client";
 // grey backdrop.
 const WORLD_ZOOM_THRESHOLD = 5;
 // Below this zoom, we show regions; at or above, we switch to departments.
-const DEPARTMENT_ZOOM_THRESHOLD = 7;
+const DEPARTMENT_ZOOM_THRESHOLD = 8;
 // Above this zoom, we auto-detect the department under the map center and
 // show its cities as sized markers. Matches Tippecanoe's
 // {@code --minimum-zoom=9} so the vector-tile commune layer has data the

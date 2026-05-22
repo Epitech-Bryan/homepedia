@@ -9,7 +9,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
 @EntityScan(basePackages = {"com.homepedia.common", "com.homepedia.api.auth"})
-@EnableJpaRepositories(basePackages = {"com.homepedia.common", "com.homepedia.api.auth"})
+@EnableJpaRepositories(basePackages = {"com.homepedia.common", "com.homepedia.api.auth",
+		"com.homepedia.api.batch.tiles"})
 @EnableMongoRepositories(basePackages = "com.homepedia.common")
 @EnableAsync
 public class HomepediaRestApiApplication {

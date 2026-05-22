@@ -393,9 +393,13 @@ function TransactionPopupContent({
         )}
       </div>
       <div className="mt-1 text-muted-foreground">
-        {m.propertyType}
-        {m.builtSurface ? ` · ${Math.round(m.builtSurface)} m²` : ""}
-        {m.roomCount ? ` · ${m.roomCount}p` : ""}
+        {[
+          m.propertyType || null,
+          m.builtSurface ? `${Math.round(m.builtSurface)} m²` : null,
+          m.roomCount ? `${m.roomCount}p` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </div>
       <div className="text-muted-foreground">{dateLabel}</div>
 

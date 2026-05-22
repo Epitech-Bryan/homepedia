@@ -203,7 +203,7 @@ export function ExplorerPage() {
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">{tx.cityName}</p>
                       </div>
-                      <Badge className="text-xs">{tx.propertyType}</Badge>
+                      {tx.propertyType && <Badge className="text-xs">{tx.propertyType}</Badge>}
                     </div>
                     <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                       <span>{tx.mutationDate}</span>

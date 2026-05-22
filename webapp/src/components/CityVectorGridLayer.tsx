@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useMap } from "react-leaflet";
 // `leaflet-vectorgrid-setup` publishes Leaflet on `globalThis.L` before the
 // plugin loads, so the side-effect `L.vectorGrid = …` lands on the same
@@ -57,11 +57,32 @@ export function CityVectorGridLayer({
 }: CityVectorGridLayerProps) {
   const map = useMap();
 
+  // Refs let the style closure read the LATEST props without forcing the
+  // layer to remount. Without this, every pan at city zoom recomputes
+  // `metricByCode` (new viewport → new visible departments → new commune
+  // stats), the effect tears down VectorGrid, and pending MVT tile fetches
+  // resolve against a dead canvas pane — crashing the whole MapContainer
+  // with `Cannot read properties of undefined (reading '_leaflet_pos')`.
+  const metricByCodeRef = useRef(metricByCode);
+  const rangeRef = useRef(range);
+  const paletteRef = useRef(palette);
+  const onFeatureClickRef = useRef(onFeatureClick);
+  metricByCodeRef.current = metricByCode;
+  rangeRef.current = range;
+  paletteRef.current = palette;
+  onFeatureClickRef.current = onFeatureClick;
+
+  // Mount the layer once per (map, url) pair. Style updates flow through
+  // a redraw triggered by the second effect below.
+  const layerRef = useRef<(L.Layer & { redraw?: () => void }) | null>(null);
   useEffect(() => {
     const styleFor = (props: { code?: string }) => {
       const code = props.code;
-      const value = code != null ? metricByCode?.[code] : null;
-      if (value == null || !range || !Number.isFinite(value) || value <= 0) {
+      const m = metricByCodeRef.current;
+      const r = rangeRef.current;
+      const p = paletteRef.current;
+      const value = code != null ? m?.[code] : null;
+      if (value == null || !r || !Number.isFinite(value) || value <= 0) {
         return {
           fillColor: "#e5e7eb",
           fill: true,
@@ -70,10 +91,10 @@ export function CityVectorGridLayer({
           color: "#9ca3af",
         };
       }
-      const ratio = (value - range.min) / Math.max(range.max - range.min, 1);
-      const idx = Math.min(palette.length - 1, Math.max(0, Math.floor(ratio * palette.length)));
+      const ratio = (value - r.min) / Math.max(r.max - r.min, 1);
+      const idx = Math.min(p.length - 1, Math.max(0, Math.floor(ratio * p.length)));
       return {
-        fillColor: palette[idx],
+        fillColor: p[idx],
         fill: true,
         fillOpacity: 0.7,
         weight: 0.4,
@@ -88,7 +109,7 @@ export function CityVectorGridLayer({
           protobuf: (
             url: string,
             options: unknown,
-          ) => L.Layer & { on: (ev: string, cb: unknown) => void };
+          ) => L.Layer & { on: (ev: string, cb: unknown) => void; redraw?: () => void };
         };
       }
     ).vectorGrid.protobuf(url, {
@@ -111,20 +132,35 @@ export function CityVectorGridLayer({
       getFeatureId: (f: { properties?: { code?: string } }) => f.properties?.code,
     });
 
-    if (onFeatureClick) {
-      layer.on("click", (e: { layer: { properties?: { code?: string; name?: string } } }) => {
-        const code = e.layer?.properties?.code;
-        if (code) {
-          onFeatureClick(code, e.layer.properties?.name);
-        }
-      });
-    }
+    layer.on("click", (e: { layer: { properties?: { code?: string; name?: string } } }) => {
+      const code = e.layer?.properties?.code;
+      if (code) {
+        onFeatureClickRef.current?.(code, e.layer.properties?.name);
+      }
+    });
 
     layer.addTo(map);
+    layerRef.current = layer;
     return () => {
-      layer.remove();
+      layerRef.current = null;
+      // Tile fetches in flight may resolve after remove(); swallow the
+      // resulting null-pane crash so React keeps the MapContainer alive.
+      try {
+        layer.remove();
+      } catch {
+        // ignore
+      }
     };
-  }, [map, url, metricByCode, range, palette, onFeatureClick]);
+  }, [map, url]);
+
+  // Re-render polygons when the choropleth inputs change. Reads the current
+  // values via refs and asks VectorGrid to repaint — no remount needed.
+  useEffect(() => {
+    const layer = layerRef.current;
+    if (layer && typeof layer.redraw === "function") {
+      layer.redraw();
+    }
+  }, [metricByCode, range, palette]);
 
   return null;
 }

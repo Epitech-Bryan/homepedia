@@ -1,5 +1,11 @@
 # app
 
+## [0.49.0] - 2026-05-22
+
+### Features
+
+- feat(map): show departments from zoom 8 (was 7)
+
 ## [0.48.0] - 2026-05-22
 
 ### Features

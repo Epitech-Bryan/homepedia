@@ -1,5 +1,13 @@
 # app
 
+## [0.43.1] - 2026-05-22
+
+### Bug Fixes
+
+- fix(webapp): catch VectorGrid fetch rejections so failed tiles don't leak as unhandled promises
+- fix(test): migrate TransactionServiceTest to new statsRepository mock
+- fix(db): splitStatements:false on changeset 017 DO block
+
 ## [0.43.0] - 2026-05-22
 
 ### Features

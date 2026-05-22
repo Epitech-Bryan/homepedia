@@ -1,5 +1,12 @@
 # app
 
+## [0.40.2] - 2026-05-22
+
+### Bug Fixes
+
+- fix(webapp): move CityVectorGridLayer ref sync out of render
+- fix(webapp): stop CityVectorGridLayer from remounting on every pan
+
 ## [0.40.1] - 2026-05-22
 
 ### Bug Fixes

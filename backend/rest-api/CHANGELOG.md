@@ -5,6 +5,26 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.45.0] - 2026-05-22
+
+### Features
+
+- feat(webapp): page Schémas avec sous-routes (architecture, BDD, devops)
+- feat(webapp): hover tooltip + highlight on CityVectorGridLayer
+
+### Bug Fixes
+
+- perf(jvm): G1GC + 100ms pause target + RAM percentage (closes #4)
+- perf(db): backfill autovacuum tuning to historical partitions (closes #5)
+- perf(backend): port computeStats to DB-side aggregate (closes #3)
+- perf(webapp): drop bounds debounce from 200ms to 50ms
+- fix(webapp): mark VectorGrid features interactive so clicks fire
+- perf(webapp): redraw VectorGrid only on choropleth range shifts
+- fix(webapp): keep MapContainer mounted when vector tiles drive the city layer
+- fix(webapp): move CityVectorGridLayer ref sync out of render
+- fix(webapp): stop CityVectorGridLayer from remounting on every pan
+- fix(webapp): cap VectorGrid at maxNativeZoom=14 to keep polygons visible past z14
+
 ## [3.44.0] - 2026-05-21
 
 ### Features

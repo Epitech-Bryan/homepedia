@@ -1,5 +1,17 @@
 # app
 
+## [0.42.0] - 2026-05-22
+
+### Features
+
+- feat(webapp): page Schémas avec sous-routes (architecture, BDD, devops)
+
+### Bug Fixes
+
+- perf(jvm): G1GC + 100ms pause target + RAM percentage (closes #4)
+- perf(db): backfill autovacuum tuning to historical partitions (closes #5)
+- perf(backend): port computeStats to DB-side aggregate (closes #3)
+
 ## [0.41.0] - 2026-05-22
 
 ### Features

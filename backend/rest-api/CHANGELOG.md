@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.46.1] - 2026-05-22
+
+### Bug Fixes
+
+- fix(test): migrate TransactionServiceTest to new statsRepository mock
+- fix(db): splitStatements:false on changeset 017 DO block
+
 ## [3.46.0] - 2026-05-22
 
 ### Features

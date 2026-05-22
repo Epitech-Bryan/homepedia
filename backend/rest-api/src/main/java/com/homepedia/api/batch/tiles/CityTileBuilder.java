@@ -420,11 +420,18 @@ public class CityTileBuilder {
 	 * FeatureCollection generator. Each arrondissement keeps its own INSEE code
 	 * (75101..75120 etc.) so the frontend's click handler routes to the correct
 	 * city page rather than the parent.
+	 *
+	 * <p>
+	 * geo.api.gouv.fr dropped the
+	 * {@code /communes/{code}/arrondissements-municipaux} route ; the supported
+	 * pattern is now {@code /communes} filtered by
+	 * {@code type=arrondissement-municipal} on the department.
 	 */
 	private int fetchArrondissements(HttpClient http, com.fasterxml.jackson.core.JsonGenerator generator,
 			String parentCode) throws IOException, InterruptedException {
-		final var url = URI.create(geoApiBaseUrl + "/communes/" + parentCode
-				+ "/arrondissements-municipaux?fields=nom,code,population,surface&format=geojson&geometry=contour");
+		final var dept = parentCode.substring(0, 2);
+		final var url = URI.create(geoApiBaseUrl + "/communes?codeDepartement=" + dept
+				+ "&type=arrondissement-municipal&fields=nom,code,population,surface&format=geojson&geometry=contour");
 		final var request = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(60)).GET().build();
 		final var response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
 		if (response.statusCode() != 200) {

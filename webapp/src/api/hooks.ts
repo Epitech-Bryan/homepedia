@@ -19,13 +19,28 @@ async function fetchCommuneGeojson(departmentCode: string): Promise<GeoJSON.Feat
   return raw;
 }
 
+// Department of each commune that publishes municipal arrondissements
+// (Paris/Lyon/Marseille). Maps the parent-commune INSEE code to its
+// department code so we can hit the /communes filter endpoint.
+const ARRONDISSEMENT_PARENT_DEPT: Record<string, string> = {
+  "75056": "75",
+  "69123": "69",
+  "13055": "13",
+};
+
 async function fetchArrondissementsGeojson(
   communeCode: string,
 ): Promise<GeoJSON.FeatureCollection> {
-  // geo.api.gouv.fr exposes municipal arrondissements only for Paris (75056),
-  // Lyon (69123) and Marseille (13055). The endpoint returns FeatureCollection
-  // with `nom`, `code` (75101..75120, etc.), `population`, `surface`.
-  const url = `https://geo.api.gouv.fr/communes/${communeCode}/arrondissements-municipaux?fields=nom,code,population,surface&format=geojson&geometry=contour`;
+  // geo.api.gouv.fr dropped the /communes/{code}/arrondissements-municipaux
+  // route in 2024 ; the supported way is now /communes filtered by
+  // {@code type=arrondissement-municipal} on the department. Returns the
+  // 20/9/16 arrondissement features with code = 75101..75120 / 69381..69389
+  // / 13201..13216.
+  const dept = ARRONDISSEMENT_PARENT_DEPT[communeCode];
+  if (!dept) {
+    return { type: "FeatureCollection", features: [] };
+  }
+  const url = `https://geo.api.gouv.fr/communes?codeDepartement=${dept}&type=arrondissement-municipal&fields=nom,code,population,surface&format=geojson&geometry=contour`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch arrondissements geojson: ${res.status}`);
   const raw = (await res.json()) as GeoJSON.FeatureCollection<

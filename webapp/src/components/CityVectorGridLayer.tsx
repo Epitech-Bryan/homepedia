@@ -67,10 +67,12 @@ export function CityVectorGridLayer({
   const rangeRef = useRef(range);
   const paletteRef = useRef(palette);
   const onFeatureClickRef = useRef(onFeatureClick);
-  metricByCodeRef.current = metricByCode;
-  rangeRef.current = range;
-  paletteRef.current = palette;
-  onFeatureClickRef.current = onFeatureClick;
+  useEffect(() => {
+    metricByCodeRef.current = metricByCode;
+    rangeRef.current = range;
+    paletteRef.current = palette;
+    onFeatureClickRef.current = onFeatureClick;
+  });
 
   // Mount the layer once per (map, url) pair. Style updates flow through
   // a redraw triggered by the second effect below.

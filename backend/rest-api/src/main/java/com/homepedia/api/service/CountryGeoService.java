@@ -87,6 +87,24 @@ public class CountryGeoService {
 		}
 	}
 
+	/**
+	 * Belgian municipalities — GADM admin-4 polygons (581 communes) joined with
+	 * Wikidata populations (P1567 NIS + P1082) and surfaces (P2046). 98 % of
+	 * features carry a population; the rest fall back to "no data" gray on the
+	 * choropleth like FR communes without DVF rows.
+	 */
+	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'belgium-municipalities'")
+	public String getBelgiumMunicipalitiesGeoJson() {
+		try {
+			final var resource = new ClassPathResource("data/belgium-municipalities.geojson");
+			try (var in = resource.getInputStream()) {
+				return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException("Belgium municipalities GeoJSON not available", e);
+		}
+	}
+
 	private String worldAdmin1Cache;
 
 	/**

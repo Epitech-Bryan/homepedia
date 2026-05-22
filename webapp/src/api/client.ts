@@ -81,6 +81,8 @@ export const api = {
   geo: {
     countries: () => fetchJson<GeoJSON.FeatureCollection>("/geo/countries"),
     belgiumProvinces: () => fetchJson<GeoJSON.FeatureCollection>("/geo/belgium/provinces"),
+    belgiumMunicipalities: () =>
+      fetchJson<GeoJSON.FeatureCollection>("/geo/belgium/municipalities"),
     worldAdmin1: () => fetchJson<GeoJSON.FeatureCollection>("/geo/world/admin1"),
     regions: () => fetchJson<GeoJSON.FeatureCollection>("/geo/regions"),
     departments: (regionCode?: string) =>
@@ -192,6 +194,7 @@ export interface CitySummary {
   inseeCode: string;
   name: string;
   departmentCode: string;
+  departmentName?: string;
   postalCode: string;
   population: number;
   area: number;

@@ -99,6 +99,13 @@ export function CityVectorGridLayer({
       const r = rangeRef.current;
       const p = paletteRef.current;
       const value = code != null ? m?.[code] : null;
+      // `interactive: true` on every feature is what actually wires hit
+      // testing in leaflet-vectorgrid — the top-level `interactive` option
+      // gates the layer's event dispatch but the per-feature flag is what
+      // makes the canvas tile renderer record the polygon path for hit
+      // checks. Without it, click/mouseover never fire and the layer just
+      // shows up as a static fill the user can pan over but not interact
+      // with.
       if (value == null || !r || !Number.isFinite(value) || value <= 0) {
         return {
           fillColor: "#e5e7eb",
@@ -106,6 +113,7 @@ export function CityVectorGridLayer({
           fillOpacity: 0.5,
           weight: 0.4,
           color: "#9ca3af",
+          interactive: true,
         };
       }
       const ratio = (value - r.min) / Math.max(r.max - r.min, 1);
@@ -116,6 +124,7 @@ export function CityVectorGridLayer({
         fillOpacity: 0.7,
         weight: 0.4,
         color: "#374151",
+        interactive: true,
       };
     };
 

@@ -1,5 +1,11 @@
 # app
 
+## [0.47.0] - 2026-05-22
+
+### Features
+
+- feat: Belgian communes layer + city name search
+
 ## [0.46.2] - 2026-05-22
 
 ### Bug Fixes

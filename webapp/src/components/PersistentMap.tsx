@@ -65,15 +65,57 @@ function shiftGeometry(geom: GeoJSON.Geometry, dx: number): GeoJSON.Geometry {
   }
 }
 
+/**
+ * Natural Earth ships countries that span the antimeridian (Russia, Fiji,
+ * Kiribati, USA via Alaska) as a MultiPolygon where the eastern fragments
+ * carry negative longitudes (e.g. Russia's Chukotka at -180..-170). Drawn
+ * as-is on the central world copy, those fragments render thousands of km
+ * away from their parent — Russia looks chopped in two at the map edges.
+ *
+ * Detect features whose polygons straddle the dateline and shift the
+ * far-negative rings by +360 so the geometry is contiguous in the central
+ * world. The subsequent ±360 wrap then renders that contiguous body on the
+ * two adjacent world copies as expected.
+ */
+function stitchAntimeridian(geom: GeoJSON.Geometry): GeoJSON.Geometry {
+  if (geom.type !== "MultiPolygon") return geom;
+  const shiftRing = (ring: number[][]): number[][] =>
+    ring.map(([x, y, ...rest]) => [x + 360, y, ...rest]);
+  // Aggregate per-polygon longitude min/max to detect the split.
+  const polyBboxes = geom.coordinates.map((poly) => {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    for (const ring of poly)
+      for (const [x] of ring) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+      }
+    return [minX, maxX] as const;
+  });
+  const hasEastern = polyBboxes.some(([, mx]) => mx >= 100);
+  const hasFarWestern = polyBboxes.some(([mn, mx]) => mn >= -180 && mx <= -100);
+  if (!hasEastern || !hasFarWestern) return geom;
+  return {
+    ...geom,
+    coordinates: geom.coordinates.map((poly, i) =>
+      polyBboxes[i][1] <= -100 ? poly.map(shiftRing) : poly,
+    ),
+  };
+}
+
 function wrapAcrossDateline(
   fc: GeoJSON.FeatureCollection | null | undefined,
 ): GeoJSON.FeatureCollection | null {
   if (!fc) return null;
+  const stitched: GeoJSON.Feature[] = fc.features.map((f) => ({
+    ...f,
+    geometry: stitchAntimeridian(f.geometry),
+  }));
   const shifted = (offset: number): GeoJSON.Feature[] =>
-    fc.features.map((f) => ({ ...f, geometry: shiftGeometry(f.geometry, offset) }));
+    stitched.map((f) => ({ ...f, geometry: shiftGeometry(f.geometry, offset) }));
   return {
     type: "FeatureCollection",
-    features: [...shifted(-360), ...fc.features, ...shifted(360)],
+    features: [...shifted(-360), ...stitched, ...shifted(360)],
   };
 }
 

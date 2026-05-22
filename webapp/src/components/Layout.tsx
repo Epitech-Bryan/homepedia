@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { Map, X, Search, Compass, ShieldCheck, LogIn, LogOut } from "lucide-react";
+import { Map, X, Search, Compass, ShieldCheck, LogIn, LogOut, BookOpen } from "lucide-react";
 import { PersistentMap } from "@/components/PersistentMap";
 import { LoginDialog } from "@/components/LoginDialog";
 import { useRegions, useDepartments } from "@/api/hooks";
@@ -91,7 +91,11 @@ function QuickSearch() {
 export function Layout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const hasPanel = pathname !== "/";
+  // /schemas is full-screen content (tables, diagrams) — the 420 px side
+  // panel used by city/region/department pages is too narrow for the data
+  // tables; render it full-bleed and hide the map underneath.
+  const isFullScreen = pathname.startsWith("/schemas");
+  const hasPanel = pathname !== "/" && !isFullScreen;
   const { user, logout } = useAuth();
   const [loginOpen, setLoginOpen] = useState(false);
 
@@ -120,6 +124,14 @@ export function Layout() {
         >
           <Compass className="h-4 w-4 mr-1.5" />
           Explorer
+        </Button>
+        <Button
+          variant={pathname.startsWith("/schemas") ? "secondary" : "ghost"}
+          size="sm"
+          render={<Link to="/schemas" />}
+        >
+          <BookOpen className="h-4 w-4 mr-1.5" />
+          Schémas
         </Button>
         {user && (
           <Button
@@ -151,9 +163,15 @@ export function Layout() {
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">
-        <div className={`flex-1 transition-all duration-300 ${hasPanel ? "sm:mr-[420px]" : ""}`}>
-          <PersistentMap />
-        </div>
+        {isFullScreen ? (
+          <main className="flex-1 overflow-auto">
+            <Outlet />
+          </main>
+        ) : (
+          <div className={`flex-1 transition-all duration-300 ${hasPanel ? "sm:mr-[420px]" : ""}`}>
+            <PersistentMap />
+          </div>
+        )}
 
         {hasPanel && (
           <aside className="absolute inset-0 sm:left-auto sm:right-0 sm:w-[420px] bg-background/95 backdrop-blur-xl border-l overflow-y-auto z-40 animate-in slide-in-from-right duration-300">

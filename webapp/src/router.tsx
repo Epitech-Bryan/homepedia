@@ -21,6 +21,20 @@ const ReviewsPage = lazy(() =>
   import("@/pages/ReviewsPage").then((m) => ({ default: m.ReviewsPage })),
 );
 const AdminPage = lazy(() => import("@/pages/AdminPage").then((m) => ({ default: m.AdminPage })));
+const SchemasPage = lazy(() =>
+  import("@/pages/SchemasPage").then((m) => ({ default: m.SchemasPage })),
+);
+const ArchitectureSchemaPage = lazy(() =>
+  import("@/pages/schemas/ArchitectureSchemaPage").then((m) => ({
+    default: m.ArchitectureSchemaPage,
+  })),
+);
+const DbSchemaPage = lazy(() =>
+  import("@/pages/schemas/DbSchemaPage").then((m) => ({ default: m.DbSchemaPage })),
+);
+const DevopsSchemaPage = lazy(() =>
+  import("@/pages/schemas/DevopsSchemaPage").then((m) => ({ default: m.DevopsSchemaPage })),
+);
 const NotFoundPage = lazy(() =>
   import("@/pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })),
 );
@@ -53,6 +67,16 @@ export const router = createBrowserRouter([
       { path: "cities/:code/reviews", element: withSuspense(<ReviewsPage />) },
       { path: "explorer", element: withSuspense(<ExplorerPage />) },
       { path: "admin", element: withSuspense(<AdminPage />) },
+      {
+        path: "schemas",
+        element: withSuspense(<SchemasPage />),
+        children: [
+          { index: true, element: withSuspense(<ArchitectureSchemaPage />) },
+          { path: "architecture", element: withSuspense(<ArchitectureSchemaPage />) },
+          { path: "db", element: withSuspense(<DbSchemaPage />) },
+          { path: "devops", element: withSuspense(<DevopsSchemaPage />) },
+        ],
+      },
       { path: "*", element: withSuspense(<NotFoundPage />) },
     ],
   },

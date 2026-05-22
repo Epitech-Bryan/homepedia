@@ -1,5 +1,13 @@
 # app
 
+## [0.43.0] - 2026-05-22
+
+### Features
+
+- feat(observability): Grafana alerts + smoke CronJob (closes #2)
+- feat: IRIS boundaries endpoint + city page section (closes #10)
+- feat: Spark perf tuning + comparable sales popup (closes #11)
+
 ## [0.42.0] - 2026-05-22
 
 ### Features

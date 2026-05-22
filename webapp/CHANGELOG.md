@@ -1,5 +1,11 @@
 # app
 
+## [0.51.1] - 2026-05-22
+
+### Bug Fixes
+
+- fix(reviews): show loader while sentiment/wordcloud/reviews are pending
+
 ## [0.51.0] - 2026-05-22
 
 ### Features

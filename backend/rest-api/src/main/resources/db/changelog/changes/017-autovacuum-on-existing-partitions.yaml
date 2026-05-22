@@ -18,7 +18,14 @@ databaseChangeLog:
         reloption) and runs in milliseconds. Future swaps continue to set
         the same values, so the two paths converge.
       changes:
+        # splitStatements:false is required when the body contains a PL/pgSQL
+        # DO block — Liquibase otherwise splits on the inner semicolons and
+        # tries to execute "DO $$" as its own statement, which Postgres
+        # rejects with "Unterminated dollar quote". stripComments:false
+        # keeps the dollar-quoted body byte-for-byte.
         - sql:
+            splitStatements: false
+            stripComments: false
             sql: |
               DO $$
               DECLARE
@@ -36,10 +43,11 @@ databaseChangeLog:
                 END LOOP;
               END$$;
         - sql:
-            sql: |
-              ANALYZE transactions;
+            sql: ANALYZE transactions;
       rollback:
         - sql:
+            splitStatements: false
+            stripComments: false
             sql: |
               DO $$
               DECLARE

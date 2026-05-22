@@ -11,5 +11,25 @@
 
 import "./leaflet-global";
 import "leaflet.vectorgrid";
+import L from "leaflet";
+
+// leaflet.vectorgrid's `_getVectorTilePromise` chains a bare `.then()` on its
+// `fetch()` without a `.catch()`. A 404 is handled (it returns `{layers:[]}`
+// and the tile renders empty), but a network-level rejection — fetch aborted
+// mid-pan, browser connection-limit, transient backend hiccup — bubbles out
+// as `Uncaught (in promise) TypeError: Failed to fetch`. Worse, the
+// rejection means `createTile`'s `.then(renderTile)` never fires, so
+// `done(null, null)` is never called and Leaflet flags the tile as
+// permanently loading. Treat fetch rejections the same as 404s: resolve to
+// an empty tile so the layer keeps going.
+type ProtobufProto = { _getVectorTilePromise?: (coords: unknown) => Promise<unknown> };
+const protoHolder = (L as unknown as { VectorGrid?: { Protobuf?: { prototype: ProtobufProto } } })
+  .VectorGrid?.Protobuf?.prototype;
+if (protoHolder && typeof protoHolder._getVectorTilePromise === "function") {
+  const original = protoHolder._getVectorTilePromise;
+  protoHolder._getVectorTilePromise = function patched(coords: unknown) {
+    return original.call(this, coords).catch(() => ({ layers: [] }));
+  };
+}
 
 export { default } from "leaflet";

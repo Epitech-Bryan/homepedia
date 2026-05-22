@@ -1,5 +1,11 @@
 # app
 
+## [0.46.1] - 2026-05-22
+
+### Bug Fixes
+
+- fix(map): stitch Russia/Fiji across the antimeridian
+
 ## [0.46.0] - 2026-05-22
 
 ### Features

@@ -7,6 +7,7 @@ import {
   useCityStats,
   useDepartment,
   useDepartmentStats,
+  useGeoBelgiumMunicipalities,
   useGeoBelgiumProvinces,
   useGeoCitiesForDepartments,
   useGeoCountries,
@@ -357,13 +358,25 @@ export function PersistentMap() {
 
   const geoArrondissements = useArrondissementsForCities(drilldownCityCodes);
 
-  // City-level geojson: start from communes, then at arrondissement zoom swap
-  // out drilldown parent communes for their arrondissement polygons.
+  // Belgian communes — 581 GADM polygons with Wikidata-sourced population.
+  // Fetched only at city zoom (we don't need them at world / region level)
+  // and merged into cityLevelGeojson so a user panning across the border
+  // sees a continuous commune layer instead of FR ending sharply at the BE
+  // line. Vector tiles only ship FR communes; the BE layer renders as
+  // SVG GeoJSON on top of the basemap, sliced at the same zoom band.
+  const { data: geoBelgiumMunicipalities } = useGeoBelgiumMunicipalities(showCityDetail);
+
+  // City-level geojson: start from communes (FR + BE), then at arrondissement
+  // zoom swap out drilldown parent communes for their arrondissement polygons.
   const cityLevelGeojson = useMemo<GeoJSON.FeatureCollection | null>(() => {
     if (!geoCities) return null;
-    if (!showArrondissements || !geoArrondissements) return geoCities;
+    const baseFeatures = geoBelgiumMunicipalities
+      ? [...geoCities.features, ...geoBelgiumMunicipalities.features]
+      : geoCities.features;
+    if (!showArrondissements || !geoArrondissements)
+      return { type: "FeatureCollection", features: baseFeatures };
     const drilldownSet = new Set(drilldownCityCodes);
-    const filtered = geoCities.features.filter((f) => {
+    const filtered = baseFeatures.filter((f) => {
       const code = (f.properties as { code?: string } | null)?.code;
       return !code || !drilldownSet.has(code);
     });
@@ -371,7 +384,13 @@ export function PersistentMap() {
       type: "FeatureCollection",
       features: [...filtered, ...geoArrondissements.features],
     };
-  }, [geoCities, showArrondissements, geoArrondissements, drilldownCityCodes]);
+  }, [
+    geoCities,
+    geoBelgiumMunicipalities,
+    showArrondissements,
+    geoArrondissements,
+    drilldownCityCodes,
+  ]);
 
   // The countries layer is the only one where wrap-around matters: it's
   // the foreground at world zoom AND the grey backdrop at every higher

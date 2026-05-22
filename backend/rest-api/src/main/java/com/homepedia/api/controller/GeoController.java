@@ -43,6 +43,12 @@ public class GeoController {
 		return ResponseEntity.ok(countryGeoService.getBelgiumProvincesGeoJson());
 	}
 
+	@Operation(summary = "Belgium municipalities", description = "GADM 4.1 boundaries for the 581 Belgian communes with Wikidata-sourced NIS code, population and surface baked into the properties (98 % coverage). Lets the choropleth render population / density at commune zoom in Belgium, mirroring the FR commune layer.")
+	@GetMapping(value = "/belgium/municipalities", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<String> getBelgiumMunicipalities() {
+		return ResponseEntity.ok(countryGeoService.getBelgiumMunicipalitiesGeoJson());
+	}
+
 	@Operation(summary = "World admin-1 (states/provinces/regions)", description = "Simplified GADM 4.1 boundaries (~5 km tolerance) for ~38 EU + G20 countries' first-level subdivisions. Excludes France (covered by /geo/regions) and Belgium (covered by /geo/belgium/provinces). Used by the map at zoom 5-7 to render foreign countries' admin-1 alongside French regions.")
 	@GetMapping(value = "/world/admin1", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<String> getWorldAdmin1() {

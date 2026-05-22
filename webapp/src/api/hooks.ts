@@ -112,6 +112,22 @@ export function useCities(params?: Record<string, string>) {
   return useQuery({ queryKey: ["cities", params], queryFn: () => api.cities.list(params) });
 }
 
+/**
+ * Autocomplete-flavoured city search — used by the header QuickSearch to
+ * resolve a freeform name ("Lille") to its INSEE code. Skipped under 2
+ * characters to keep the trigram GIN index from being abused; capped at 8
+ * results to match the dropdown height.
+ */
+export function useCitySearch(query: string) {
+  const trimmed = query.trim();
+  return useQuery({
+    queryKey: ["cities", "search", trimmed.toLowerCase()],
+    queryFn: () => api.cities.list({ query: trimmed, size: "8" }),
+    enabled: trimmed.length >= 2,
+    staleTime: 60_000,
+  });
+}
+
 export function useCitiesForDepartment(departmentCode?: string) {
   return useQuery({
     queryKey: ["cities", "byDepartment", departmentCode],
@@ -285,6 +301,16 @@ export function useGeoBelgiumProvinces() {
   return useQuery({
     queryKey: ["geo", "belgium", "provinces"],
     queryFn: () => api.geo.belgiumProvinces(),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
+export function useGeoBelgiumMunicipalities(enabled = true) {
+  return useQuery({
+    queryKey: ["geo", "belgium", "municipalities"],
+    queryFn: () => api.geo.belgiumMunicipalities(),
+    enabled,
     staleTime: Infinity,
     gcTime: Infinity,
   });

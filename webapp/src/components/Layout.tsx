@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Map, X, Search, Compass, ShieldCheck, LogIn, LogOut, BookOpen } from "lucide-react";
 import { PersistentMap } from "@/components/PersistentMap";
 import { LoginDialog } from "@/components/LoginDialog";
-import { useRegions, useDepartments } from "@/api/hooks";
+import { useRegions, useDepartments, useCitySearch } from "@/api/hooks";
 import { useAuth } from "@/auth/AuthContext";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
@@ -11,27 +11,65 @@ import { Button } from "@/components/ui/button";
 function QuickSearch() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const { data: regions } = useRegions();
   const { data: departments = [] } = useDepartments();
 
+  // 200 ms debounce before hitting /api/cities — fast enough to feel live,
+  // slow enough that hammering the trgm GIN index per keystroke doesn't
+  // matter. Regions / departments stay in-memory so they react instantly.
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(query.trim()), 200);
+    return () => window.clearTimeout(id);
+  }, [query]);
+
+  const { data: cityPage } = useCitySearch(debounced);
+
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    const results: { label: string; sub: string; to: string }[] = [];
+    const results: { label: string; sub: string; to: string; key: string }[] = [];
     for (const r of regions ?? []) {
       if (r.name.toLowerCase().includes(q)) {
-        results.push({ label: r.name, sub: "Region", to: `/regions/${r.code}` });
+        results.push({
+          label: r.name,
+          sub: "Région",
+          to: `/regions/${r.code}`,
+          key: `r-${r.code}`,
+        });
       }
     }
     for (const d of departments) {
       if (d.name.toLowerCase().includes(q) || d.code.includes(q)) {
-        results.push({ label: d.name, sub: `Dept. ${d.code}`, to: `/departments/${d.code}` });
+        results.push({
+          label: d.name,
+          sub: `Dépt. ${d.code}`,
+          to: `/departments/${d.code}`,
+          key: `d-${d.code}`,
+        });
       }
     }
-    return results.slice(0, 8);
-  }, [query, regions, departments]);
+    // Backend city search hits cities.idx_cities_name_trgm — already case-
+    // and accent-insensitive. Sort by population descending so "Lille" beats
+    // "Lillemer" when both match the prefix. Regions / dept stay on top
+    // since they're the typical drill-down entry point.
+    const cities = [...(cityPage?._embedded?.citySummaryList ?? [])].sort(
+      (a, b) => (b.population ?? 0) - (a.population ?? 0),
+    );
+    for (const c of cities) {
+      const pop = c.population ? `${c.population.toLocaleString("fr-FR")} hab.` : null;
+      const sub = [`Commune ${c.inseeCode}`, c.departmentName, pop].filter(Boolean).join(" · ");
+      results.push({
+        label: c.name,
+        sub,
+        to: `/cities/${c.inseeCode}`,
+        key: `c-${c.inseeCode}`,
+      });
+    }
+    return results.slice(0, 10);
+  }, [query, regions, departments, cityPage]);
 
   useEffect(() => {
     if (!open) return;
@@ -55,7 +93,7 @@ function QuickSearch() {
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
       <Input
         type="text"
-        placeholder="Search regions, departments…"
+        placeholder="Régions, départements, communes…"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -71,7 +109,7 @@ function QuickSearch() {
       {open && matches.length > 0 && (
         <ul className="absolute left-0 right-0 z-[9999] mt-1 max-h-72 overflow-auto rounded-md border bg-popover shadow-lg">
           {matches.map((m) => (
-            <li key={m.to}>
+            <li key={m.key}>
               <button
                 type="button"
                 onClick={() => select(m.to)}

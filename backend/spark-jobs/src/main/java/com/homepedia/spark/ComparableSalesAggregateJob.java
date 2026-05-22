@@ -52,11 +52,35 @@ public final class ComparableSalesAggregateJob {
 	public static void main(String[] args) {
 		final var cfg = parseArgs(args);
 
-		try (final var spark = SparkSession.builder().appName("homepedia-comparable-sales").getOrCreate()) {
+		try (final var spark = SparkSession.builder().appName("homepedia-comparable-sales")
+				// Adaptive Query Execution: lets Spark merge small shuffle
+				// partitions, switch join strategies (e.g. fall back to
+				// broadcast on tiny dimensions) and split skewed partitions
+				// at runtime — the self-join here has natural skew around
+				// dense urban geohash buckets (Paris is ~100x denser than
+				// rural cells), so this is the cheapest meaningful gain.
+				.config("spark.sql.adaptive.enabled", "true").config("spark.sql.adaptive.skewJoin.enabled", "true")
+				.config("spark.sql.adaptive.coalescePartitions.enabled", "true")
+				// Wider shuffle partitions for our cluster size; the default
+				// 200 over-partitions a ~3 M row dataset and leaves cores
+				// idle. AQE will coalesce back down where it makes sense.
+				.config("spark.sql.shuffle.partitions", "400")
+				// Spill compression keeps the per-executor disk pressure
+				// down on the bucketed self-join.
+				.config("spark.shuffle.compress", "true").getOrCreate()) {
 			final var jdbcProps = jdbcProps(cfg);
 			final var transactions = loadGeocodedTransactions(spark, cfg.jdbcUrl(), jdbcProps);
 			final var withBuckets = withClusteringBuckets(transactions);
-			final var comparables = pickTopNeighbours(withBuckets, 10);
+			// Re-partition by the join keys before the self-join so each
+			// bucket lives on one executor — turns what would have been a
+			// shuffle-hash-join across 400 partitions into a co-located
+			// join per bucket. Cached because pickTopNeighbours reads it
+			// twice (l + r aliases).
+			final var partitioned = withBuckets
+					.repartition(functions.col("property_type"), functions.col("year_bucket"),
+							functions.col("surface_bucket"), functions.col("lat_bucket"), functions.col("lon_bucket"))
+					.cache();
+			final var comparables = pickTopNeighbours(partitioned, 10);
 
 			comparables.write().mode(SaveMode.Overwrite).jdbc(cfg.jdbcUrl(), "comparable_transactions", jdbcProps);
 		}

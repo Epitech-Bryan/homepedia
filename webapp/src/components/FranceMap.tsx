@@ -13,6 +13,7 @@ import "leaflet.heat";
 import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CityVectorGridLayer } from "@/components/CityVectorGridLayer";
+import { useComparableSales } from "@/api/hooks";
 import "leaflet/dist/leaflet.css";
 
 // Default to a world-level view on first paint. The 4-tier zoom logic in
@@ -322,14 +323,6 @@ function TransactionMarkerLayer({
     <>
       {markers.map((m) => {
         const fill = colorFor(m);
-        const pricePerSqm =
-          m.builtSurface && m.builtSurface > 0
-            ? Math.round(m.propertyValue / m.builtSurface)
-            : null;
-        const dateLabel = new Date(m.mutationDate).toLocaleDateString("fr-FR", {
-          year: "numeric",
-          month: "long",
-        });
         return (
           <CircleMarker
             key={m.id}
@@ -343,27 +336,117 @@ function TransactionMarkerLayer({
             }}
           >
             <Popup>
-              <div className="text-xs leading-tight">
-                <div className="font-semibold">
-                  {m.propertyValue.toLocaleString("fr-FR")} €
-                  {pricePerSqm != null && (
-                    <span className="ml-1 font-normal text-muted-foreground">
-                      ({pricePerSqm.toLocaleString("fr-FR")} €/m²)
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1 text-muted-foreground">
-                  {m.propertyType}
-                  {m.builtSurface ? ` · ${Math.round(m.builtSurface)} m²` : ""}
-                  {m.roomCount ? ` · ${m.roomCount}p` : ""}
-                </div>
-                <div className="text-muted-foreground">{dateLabel}</div>
-              </div>
+              <TransactionPopupContent marker={m} />
             </Popup>
           </CircleMarker>
         );
       })}
     </>
+  );
+}
+
+/**
+ * Popup body for a single transaction marker. Lives as its own component
+ * so the comparable-sales hook is only triggered when the popup is open
+ * (react-leaflet defers children render until then) — otherwise we'd fire
+ * a `/comparable-sales` request for every visible marker on every pan.
+ */
+function TransactionPopupContent({
+  marker: m,
+}: {
+  marker: NonNullable<FranceMapProps["transactionMarkers"]>[number];
+}) {
+  const map = useMap();
+  const [showComparables, setShowComparables] = useState(false);
+  const { data: comparables, isLoading } = useComparableSales(showComparables ? m.id : null);
+
+  const pricePerSqm =
+    m.builtSurface && m.builtSurface > 0 ? Math.round(m.propertyValue / m.builtSurface) : null;
+  const dateLabel = new Date(m.mutationDate).toLocaleDateString("fr-FR", {
+    year: "numeric",
+    month: "long",
+  });
+
+  return (
+    <div className="text-xs leading-tight">
+      <div className="font-semibold">
+        {m.propertyValue.toLocaleString("fr-FR")} €
+        {pricePerSqm != null && (
+          <span className="ml-1 font-normal text-muted-foreground">
+            ({pricePerSqm.toLocaleString("fr-FR")} €/m²)
+          </span>
+        )}
+      </div>
+      <div className="mt-1 text-muted-foreground">
+        {m.propertyType}
+        {m.builtSurface ? ` · ${Math.round(m.builtSurface)} m²` : ""}
+        {m.roomCount ? ` · ${m.roomCount}p` : ""}
+      </div>
+      <div className="text-muted-foreground">{dateLabel}</div>
+
+      {!showComparables ? (
+        <button
+          type="button"
+          onClick={() => setShowComparables(true)}
+          className="mt-2 text-[11px] font-medium text-primary hover:underline"
+        >
+          Voir 10 ventes similaires →
+        </button>
+      ) : (
+        <div className="mt-2 border-t pt-2">
+          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Ventes comparables
+          </div>
+          {isLoading && <div className="mt-1 text-muted-foreground">Chargement…</div>}
+          {!isLoading && (!comparables || comparables.length === 0) && (
+            <div className="mt-1 text-muted-foreground">
+              Pas encore d'agrégat — le job Spark n'a pas tourné sur cette mutation.
+            </div>
+          )}
+          {!isLoading && comparables && comparables.length > 0 && (
+            <ul className="mt-1 max-h-40 overflow-y-auto divide-y">
+              {comparables.map((c) => {
+                const cPricePerSqm =
+                  c.builtSurface && c.builtSurface > 0
+                    ? Math.round(c.propertyValue / c.builtSurface)
+                    : null;
+                return (
+                  <li
+                    key={c.comparableId}
+                    className="py-1 cursor-pointer hover:bg-muted/40 rounded px-1"
+                    onClick={() =>
+                      map.flyTo([c.latitude, c.longitude], Math.max(map.getZoom(), 14))
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {c.propertyValue.toLocaleString("fr-FR")} €
+                      </span>
+                      <span
+                        className={
+                          c.priceDeltaPct >= 0
+                            ? "text-[10px] font-medium text-emerald-700"
+                            : "text-[10px] font-medium text-red-700"
+                        }
+                      >
+                        {c.priceDeltaPct >= 0 ? "+" : ""}
+                        {c.priceDeltaPct.toFixed(1)} %
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {cPricePerSqm != null && `${cPricePerSqm.toLocaleString("fr-FR")} €/m² · `}
+                      {c.distanceM < 1000
+                        ? `${c.distanceM} m`
+                        : `${(c.distanceM / 1000).toFixed(1)} km`}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

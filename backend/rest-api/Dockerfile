@@ -12,6 +12,18 @@ COPY common/src common/src
 COPY rest-api/src rest-api/src
 RUN mvn package -DskipTests -B -pl rest-api --am
 
+# Tippecanoe is needed at runtime by CityTileBuilder (issue #6 step 3 — bake
+# DVF stats into commune MVT features). The Felt fork is the actively
+# maintained successor to Mapbox's archived build; we lock to a tagged
+# release so reproducible builds. The binary is statically interesting
+# enough that copying it directly into the runtime is cheaper than apk-add
+# a whole toolchain — Alpine community doesn't ship a tippecanoe package.
+FROM docker.io/library/alpine:3.20 AS tippecanoe
+RUN apk add --no-cache git build-base sqlite-dev zlib-dev \
+    && git clone --depth 1 --branch 2.62.0 https://github.com/felt/tippecanoe.git /src \
+    && make -C /src -j"$(nproc)" \
+    && strip /src/tippecanoe /src/tile-join
+
 FROM docker.io/library/eclipse-temurin:21-jre-alpine
 # OCI source label so GHCR auto-links this package to the source repo.
 # Without it, GITHUB_TOKEN from a release-triggered run (the actor is
@@ -23,6 +35,13 @@ LABEL org.opencontainers.image.description="HomePedia REST API — Spring Boot D
 LABEL org.opencontainers.image.licenses=MIT
 WORKDIR /app
 RUN addgroup -S app && adduser -S app -G app
+# Tippecanoe links against libsqlite3 + libstdc++ at runtime — install both
+# so the binary copied below actually starts. Alpine's openjdk image lacks
+# libstdc++; the linker error is silent (Process.start() returns 0 then
+# the process dies). Keep this RUN before the COPY so the binary's deps
+# are guaranteed present.
+RUN apk add --no-cache libstdc++ sqlite-libs
+COPY --from=tippecanoe /src/tippecanoe /src/tile-join /usr/local/bin/
 COPY --from=build /app/rest-api/target/*.jar app.jar
 USER app
 EXPOSE 8080

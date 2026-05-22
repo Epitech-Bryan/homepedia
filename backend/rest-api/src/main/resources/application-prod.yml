@@ -80,6 +80,17 @@ management:
       enabled: true
 
 homepedia:
+  tiles:
+    # Path to the served mbtiles + its rebuild input. Both live on the
+    # /data/tiles PVC so the polygons source survives pod restarts and the
+    # tile bake doesn't refetch ~50 MB from geo.api.gouv.fr each boot.
+    cities-path: ${HOMEPEDIA_TILES_CITIES_PATH:/data/tiles/cities.mbtiles}
+    source-geojson: ${HOMEPEDIA_TILES_SOURCE_GEOJSON:/data/tiles/communes-fr.geojson}
+    geo-api-base-url: ${HOMEPEDIA_TILES_GEO_API_BASE_URL:https://geo.api.gouv.fr}
+    tippecanoe-bin: ${HOMEPEDIA_TILES_TIPPECANOE_BIN:tippecanoe}
+    builder:
+      enabled: ${HOMEPEDIA_TILES_BUILDER_ENABLED:true}
+    rebuild-on-startup: ${HOMEPEDIA_TILES_REBUILD_ON_STARTUP:true}
   batch:
     startup-enabled: ${HOMEPEDIA_BATCH_STARTUP_ENABLED:true}
   spark:

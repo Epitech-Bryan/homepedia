@@ -10,6 +10,12 @@ spring:
       url: redis://localhost:6379
 
 homepedia:
+  tiles:
+    # Local dev usually doesn't have tippecanoe installed and doesn't care
+    # about regenerating tiles — point the served file at a local path and
+    # let the builder stay off.
+    builder:
+      enabled: false
   dvf:
     zip-path:
   dpe:

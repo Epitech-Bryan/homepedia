@@ -1,0 +1,428 @@
+package com.homepedia.api.batch.tiles;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.homepedia.api.batch.tiles.CityTileStatsRepository.CityTileStatsProjection;
+import com.homepedia.api.service.VectorTileService;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Component;
+
+/**
+ * Rebuilds {@code cities.mbtiles} with per-commune stats baked into each
+ * polygon's MVT feature properties — replaces the {@code GET /stats/cities}
+ * per-pan call that today blocks the choropleth at low zoom.
+ *
+ * <p>
+ * Pipeline, each step is no-op safe so the pod can restart mid-build:
+ * <ol>
+ * <li>Ensure a source polygons GeoJSON exists at
+ * {@code homepedia.tiles.source-geojson}. Fetches per-department from
+ * geo.api.gouv.fr on first run, ~50 MB total. The PVC keeps it across pod
+ * restarts.</li>
+ * <li>Stream the polygons, join each feature with its row from
+ * {@link CityTileStatsRepository#findAllForTiles()} keyed by
+ * {@code feature.properties.code}, write the enriched FeatureCollection to a
+ * temp file alongside the target so the rename is atomic.</li>
+ * <li>Invoke {@code tippecanoe} via {@link ProcessBuilder} to produce a new
+ * mbtiles next to the current one. Same zoom range + simplification as
+ * {@code docs/vector-tiles.md} so feature.id stability isn't affected.</li>
+ * <li>{@link java.nio.file.Files#move} with
+ * {@link StandardCopyOption#ATOMIC_MOVE} so the rest-api's open SQLite
+ * connection sees a coherent file flip, then ask
+ * {@link VectorTileService#reload()} to re-open against it.</li>
+ * </ol>
+ *
+ * <p>
+ * Triggered at boot if the mbtiles is missing or older than the source, and
+ * after every DVF import (chained off {@code BatchScheduler}). Concurrent
+ * triggers are coalesced via {@link #running} so a slow rebuild doesn't queue
+ * up tens of pending runs while DVF jobs back to back.
+ *
+ * <p>
+ * Disabled via {@code homepedia.tiles.builder.enabled=false} for environments
+ * that don't have the tippecanoe binary on PATH (dev profile, test runners).
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+@ConditionalOnProperty(name = "homepedia.tiles.builder.enabled", havingValue = "true", matchIfMissing = true)
+public class CityTileBuilder {
+
+	private static final ObjectMapper MAPPER = new ObjectMapper();
+
+	private static final JsonFactory JSON_FACTORY = new JsonFactory();
+
+	// Metropolitan France (01..95, excluding 20 which is split into 2A/2B for
+	// admin codes but geo.api still exposes "20") + Corsica (2A, 2B) +
+	// overseas departments (971..976). Same set the geo.api.gouv.fr
+	// {@code GET /departements} endpoint enumerates.
+	private static final List<String> DEPARTMENTS = buildDepartmentCodes();
+
+	@Value("${homepedia.tiles.cities-path:/data/tiles/cities.mbtiles}")
+	private String mbtilesPath;
+
+	@Value("${homepedia.tiles.source-geojson:/data/tiles/communes-fr.geojson}")
+	private String sourceGeojsonPath;
+
+	@Value("${homepedia.tiles.geo-api-base-url:https://geo.api.gouv.fr}")
+	private String geoApiBaseUrl;
+
+	@Value("${homepedia.tiles.tippecanoe-bin:tippecanoe}")
+	private String tippecanoeBin;
+
+	@Value("${homepedia.tiles.rebuild-on-startup:true}")
+	private boolean rebuildOnStartup;
+
+	private final CityTileStatsRepository statsRepository;
+
+	private final VectorTileService vectorTileService;
+
+	private final AtomicBoolean running = new AtomicBoolean(false);
+
+	// Per-metric min/max across all communes, recomputed during enrichment.
+	// Frontend reads this through {@link TileController#metricRanges} so the
+	// choropleth legend can size itself without a {@code /stats/cities} round
+	// trip the size of the visible viewport. Volatile: the writer is the
+	// rebuild thread, the readers are HTTP request threads.
+	private volatile Map<String, MetricRange> metricRanges = Map.of();
+
+	public Map<String, MetricRange> getMetricRanges() {
+		return metricRanges;
+	}
+
+	public record MetricRange(Double min, Double max) {
+	}
+
+	// ApplicationReadyEvent + @Async dispatches through the Spring proxy so
+	// rebuild() actually runs off the main thread. Wiring this on
+	// @PostConstruct + this.rebuildAsync() bypasses the proxy (classic
+	// self-invocation gotcha) and would block startup until ~50 MB of
+	// polygons are fetched and tippecanoe finishes — the readiness probe
+	// fails long before that.
+	@Async
+	@EventListener(ApplicationReadyEvent.class)
+	public void onStartup() {
+		if (!rebuildOnStartup) {
+			return;
+		}
+		final var target = Path.of(mbtilesPath);
+		if (Files.exists(target)) {
+			return;
+		}
+		log.info("city tile builder: mbtiles missing at {}, starting initial build", target);
+		try {
+			rebuild();
+		} catch (Exception e) {
+			log.error("initial city tile build failed: {}", e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Fire-and-forget entry point — safe to call from a scheduler or a job
+	 * listener. Skips if a build is already in flight.
+	 */
+	@Async
+	public void rebuildAsync() {
+		try {
+			rebuild();
+		} catch (Exception e) {
+			log.error("city tile rebuild failed: {}", e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Synchronous rebuild. Surfaces the underlying exception so callers (admin
+	 * endpoint, tests) can fail loudly.
+	 */
+	public void rebuild() throws IOException, InterruptedException {
+		if (!running.compareAndSet(false, true)) {
+			log.info("city tile rebuild already running, skipping");
+			return;
+		}
+		final var start = System.currentTimeMillis();
+		try {
+			final var source = Path.of(sourceGeojsonPath);
+			ensurePolygonSource(source);
+
+			final var target = Path.of(mbtilesPath);
+			Files.createDirectories(target.getParent());
+
+			final var enrichedTmp = target.resolveSibling("communes-enriched.geojson.tmp");
+			final var mbtilesTmp = target.resolveSibling("cities.mbtiles.tmp");
+
+			try {
+				final var stats = loadStatsByCode();
+				metricRanges = computeRanges(stats.values());
+				enrich(source, enrichedTmp, stats);
+				runTippecanoe(enrichedTmp, mbtilesTmp);
+				Files.move(mbtilesTmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+				vectorTileService.reload();
+				log.info("city tiles rebuilt at {} in {} ms", target, System.currentTimeMillis() - start);
+			} finally {
+				Files.deleteIfExists(enrichedTmp);
+				Files.deleteIfExists(mbtilesTmp);
+			}
+		} finally {
+			running.set(false);
+		}
+	}
+
+	/** Visible for tests / admin endpoint to know whether a build is in flight. */
+	public boolean isRunning() {
+		return running.get();
+	}
+
+	private Map<String, MetricRange> computeRanges(java.util.Collection<CityTileStatsProjection> rows) {
+		final var ranges = new HashMap<String, MetricRange>();
+		ranges.put("population", rangeOf(rows, p -> nullableDouble(p.getPopulation())));
+		ranges.put("transactionCount", rangeOf(rows, p -> nullableDouble(p.getTransactionCount())));
+		ranges.put("averagePrice", rangeOf(rows, CityTileStatsProjection::getAveragePrice));
+		ranges.put("averagePricePerSqm", rangeOf(rows, CityTileStatsProjection::getAveragePricePerSqm));
+		// Density isn't a stored field — it's population / area. Compute on
+		// the fly so the frontend reads it through the same channel.
+		ranges.put("density", rangeOf(rows, p -> {
+			final var pop = p.getPopulation();
+			final var area = p.getArea();
+			return pop != null && area != null && area > 0 ? pop.doubleValue() / area : null;
+		}));
+		return Map.copyOf(ranges);
+	}
+
+	private static Double nullableDouble(Number n) {
+		return n != null ? n.doubleValue() : null;
+	}
+
+	private static MetricRange rangeOf(java.util.Collection<CityTileStatsProjection> rows,
+			java.util.function.Function<CityTileStatsProjection, Double> extractor) {
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
+		var hasAny = false;
+		for (final var r : rows) {
+			final var v = extractor.apply(r);
+			if (v == null || !Double.isFinite(v) || v <= 0) {
+				continue;
+			}
+			if (v < min) {
+				min = v;
+			}
+			if (v > max) {
+				max = v;
+			}
+			hasAny = true;
+		}
+		return hasAny ? new MetricRange(min, max) : new MetricRange(null, null);
+	}
+
+	private Map<String, CityTileStatsProjection> loadStatsByCode() {
+		final var rows = statsRepository.findAllForTiles();
+		final var byCode = new HashMap<String, CityTileStatsProjection>(rows.size() * 2);
+		for (final var r : rows) {
+			byCode.put(r.getCode(), r);
+		}
+		log.info("loaded stats for {} communes from city_dvf_yearly_stats", byCode.size());
+		return byCode;
+	}
+
+	/**
+	 * Stream-rewrites the FeatureCollection so we never hold all 35 k features in
+	 * memory at once (the file is ~50 MB; the in-memory Jackson tree would be 3-4×
+	 * that). For each feature we read the existing properties, merge in the matched
+	 * stats row, and emit. Order is preserved so tippecanoe sees the same feature
+	 * ordering as before.
+	 */
+	private void enrich(Path source, Path destination, Map<String, CityTileStatsProjection> statsByCode)
+			throws IOException {
+		try (var in = Files.newInputStream(source);
+				var parser = JSON_FACTORY.createParser(in);
+				var out = Files.newOutputStream(destination);
+				var generator = JSON_FACTORY.createGenerator(out)) {
+			generator.setCodec(MAPPER);
+			parser.setCodec(MAPPER);
+
+			expect(parser.nextToken(), JsonToken.START_OBJECT);
+			generator.writeStartObject();
+
+			while (parser.nextToken() != JsonToken.END_OBJECT) {
+				final var field = parser.currentName();
+				parser.nextToken();
+				if ("features".equals(field)) {
+					generator.writeArrayFieldStart("features");
+					expect(parser.currentToken(), JsonToken.START_ARRAY);
+					var enriched = 0;
+					while (parser.nextToken() != JsonToken.END_ARRAY) {
+						final var feature = MAPPER.<Map<String, Object>>readValue(parser,
+								MAPPER.getTypeFactory().constructMapType(Map.class, String.class, Object.class));
+						mergeStats(feature, statsByCode);
+						MAPPER.writeValue(generator, feature);
+						enriched++;
+					}
+					generator.writeEndArray();
+					log.info("enriched {} commune features", enriched);
+				} else {
+					// Pass through `type`, `crs`, etc. untouched.
+					generator.writeFieldName(field);
+					MAPPER.writeValue(generator, MAPPER.readTree(parser));
+				}
+			}
+			generator.writeEndObject();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void mergeStats(Map<String, Object> feature, Map<String, CityTileStatsProjection> statsByCode) {
+		final var properties = (Map<String, Object>) feature.get("properties");
+		if (properties == null) {
+			return;
+		}
+		final var code = (String) properties.get("code");
+		if (code == null) {
+			return;
+		}
+		final var stats = statsByCode.get(code);
+		if (stats == null) {
+			return;
+		}
+		// geo.api.gouv.fr already provides `population` and `surface` (in
+		// hectares). Our DB has population (more authoritative on recent
+		// INSEE releases) and area in km². Write the DB values under explicit
+		// keys so the frontend reads them deterministically; keep the
+		// geo.api `surface` field intact for backward compat readers.
+		putIfNonNull(properties, "population", stats.getPopulation());
+		putIfNonNull(properties, "areaKm2", stats.getArea());
+		properties.put("transactionCount", stats.getTransactionCount());
+		putIfNonNull(properties, "averagePrice", stats.getAveragePrice());
+		putIfNonNull(properties, "averagePricePerSqm", stats.getAveragePricePerSqm());
+	}
+
+	private static void putIfNonNull(Map<String, Object> map, String key, Object value) {
+		if (value != null) {
+			map.put(key, value);
+		}
+	}
+
+	private static void expect(JsonToken actual, JsonToken expected) throws IOException {
+		if (actual != expected) {
+			throw new IOException("expected " + expected + " but got " + actual);
+		}
+	}
+
+	private void ensurePolygonSource(Path source) throws IOException, InterruptedException {
+		if (Files.exists(source)) {
+			return;
+		}
+		log.info("polygons source missing at {}, fetching from {}", source, geoApiBaseUrl);
+		Files.createDirectories(source.getParent());
+
+		final var http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+				.followRedirects(HttpClient.Redirect.NORMAL).build();
+		final var tmp = source.resolveSibling("communes-fr.geojson.tmp");
+		try (var out = Files.newBufferedWriter(tmp, StandardCharsets.UTF_8);
+				var generator = JSON_FACTORY.createGenerator(out)) {
+			generator.setCodec(MAPPER);
+			generator.writeStartObject();
+			generator.writeStringField("type", "FeatureCollection");
+			generator.writeArrayFieldStart("features");
+
+			var totalFeatures = 0;
+			for (final var dept : DEPARTMENTS) {
+				final var url = URI.create(geoApiBaseUrl + "/departements/" + dept
+						+ "/communes?fields=nom,code,population,surface&format=geojson&geometry=contour");
+				final var request = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(60)).GET().build();
+				final var response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+				if (response.statusCode() != 200) {
+					throw new IOException("geo.api.gouv.fr returned " + response.statusCode() + " for " + dept);
+				}
+				try (var body = response.body();
+						var reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8));
+						var parser = JSON_FACTORY.createParser(reader)) {
+					parser.setCodec(MAPPER);
+					expect(parser.nextToken(), JsonToken.START_OBJECT);
+					while (parser.nextToken() != JsonToken.END_OBJECT) {
+						final var field = parser.currentName();
+						parser.nextToken();
+						if ("features".equals(field)) {
+							expect(parser.currentToken(), JsonToken.START_ARRAY);
+							while (parser.nextToken() != JsonToken.END_ARRAY) {
+								// Copy each feature node straight through. Avoids
+								// allocating a Map per commune.
+								generator.writeTree(parser.readValueAsTree());
+								totalFeatures++;
+							}
+						} else {
+							parser.skipChildren();
+						}
+					}
+				}
+				log.info("fetched polygons for dept {}", dept);
+			}
+
+			generator.writeEndArray();
+			generator.writeEndObject();
+			generator.flush();
+			log.info("polygons source fetched: {} features", totalFeatures);
+		}
+		Files.move(tmp, source, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+	}
+
+	private void runTippecanoe(Path source, Path destination) throws IOException, InterruptedException {
+		// Same flags as docs/vector-tiles.md so feature.id stability and zoom
+		// coverage match what the frontend already expects. `--force`
+		// overwrites the temp file if a previous run died mid-build.
+		final var pb = new ProcessBuilder(tippecanoeBin, "--output=" + destination, "--force", "--layer=cities",
+				"--minimum-zoom=9", "--maximum-zoom=14", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping",
+				"--simplification=10", "--no-tile-size-limit", source.toString());
+		pb.redirectErrorStream(true);
+		final var process = pb.start();
+		try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				log.info("tippecanoe: {}", line);
+			}
+		}
+		final var exit = process.waitFor();
+		if (exit != 0) {
+			throw new IOException("tippecanoe exited " + exit);
+		}
+	}
+
+	private static List<String> buildDepartmentCodes() {
+		final var codes = new java.util.ArrayList<String>();
+		for (int i = 1; i <= 95; i++) {
+			if (i == 20) {
+				codes.add("2A");
+				codes.add("2B");
+				continue;
+			}
+			codes.add(String.format("%02d", i));
+		}
+		codes.add("971");
+		codes.add("972");
+		codes.add("973");
+		codes.add("974");
+		codes.add("976");
+		return List.copyOf(codes);
+	}
+}

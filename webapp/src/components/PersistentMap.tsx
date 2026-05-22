@@ -14,6 +14,7 @@ import {
   useGeoRegions,
   useGeoWorldAdmin1,
   useRegionStats,
+  useTileMetricRanges,
   useTransactionHeatPoints,
   useTransactionMarkers,
 } from "@/api/hooks";
@@ -35,8 +36,11 @@ const WORLD_ZOOM_THRESHOLD = 5;
 // Below this zoom, we show regions; at or above, we switch to departments.
 const DEPARTMENT_ZOOM_THRESHOLD = 7;
 // Above this zoom, we auto-detect the department under the map center and
-// show its cities as sized markers.
-const CITY_DETAIL_ZOOM_THRESHOLD = 10;
+// show its cities as sized markers. Matches Tippecanoe's
+// {@code --minimum-zoom=9} so the vector-tile commune layer has data the
+// instant we cross the threshold; lowering it further would either need a
+// new mbtiles range or a fallback to the GeoJSON path.
+const CITY_DETAIL_ZOOM_THRESHOLD = 9;
 // Above this zoom, big cities split into their municipal arrondissements.
 const ARRONDISSEMENT_ZOOM_THRESHOLD = 12;
 // INSEE codes of the only three communes that publish municipal
@@ -390,23 +394,86 @@ export function PersistentMap() {
 
   // Backend stats for every commune code visible on screen — used to colour
   // the choropleth by averagePrice / €m² / transactionCount at city zoom.
+  // With vector tiles on, the per-commune values come baked into the MVT
+  // features so we skip this request entirely; the global metric range
+  // (legend, ratio computation) is served from /tiles/cities/metric-ranges.
   const cityStatCodes = useMemo(() => {
-    if (!showCityDetail || !cityLevelGeojson) return [];
+    if (!showCityDetail || useVectorTiles || !cityLevelGeojson) return [];
     const codes: string[] = [];
     for (const f of cityLevelGeojson.features) {
       const code = (f.properties as { code?: string } | null)?.code;
       if (code) codes.push(code);
     }
     return codes;
-  }, [showCityDetail, cityLevelGeojson]);
+  }, [showCityDetail, useVectorTiles, cityLevelGeojson]);
 
   const { data: cityStats } = useCityStats(cityStatCodes);
+  const { data: tileMetricRanges } = useTileMetricRanges();
   const cityStatsByCode = useMemo(() => {
     const map: Record<string, CityStats> = {};
     if (!cityStats) return map;
     for (const s of cityStats) map[s.code] = s;
     return map;
   }, [cityStats]);
+
+  // Extract the active metric directly from an MVT feature's properties.
+  // `CityTileBuilder` bakes `population`, `areaKm2`, `transactionCount`,
+  // `averagePrice` and `averagePricePerSqm` into each commune feature, so
+  // panning at city zoom no longer fans out a {@code /stats/cities} call
+  // per visible viewport. Returns null when the metric isn't applicable
+  // (e.g. `gdpPerCapita` at city level) so the layer falls back to
+  // `metricByCode`.
+  const metricFromFeature = useMemo(() => {
+    return (props: Record<string, unknown>): number | null => {
+      switch (metric) {
+        case "population": {
+          const v = props.population;
+          return typeof v === "number" ? v : null;
+        }
+        case "density": {
+          const pop = props.population;
+          const areaKm2 = props.areaKm2 ?? props.area;
+          // `surface` (hectares) is the geo.api.gouv.fr fallback shipped
+          // in legacy tiles; convert to km² so the choropleth ratio stays
+          // consistent across baked / unbaked features.
+          const areaFromHectares = props.surface;
+          const km2 =
+            typeof areaKm2 === "number"
+              ? areaKm2
+              : typeof areaFromHectares === "number"
+                ? areaFromHectares / 100
+                : null;
+          return typeof pop === "number" && km2 && km2 > 0 ? pop / km2 : null;
+        }
+        case "averagePrice": {
+          const v = props.averagePrice;
+          return typeof v === "number" ? v : null;
+        }
+        case "averagePricePerSqm": {
+          const v = props.averagePricePerSqm;
+          return typeof v === "number" ? v : null;
+        }
+        case "transactionCount": {
+          const v = props.transactionCount;
+          return typeof v === "number" ? v : null;
+        }
+        case "gdpPerCapita":
+          return null;
+      }
+    };
+  }, [metric]);
+
+  // Precomputed min/max for the current metric across every commune. Lets
+  // the choropleth legend size itself without the parent having to read
+  // every visible polygon's metric value first — important when the per-
+  // commune values live in tile features the parent can't introspect.
+  const tileChoroplethRange = useMemo(() => {
+    if (!useVectorTiles) return null;
+    const r = tileMetricRanges?.[metric];
+    if (!r || r.min == null || r.max == null) return null;
+    if (r.min === r.max) return null;
+    return { min: r.min, max: r.max };
+  }, [useVectorTiles, tileMetricRanges, metric]);
 
   const metricByCode = useMemo(() => {
     const map: Record<string, number | null> = {};
@@ -621,6 +688,8 @@ export function PersistentMap() {
         onMarkerClick={onMarkerClick}
         activeFeatureCode={activeFeatureCode}
         metricByCode={metricByCode}
+        metricFromFeature={metricFromFeature}
+        choroplethRange={tileChoroplethRange}
         metricLabel={METRIC_LABELS[metric]}
         precisionHeatPoints={heatEnabled ? precisionHeatPoints : undefined}
         transactionMarkers={markersEnabled ? transactionMarkers : undefined}

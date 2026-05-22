@@ -353,6 +353,21 @@ export function useDepartmentPrecomputedStats(departmentCode?: string) {
 }
 
 /**
+ * Per-metric min/max across every commune, computed once by
+ * {@code CityTileBuilder} during the tile rebuild. Used to size the
+ * choropleth legend when the vector-tile path is on so colouring doesn't
+ * wait on the slow {@code /stats/cities} request. Cached aggressively
+ * since the value only shifts after a DVF import.
+ */
+export function useTileMetricRanges() {
+  return useQuery({
+    queryKey: ["tiles", "metric-ranges"],
+    queryFn: () => api.tiles.metricRanges(),
+    staleTime: 30 * 60_000,
+  });
+}
+
+/**
  * Per-commune stats for the given INSEE codes. Codes are sorted before being
  * sent so panning the map within the same set hits the same TanStack Query
  * cache entry. Empty input short-circuits — no network call.

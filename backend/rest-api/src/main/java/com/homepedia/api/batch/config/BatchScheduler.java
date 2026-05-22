@@ -1,9 +1,11 @@
 package com.homepedia.api.batch.config;
 
 import com.homepedia.api.admin.AdminJobsService;
+import com.homepedia.api.batch.tiles.CityTileBuilder;
 import com.homepedia.api.events.BatchEvent;
 import com.homepedia.api.events.BatchEventPublisher;
 import com.homepedia.api.service.CacheInvalidationService;
+import org.springframework.beans.factory.ObjectProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -26,6 +28,10 @@ public class BatchScheduler {
 	private final JobExplorer jobExplorer;
 	private final BatchEventPublisher eventPublisher;
 	private final CacheInvalidationService cacheInvalidation;
+	// Optional: only present when homepedia.tiles.builder.enabled=true (the
+	// default). ObjectProvider lets dev/test profiles disable the builder
+	// without breaking the scheduler's wiring.
+	private final ObjectProvider<CityTileBuilder> cityTileBuilder;
 	private final Job inseeImportJob;
 	private final Job geoJsonImportJob;
 	private final Job dvfImportJob;
@@ -112,6 +118,12 @@ public class BatchScheduler {
 			eventPublisher.publish(BatchEvent.completed(name, execution.getStatus() + " in " + elapsed + " ms"));
 			cacheInvalidation.evictGeoAndRefdataAndStats();
 			cacheInvalidation.evictReviews();
+			if (job == dvfImportJob) {
+				// City tiles bake in the DVF-derived metrics that just
+				// changed. Fire-and-forget — the rebuild can take minutes
+				// and we don't want to block the scheduler thread.
+				cityTileBuilder.ifAvailable(CityTileBuilder::rebuildAsync);
+			}
 		} catch (Exception e) {
 			final var elapsed = System.currentTimeMillis() - start;
 			log.error("Scheduled job {} failed after {} ms: {}", name, elapsed, e.getMessage(), e);

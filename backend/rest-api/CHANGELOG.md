@@ -5,6 +5,17 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.53.0] - 2026-05-22
+
+### Features
+
+- feat(map): revert departments to zoom 7, push city detail to zoom 10
+- feat(map): show departments from zoom 8 (was 7)
+
+### Bug Fixes
+
+- fix(tiles): return 204 for empty tiles to silence DevTools 404 noise
+
 ## [3.52.0] - 2026-05-22
 
 ### Features

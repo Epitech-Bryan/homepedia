@@ -1,5 +1,15 @@
 # app
 
+## [0.44.0] - 2026-05-22
+
+### Features
+
+- feat(tiles): bake DVF stats into commune MVT features
+
+### Bug Fixes
+
+- fix(tiles): include batch.tiles package in JPA repository scan
+
 ## [0.43.1] - 2026-05-22
 
 ### Bug Fixes

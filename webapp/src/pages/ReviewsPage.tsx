@@ -55,9 +55,13 @@ export function ReviewsPage() {
   const [page, setPage] = useState(0);
 
   const { data: city, isLoading: cityLoading, error: cityError } = useCity(code);
-  const { data: sentiment } = useSentimentStats(code);
-  const { data: wordCloudData } = useWordCloud(code);
-  const { data: reviews } = useReviews(code, { page: String(page), size: "10" });
+  const { data: sentiment, isPending: sentimentPending } = useSentimentStats(code);
+  const { data: wordCloudData, isPending: wordCloudPending } = useWordCloud(code);
+  const {
+    data: reviews,
+    isPending: reviewsPending,
+    isFetching: reviewsFetching,
+  } = useReviews(code, { page: String(page), size: "10" });
 
   if (cityLoading) return <LoadingSpinner />;
   if (cityError) return <ErrorMessage message={cityError.message} />;
@@ -86,25 +90,45 @@ export function ReviewsPage() {
         <h1 className="text-xl font-bold tracking-tight mt-1">{city.name} — Avis</h1>
       </div>
 
-      {sentiment && (
-        <div className="space-y-3">
-          <Suspense fallback={null}>
-            <SentimentChart stats={sentiment} />
-          </Suspense>
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Avg. Score" value={sentiment.averageScore.toFixed(2)} />
-            <StatCard label="Total Reviews" value={sentiment.totalReviews} />
-          </div>
+      {sentimentPending ? (
+        <div className="rounded-lg border bg-card p-4">
+          <LoadingSpinner />
         </div>
+      ) : (
+        sentiment && (
+          <div className="space-y-3">
+            <Suspense fallback={null}>
+              <SentimentChart stats={sentiment} />
+            </Suspense>
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard label="Avg. Score" value={sentiment.averageScore.toFixed(2)} />
+              <StatCard label="Total Reviews" value={sentiment.totalReviews} />
+            </div>
+          </div>
+        )
       )}
 
-      {wordCloudData && Object.keys(wordCloudData).length > 0 && (
-        <WordCloud words={wordCloudData} />
+      {wordCloudPending ? (
+        <div className="rounded-lg border bg-card p-4">
+          <LoadingSpinner />
+        </div>
+      ) : (
+        wordCloudData &&
+        Object.keys(wordCloudData).length > 0 && <WordCloud words={wordCloudData} />
       )}
 
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold">Reviews</h2>
-        {reviewList.length === 0 ? (
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Reviews</h2>
+          {reviewsFetching && !reviewsPending && (
+            <span className="text-xs text-muted-foreground">Mise à jour…</span>
+          )}
+        </div>
+        {reviewsPending ? (
+          <div className="flex justify-center py-6">
+            <LoadingSpinner />
+          </div>
+        ) : reviewList.length === 0 ? (
           <p className="text-muted-foreground text-sm">No reviews available yet.</p>
         ) : (
           <div className="space-y-3">

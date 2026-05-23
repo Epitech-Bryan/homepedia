@@ -216,6 +216,12 @@ const MAP_STYLE_LABELS: Record<string, string> = {
   all: "All",
 };
 
+type MapBasemap = "voyager" | "satellite";
+const MAP_BASEMAP_LABELS: Record<MapBasemap, string> = {
+  voyager: "Plan",
+  satellite: "Satellite",
+};
+
 function extractValue(
   s: RegionStats | DepartmentStats | CityStats,
   metric: MapMetric,
@@ -242,6 +248,7 @@ export function PersistentMap() {
   const { pathname } = useLocation();
   const [metric, setMetric] = useState<MapMetric>("population");
   const [style, setStyle] = useState<MapStyle>("choropleth");
+  const [basemap, setBasemap] = useState<MapBasemap>("voyager");
   // Initial state matches FranceMap's INITIAL_CENTER/INITIAL_ZOOM: world
   // view with no upfront bias toward any country. The 4-tier zoom logic
   // takes over as soon as the user zooms in past 5.
@@ -861,6 +868,7 @@ export function PersistentMap() {
         transactionMarkers={markersEnabled ? transactionMarkers : undefined}
         useVectorTilesForCities={useVectorTiles}
         useVectorTilesForWorld={useWorldVectorTiles}
+        basemap={basemap}
         mapStyle={style}
         height="100%"
         onZoomChange={setZoom}
@@ -887,6 +895,18 @@ export function PersistentMap() {
           </SelectTrigger>
           <SelectContent>
             {Object.entries(MAP_STYLE_LABELS).map(([key, label]) => (
+              <SelectItem key={key} value={key}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={basemap} onValueChange={(v) => setBasemap(v as MapBasemap)}>
+          <SelectTrigger className="w-28 h-8 text-xs bg-background/90 backdrop-blur shadow-sm">
+            <SelectValue>{(v: string) => MAP_BASEMAP_LABELS[v as MapBasemap] ?? v}</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {Object.entries(MAP_BASEMAP_LABELS).map(([key, label]) => (
               <SelectItem key={key} value={key}>
                 {label}
               </SelectItem>

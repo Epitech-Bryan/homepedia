@@ -14,6 +14,8 @@ import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CityVectorGridLayer } from "@/components/CityVectorGridLayer";
 import { WorldVectorGridLayer } from "@/components/WorldVectorGridLayer";
+import { OsmPoiLayer } from "@/components/OsmPoiLayer";
+import { HoverAddress } from "@/components/HoverAddress";
 import { useComparableSales } from "@/api/hooks";
 import "leaflet/dist/leaflet.css";
 
@@ -134,6 +136,8 @@ interface FranceMapProps {
    * the PVC.
    */
   useVectorTilesForWorld?: boolean;
+  /** Background tiles style — switches between Carto Voyager (default) and Esri World Imagery satellite. */
+  basemap?: "voyager" | "satellite";
   mapStyle?: MapStyle;
   height?: string;
   onZoomChange?: (zoom: number) => void;
@@ -151,6 +155,43 @@ interface FranceMapProps {
  * them while staying light enough not to compete with the foreground at
  * world zoom.
  */
+/**
+ * Tracks the map's current zoom + bounds via {@link useMap} hooks and
+ * passes them down to a render-prop child. Saves every consumer from
+ * having to wire its own listeners.
+ */
+function MapStateProbe({
+  children,
+}: {
+  children: (s: {
+    zoom: number;
+    bounds: { south: number; west: number; north: number; east: number };
+  }) => React.ReactNode;
+}) {
+  const map = useMap();
+  const [state, setState] = useState(() => {
+    const b = map.getBounds();
+    return {
+      zoom: map.getZoom(),
+      bounds: { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() },
+    };
+  });
+  useEffect(() => {
+    const update = () => {
+      const b = map.getBounds();
+      setState({
+        zoom: map.getZoom(),
+        bounds: { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() },
+      });
+    };
+    map.on("moveend zoomend", update);
+    return () => {
+      map.off("moveend zoomend", update);
+    };
+  }, [map]);
+  return <>{children(state)}</>;
+}
+
 /**
  * Overlay tile layer that adds the OSM/CARTO street, city and POI labels
  * on top of the base raster. Mounted only past {@code minZoom} so the
@@ -681,6 +722,7 @@ function FranceMapComponent({
   transactionMarkers,
   useVectorTilesForCities = false,
   useVectorTilesForWorld = false,
+  basemap = "voyager",
   mapStyle = "choropleth",
   height = "500px",
   onZoomChange,
@@ -966,16 +1008,27 @@ function FranceMapComponent({
                 preferCanvas={true}
                 style={{ width: "100%", height: "100%", background: "#f4f1ec" }}
               >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
-                  subdomains="abcd"
-                  maxZoom={20}
-                />
+                {basemap === "satellite" ? (
+                  <TileLayer
+                    key="basemap-satellite"
+                    attribution="Imagery &copy; Esri, Maxar, Earthstar Geographics"
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    maxZoom={19}
+                  />
+                ) : (
+                  <TileLayer
+                    key="basemap-voyager"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
+                    subdomains="abcd"
+                    maxZoom={20}
+                  />
+                )}
                 {/* Street / city / POI labels kick in at z=9 — past that
                     point our own commune polygons stop being readable as
                     a substitute for actual place names, especially
-                    outside France where we don't ship any. */}
+                    outside France where we don't ship any. Same overlay
+                    works on both basemaps. */}
                 <ZoomGatedLabels minZoom={9} />
                 {baseGeojson && <BackdropCountriesLayer data={baseGeojson} />}
                 {/* In heat and bubbles modes the polygon borders compete
@@ -1049,6 +1102,16 @@ function FranceMapComponent({
                     metricLabel={metricLabel}
                   />
                 )}
+                {/* OSM POIs (museums / stations / schools / hospitals /
+                    parks / attractions) — only at z>=12 to keep Overpass
+                    happy and the screen readable. */}
+                <MapStateProbe>
+                  {({ zoom, bounds }) => <OsmPoiLayer bounds={bounds} zoom={zoom} minZoom={12} />}
+                </MapStateProbe>
+                {/* Reverse-geocode the cursor position via Nominatim
+                    when the user is zoomed in past z=12. Throttled
+                    client-side; safe against Nominatim fair-use. */}
+                <HoverAddress minZoom={12} />
                 {onZoomChange && <ZoomReporter onChange={onZoomChange} />}
                 {onCenterChange && <CenterReporter onChange={onCenterChange} />}
                 {onBoundsChange && <BoundsReporter onChange={onBoundsChange} />}

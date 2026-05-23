@@ -85,6 +85,10 @@ export const api = {
       fetchJson<GeoJSON.FeatureCollection>("/geo/belgium/municipalities"),
     worldAdmin1: () => fetchJson<GeoJSON.FeatureCollection>("/geo/world/admin1"),
     worldAdmin2: () => fetchJson<GeoJSON.FeatureCollection>("/geo/world/admin2"),
+    worldAdmin1Detail: (code: string) =>
+      fetchJson<WorldAdmin1Detail>(`/geo/world/admin1/${encodeURIComponent(code)}`),
+    worldSearch: (query: string, limit = 10) =>
+      fetchJson<WorldSearchResult[]>("/geo/world/search", { q: query, limit: String(limit) }),
     regions: () => fetchJson<GeoJSON.FeatureCollection>("/geo/regions"),
     departments: (regionCode?: string) =>
       fetchJson<GeoJSON.FeatureCollection>(
@@ -141,6 +145,32 @@ export interface RegionSummary {
   name: string;
   population: number;
   area: number;
+}
+
+/**
+ * Detailed view of one world admin-1 region — returned by
+ * {@code GET /api/geo/world/admin1/{code}}. Mirrors {@code WorldAdmin1Detail}
+ * on the backend.
+ */
+export interface WorldAdmin1Detail {
+  code: string;
+  name: string | null;
+  country: string | null;
+  population: number | null;
+  area: number | null;
+  gdpNominal: number | null;
+  gdpPerCapita: number | null;
+  /** [minX, minY, maxX, maxY] in WGS84 — used by the page to fly-to the region. */
+  bbox: [number, number, number, number];
+  admin2Count: number;
+}
+
+/** Row returned by the global search for a world admin-1 hit. */
+export interface WorldSearchResult {
+  code: string;
+  name: string | null;
+  country: string | null;
+  population: number | null;
 }
 
 export interface DepartmentSummary {

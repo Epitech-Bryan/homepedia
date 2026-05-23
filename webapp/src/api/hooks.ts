@@ -345,6 +345,36 @@ export function useGeoWorldAdmin2(enabled: boolean) {
   });
 }
 
+/**
+ * One world admin-1 region's detail (name, country, baked Wikidata
+ * metrics, bbox, admin-2 child count). Cached server-side; client cache
+ * is permanent within a session.
+ */
+export function useWorldAdmin1Detail(code: string | undefined) {
+  return useQuery({
+    queryKey: ["geo", "world", "admin1", code],
+    queryFn: () => api.geo.worldAdmin1Detail(code as string),
+    enabled: !!code,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
+/**
+ * Substring search across world admin-1 region names. Hit when the user
+ * types in the global QuickSearch bar; the backend hits a 30-min Redis
+ * cache for repeated queries.
+ */
+export function useWorldSearch(query: string) {
+  const trimmed = query.trim();
+  return useQuery({
+    queryKey: ["geo", "world", "search", trimmed],
+    queryFn: () => api.geo.worldSearch(trimmed),
+    enabled: trimmed.length >= 2,
+    staleTime: 60_000,
+  });
+}
+
 export function useGeoRegions() {
   return useQuery({ queryKey: ["geo", "regions"], queryFn: () => api.geo.regions() });
 }

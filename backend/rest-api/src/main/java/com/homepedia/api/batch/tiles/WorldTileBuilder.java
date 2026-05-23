@@ -113,6 +113,7 @@ public class WorldTileBuilder {
 			final var countriesSrc = target.resolveSibling("world-countries.src.geojson");
 			final var admin1Src = target.resolveSibling("world-admin1.src.geojson");
 			final var admin2Src = target.resolveSibling("world-admin2.src.geojson");
+			final var admin3Src = target.resolveSibling("world-admin3.src.geojson");
 			final var mbtilesTmp = target.resolveSibling("world.mbtiles.tmp");
 			try {
 				materialise("data/countries.geojson", countriesSrc);
@@ -122,7 +123,11 @@ public class WorldTileBuilder {
 				// instead of needing a separate GeoJSON fetch.
 				enrichAdmin1Source(admin1Src);
 				materialise("data/world-admin2.geojson", admin2Src);
-				runTippecanoe(countriesSrc, admin1Src, admin2Src, mbtilesTmp);
+				// admin-3 (European communes / Gemeinden) is best-effort:
+				// the resource only ships when fetched separately. Missing
+				// file falls back to a 3-layer mbtiles like before.
+				final var admin3Available = tryMaterialise("data/world-admin3.geojson", admin3Src);
+				runTippecanoe(countriesSrc, admin1Src, admin2Src, admin3Available ? admin3Src : null, mbtilesTmp);
 				Files.move(mbtilesTmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 				worldTileService.reload();
 				log.info("world tiles rebuilt at {} in {} ms", target, System.currentTimeMillis() - start);
@@ -130,10 +135,26 @@ public class WorldTileBuilder {
 				Files.deleteIfExists(countriesSrc);
 				Files.deleteIfExists(admin1Src);
 				Files.deleteIfExists(admin2Src);
+				Files.deleteIfExists(admin3Src);
 				Files.deleteIfExists(mbtilesTmp);
 			}
 		} finally {
 			running.set(false);
+		}
+	}
+
+	/** Returns false instead of throwing when the classpath resource is missing. */
+	private boolean tryMaterialise(String classpath, Path target) {
+		final var resource = new ClassPathResource(classpath);
+		if (!resource.exists()) {
+			return false;
+		}
+		try (var in = resource.getInputStream(); var out = Files.newOutputStream(target)) {
+			in.transferTo(out);
+			return true;
+		} catch (IOException e) {
+			log.warn("failed to materialise {}: {}", classpath, e.getMessage());
+			return false;
 		}
 	}
 
@@ -230,18 +251,35 @@ public class WorldTileBuilder {
 	 * the moment we cross into region scale; admin-2 kicks in when individual
 	 * countries fill the viewport.
 	 */
-	private void runTippecanoe(Path countriesSrc, Path admin1Src, Path admin2Src, Path destination)
+	private void runTippecanoe(Path countriesSrc, Path admin1Src, Path admin2Src, Path admin3Src, Path destination)
 			throws IOException, InterruptedException {
-		final var pb = new ProcessBuilder(tippecanoeBin, "--output=" + destination, "--force", "--minimum-zoom=0",
-				"--maximum-zoom=10", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping",
-				"--no-tile-size-limit", "-L",
-				"{\"layer\":\"countries\",\"file\":\"" + countriesSrc
-						+ "\",\"minzoom\":0,\"maxzoom\":4,\"simplification\":14}",
-				"-L",
-				"{\"layer\":\"admin1\",\"file\":\"" + admin1Src
-						+ "\",\"minzoom\":5,\"maxzoom\":7,\"simplification\":10}",
-				"-L", "{\"layer\":\"admin2\",\"file\":\"" + admin2Src
-						+ "\",\"minzoom\":8,\"maxzoom\":10,\"simplification\":8}");
+		final var args = new java.util.ArrayList<String>();
+		args.add(tippecanoeBin);
+		args.add("--output=" + destination);
+		args.add("--force");
+		args.add("--minimum-zoom=0");
+		// max-zoom is 12 when we have admin-3 (communes/Gemeinden), 10
+		// otherwise — beyond that the city MVT pipeline takes over for FR
+		// and the world layer drops off.
+		args.add("--maximum-zoom=" + (admin3Src != null ? "12" : "10"));
+		args.add("--drop-densest-as-needed");
+		args.add("--extend-zooms-if-still-dropping");
+		args.add("--no-tile-size-limit");
+		args.add("-L");
+		args.add("{\"layer\":\"countries\",\"file\":\"" + countriesSrc
+				+ "\",\"minzoom\":0,\"maxzoom\":4,\"simplification\":14}");
+		args.add("-L");
+		args.add("{\"layer\":\"admin1\",\"file\":\"" + admin1Src
+				+ "\",\"minzoom\":5,\"maxzoom\":7,\"simplification\":10}");
+		args.add("-L");
+		args.add("{\"layer\":\"admin2\",\"file\":\"" + admin2Src
+				+ "\",\"minzoom\":8,\"maxzoom\":10,\"simplification\":8}");
+		if (admin3Src != null) {
+			args.add("-L");
+			args.add("{\"layer\":\"admin3\",\"file\":\"" + admin3Src
+					+ "\",\"minzoom\":11,\"maxzoom\":12,\"simplification\":6}");
+		}
+		final var pb = new ProcessBuilder(args);
 		pb.redirectErrorStream(true);
 		final var process = pb.start();
 		try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {

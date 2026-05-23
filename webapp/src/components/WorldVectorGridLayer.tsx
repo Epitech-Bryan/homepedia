@@ -123,10 +123,21 @@ export function WorldVectorGridLayer({
         countries: (props: Record<string, unknown>) => styleForChoroplethable(props),
         admin1: (props: Record<string, unknown>) => styleForChoroplethable(props),
         admin2: () => styleForAdmin2(),
+        // admin-3 (European communes / Gemeinden) — same fill treatment as
+        // admin-2 but a slightly thinner border so the two levels visually
+        // nest when both appear during the z=11 transition.
+        admin3: () => ({
+          fillColor: "#ffffff",
+          fill: true,
+          fillOpacity: 0.04,
+          weight: 0.3,
+          color: "#374151",
+          interactive: true,
+        }),
       },
       interactive: true,
       minNativeZoom: 0,
-      maxNativeZoom: 10,
+      maxNativeZoom: 12,
       getFeatureId: (f: { properties?: { code?: string } }) => f.properties?.code,
     });
 

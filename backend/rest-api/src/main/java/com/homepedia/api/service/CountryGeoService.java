@@ -210,6 +210,183 @@ public class CountryGeoService {
 		}
 	}
 
+	/**
+	 * Per-feature detail returned by {@link #getWorldAdmin1Detail(String)}. Mirrors
+	 * what the world admin-1 region page needs: name + country code + raw metrics +
+	 * bbox so the map can fly-to. {@code admin2Count} lets the page render a "12
+	 * sub-regions" link without a second roundtrip.
+	 */
+	public record WorldAdmin1Detail(String code, String name, String country, Long population, Double area,
+			Double gdpNominal, Double gdpPerCapita, double[] bbox, int admin2Count) {
+	}
+
+	/**
+	 * Search result row for {@link #searchWorldAdmin1(String, int)}. The
+	 * QuickSearch component renders these as "label / sub" rows alongside FR
+	 * regions / departments / communes.
+	 */
+	public record WorldSearchResult(String code, String name, String country, Long population) {
+	}
+
+	/**
+	 * Substring search across world admin-1 features. ~3k entries — a linear scan
+	 * is fine and beats the complexity of wiring trigram indexes for a non-FR layer
+	 * that doesn't have a DB table behind it. Case- and accent-insensitive via
+	 * {@link java.text.Normalizer}.
+	 */
+	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'world-search:' + #query.toLowerCase() + ':' + #limit")
+	public List<WorldSearchResult> searchWorldAdmin1(final String query, final int limit) {
+		final var folded = fold(query);
+		if (folded.isBlank()) {
+			return List.of();
+		}
+		try {
+			loadAndEnrichWorldAdmin1();
+		} catch (IOException e) {
+			return List.of();
+		}
+		try {
+			final var root = (ObjectNode) objectMapper.readTree(worldAdmin1Cache);
+			final var features = (ArrayNode) root.get("features");
+			final var out = new java.util.ArrayList<WorldSearchResult>();
+			for (JsonNode f : features) {
+				if (out.size() >= limit * 3) {
+					break; // grab a buffer so the pop-sort below has options
+				}
+				final var props = f.get("properties");
+				if (props == null) {
+					continue;
+				}
+				final var name = props.path("name").asText("");
+				if (!fold(name).contains(folded)) {
+					continue;
+				}
+				out.add(new WorldSearchResult(props.path("code").asText(null), name, props.path("country").asText(null),
+						props.path("population").isMissingNode() ? null : props.get("population").asLong()));
+			}
+			// Sort by population descending so "Berlin" beats "Berlin (district)"
+			// when both match; null pops sink to the bottom.
+			out.sort((a, b) -> Long.compare(b.population == null ? 0 : b.population,
+					a.population == null ? 0 : a.population));
+			return out.stream().limit(limit).toList();
+		} catch (IOException e) {
+			return List.of();
+		}
+	}
+
+	private static String fold(String s) {
+		if (s == null)
+			return "";
+		final var nfd = java.text.Normalizer.normalize(s.toLowerCase(java.util.Locale.ROOT),
+				java.text.Normalizer.Form.NFD);
+		final var sb = new StringBuilder(nfd.length());
+		for (int i = 0; i < nfd.length(); i++) {
+			final char c = nfd.charAt(i);
+			if (Character.getType(c) != Character.NON_SPACING_MARK) {
+				sb.append(c);
+			}
+		}
+		return sb.toString().trim();
+	}
+
+	/**
+	 * Look up a single admin-1 feature by its GADM GID_1 (e.g. {@code DEU.2_1}).
+	 * Returns null if the code is unknown. Hot path: cached behind Redis with the
+	 * feature code as key — the world-admin1 GeoJSON is parsed once and the
+	 * per-code lookup is a HashMap probe.
+	 */
+	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'world-admin1-detail:' + #code", unless = "#result == null")
+	public WorldAdmin1Detail getWorldAdmin1Detail(final String code) {
+		try {
+			loadAndEnrichWorldAdmin1();
+		} catch (IOException e) {
+			throw new IllegalStateException("World admin-1 GeoJSON not available", e);
+		}
+		try {
+			final var root = (ObjectNode) objectMapper.readTree(worldAdmin1Cache);
+			final var features = (ArrayNode) root.get("features");
+			for (JsonNode f : features) {
+				final var props = f.get("properties");
+				if (props == null) {
+					continue;
+				}
+				if (!code.equals(props.path("code").asText(null))) {
+					continue;
+				}
+				final var bbox = computeBbox(f.get("geometry"));
+				final var country = props.path("country").asText(null);
+				final var admin2Count = countAdmin2Children(country, code);
+				return new WorldAdmin1Detail(code, props.path("name").asText(null), country,
+						props.path("population").isMissingNode() ? null : props.get("population").asLong(),
+						props.path("area").isMissingNode() ? null : props.get("area").asDouble(),
+						props.path("gdpNominal").isMissingNode() ? null : props.get("gdpNominal").asDouble(),
+						props.path("gdpPerCapita").isMissingNode() ? null : props.get("gdpPerCapita").asDouble(), bbox,
+						admin2Count);
+			}
+			return null;
+		} catch (IOException e) {
+			throw new IllegalStateException("Failed to parse world admin-1", e);
+		}
+	}
+
+	private int countAdmin2Children(String countryCode, String admin1Code) {
+		if (countryCode == null) {
+			return 0;
+		}
+		try {
+			final var resource = new ClassPathResource("data/world-admin2.geojson");
+			if (!resource.exists()) {
+				return 0;
+			}
+			try (var in = resource.getInputStream()) {
+				final var root = (ObjectNode) objectMapper.readTree(in);
+				final var features = (ArrayNode) root.get("features");
+				var count = 0;
+				for (JsonNode f : features) {
+					final var props = f.get("properties");
+					if (props == null) {
+						continue;
+					}
+					if (admin1Code.equals(props.path("parent_code").asText(null))) {
+						count++;
+					}
+				}
+				return count;
+			}
+		} catch (IOException e) {
+			return 0;
+		}
+	}
+
+	private double[] computeBbox(JsonNode geometry) {
+		final var bbox = new double[]{Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY,
+				Double.NEGATIVE_INFINITY};
+		walkCoordinates(geometry.get("coordinates"), bbox);
+		return bbox;
+	}
+
+	private void walkCoordinates(JsonNode coords, double[] bbox) {
+		if (coords == null || !coords.isArray()) {
+			return;
+		}
+		if (coords.size() > 0 && coords.get(0).isNumber()) {
+			final var x = coords.get(0).asDouble();
+			final var y = coords.get(1).asDouble();
+			if (x < bbox[0])
+				bbox[0] = x;
+			if (y < bbox[1])
+				bbox[1] = y;
+			if (x > bbox[2])
+				bbox[2] = x;
+			if (y > bbox[3])
+				bbox[3] = y;
+			return;
+		}
+		for (JsonNode child : coords) {
+			walkCoordinates(child, bbox);
+		}
+	}
+
 	private record Admin1Metrics(Long population, Double area, Double gdpNominal) {
 	}
 

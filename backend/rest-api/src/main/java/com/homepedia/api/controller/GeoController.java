@@ -9,6 +9,7 @@ import static com.homepedia.common.indicator.GeographicLevel.REGION;
 import com.homepedia.api.service.CountryGeoService;
 import com.homepedia.api.service.GeoService;
 import com.homepedia.common.geo.dto.FeatureCollection;
+import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -59,6 +60,24 @@ public class GeoController {
 	@GetMapping(value = "/world/admin2", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<String> getWorldAdmin2() {
 		return ResponseEntity.ok(countryGeoService.getWorldAdmin2GeoJson());
+	}
+
+	@Operation(summary = "World admin-1 region detail", description = "Per-feature detail for one admin-1 region keyed by its GADM GID_1 (e.g. DEU.2_1). Returns name, country, baked Wikidata metrics, bounding box and a count of admin-2 children. 404 when the code is unknown.")
+	@GetMapping(value = "/world/admin1/{code}", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<CountryGeoService.WorldAdmin1Detail> getWorldAdmin1Detail(@PathVariable final String code) {
+		final var detail = countryGeoService.getWorldAdmin1Detail(code);
+		if (detail == null) {
+			return ResponseEntity.notFound().build();
+		}
+		return ResponseEntity.ok(detail);
+	}
+
+	@Operation(summary = "World admin-1 search", description = "Substring match against the world admin-1 region names (~3k entries). Case- and accent-insensitive. Results sorted by population descending so the populous regions surface first.")
+	@GetMapping(value = "/world/search", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<List<CountryGeoService.WorldSearchResult>> searchWorld(
+			@org.springframework.web.bind.annotation.RequestParam("q") final String query,
+			@org.springframework.web.bind.annotation.RequestParam(value = "limit", defaultValue = "10") final int limit) {
+		return ResponseEntity.ok(countryGeoService.searchWorldAdmin1(query, Math.min(Math.max(limit, 1), 50)));
 	}
 
 	@Operation(summary = "Region boundaries", description = "GeoJSON FeatureCollection of all French regions")

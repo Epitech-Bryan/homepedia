@@ -765,6 +765,19 @@ export function PersistentMap() {
 
   const onFeatureClick = useCallback(
     (code: string) => {
+      // GADM admin codes always contain a "." (e.g. "DEU.2_1" admin-1,
+      // "DEU.2.5_1" admin-2) whereas FR INSEE codes are pure digits. Route
+      // world admin-1 clicks to the dedicated detail page; admin-2 has no
+      // page yet so we just highlight (no-op nav).
+      if (code.includes(".")) {
+        const dots = (code.match(/\./g) ?? []).length;
+        if (dots === 1) {
+          navigate(`/world/admin1/${encodeURIComponent(code)}`);
+        } else {
+          setClickedFeatureCode(code);
+        }
+        return;
+      }
       // At city zoom, polygons are commune outlines — clicking them goes to
       // the city detail page (same as marker click). Otherwise just zoom.
       if (showCityDetail) {

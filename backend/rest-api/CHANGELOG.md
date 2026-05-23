@@ -5,6 +5,16 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.63.0] - 2026-05-23
+
+### Features
+
+- feat(world): admin-2 for USA/BRA/MEX/CHN/IND + ~50 missing countries
+
+### Bug Fixes
+
+- fix(ui): format Select trigger labels instead of leaking raw values
+
 ## [3.62.1] - 2026-05-23
 
 ### Bug Fixes

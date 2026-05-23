@@ -1,5 +1,11 @@
 # app
 
+## [0.53.5] - 2026-05-23
+
+### Bug Fixes
+
+- fix(map): create backdrop pane synchronously to avoid _removePath crash
+
 ## [0.53.4] - 2026-05-23
 
 ### Bug Fixes

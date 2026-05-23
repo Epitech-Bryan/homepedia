@@ -15,6 +15,7 @@ import { ErrorMessage } from "@/components/ErrorMessage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Lazy-load the charts so Recharts (~113 kB gzip) only enters the network
 // graph when this city actually has data to plot. Communes without DVF
@@ -239,8 +240,17 @@ export function CityPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {reviewsPending ? (
-              <div className="flex justify-center py-2">
-                <LoadingSpinner />
+              <div className="space-y-3">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="border-l-2 border-border pl-3 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-4 w-16" />
+                    </div>
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-4/5" />
+                  </div>
+                ))}
               </div>
             ) : (
               previewReviews.map((review) => (

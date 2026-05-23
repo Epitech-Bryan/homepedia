@@ -4,7 +4,9 @@ import { useCity, useReviews, useWordCloud, useSentimentStats } from "@/api/hook
 import { StatCard } from "@/components/StatCard";
 import { WordCloud } from "@/components/WordCloud";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { LoadingCheckpoints } from "@/components/LoadingCheckpoints";
 import { ErrorMessage } from "@/components/ErrorMessage";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Sentiment donut uses Recharts (~113 kB gzip). Lazy so the bundle only
 // loads when reviews actually exist — pages without sentiment data skip
@@ -90,14 +92,26 @@ export function ReviewsPage() {
         <h1 className="text-xl font-bold tracking-tight mt-1">{city.name} — Avis</h1>
       </div>
 
+      <LoadingCheckpoints
+        checkpoints={[
+          { label: "Sentiment", done: !sentimentPending },
+          { label: "Nuage de mots", done: !wordCloudPending },
+          { label: "Avis", done: !reviewsPending },
+        ]}
+      />
+
       {sentimentPending ? (
-        <div className="rounded-lg border bg-card p-4">
-          <LoadingSpinner />
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <Skeleton className="h-40 w-full" />
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-16" />
+            <Skeleton className="h-16" />
+          </div>
         </div>
       ) : (
         sentiment && (
           <div className="space-y-3">
-            <Suspense fallback={null}>
+            <Suspense fallback={<Skeleton className="h-40 w-full" />}>
               <SentimentChart stats={sentiment} />
             </Suspense>
             <div className="grid grid-cols-2 gap-3">
@@ -110,7 +124,7 @@ export function ReviewsPage() {
 
       {wordCloudPending ? (
         <div className="rounded-lg border bg-card p-4">
-          <LoadingSpinner />
+          <Skeleton className="h-32 w-full" />
         </div>
       ) : (
         wordCloudData &&
@@ -125,8 +139,22 @@ export function ReviewsPage() {
           )}
         </div>
         {reviewsPending ? (
-          <div className="flex justify-center py-6">
-            <LoadingSpinner />
+          <div className="space-y-3">
+            {Array.from({ length: 5 }, (_, i) => (
+              <Card key={i}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-5 w-20" />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-5/6" />
+                  <Skeleton className="h-3 w-2/3" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : reviewList.length === 0 ? (
           <p className="text-muted-foreground text-sm">No reviews available yet.</p>

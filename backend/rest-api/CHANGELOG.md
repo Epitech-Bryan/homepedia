@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.67.0] - 2026-05-23
+
+### Features
+
+- feat(pois): backend proxy + Redis 7d cache in front of Overpass
+
 ## [3.66.0] - 2026-05-23
 
 ### Features

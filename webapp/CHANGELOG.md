@@ -1,5 +1,11 @@
 # app
 
+## [0.64.0] - 2026-05-23
+
+### Features
+
+- feat(pois): backend proxy + Redis 7d cache in front of Overpass
+
 ## [0.63.0] - 2026-05-23
 
 ### Features

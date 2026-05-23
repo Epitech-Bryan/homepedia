@@ -1,6 +1,7 @@
 package com.homepedia.api.controller;
 
 import com.homepedia.api.admin.AdminJobsService;
+import com.homepedia.api.batch.tiles.WorldTileBuilder;
 import com.homepedia.api.batch.dvf.CityDvfStatsAggregator;
 import com.homepedia.api.batch.tiles.CityTileBuilder;
 import com.homepedia.api.service.CacheInvalidationService;
@@ -44,6 +45,7 @@ public class AdminController {
 	private final TransactionsPartitionStatsService transactionsPartitionStatsService;
 	private final CityDvfStatsAggregator cityDvfStatsAggregator;
 	private final ObjectProvider<CityTileBuilder> cityTileBuilder;
+	private final ObjectProvider<WorldTileBuilder> worldTileBuilder;
 
 	@Operation(summary = "Recompute all statistics", description = "Evicts stats caches, optionally triggers Spark DVF aggregation, and warms up caches.")
 	@PostMapping("/recompute-stats")
@@ -116,6 +118,23 @@ public class AdminController {
 		log.info("Manual tile rebuild triggered");
 		builder.rebuildAsync();
 		return ResponseEntity.accepted().body(new TriggerResponse("tiles", "dispatched", Instant.now()));
+	}
+
+	@Operation(summary = "Rebuild world vector tiles", description = "Triggers WorldTileBuilder.rebuildAsync — bakes countries + admin-1 + admin-2 into world.mbtiles. ~2-3 min in the pod. Run after adding new countries to the world-admin* GeoJSON sources.")
+	@PostMapping("/tiles/world/rebuild")
+	public ResponseEntity<TriggerResponse> rebuildWorldTiles() {
+		final var builder = worldTileBuilder.getIfAvailable();
+		if (builder == null) {
+			return ResponseEntity.status(503)
+					.body(new TriggerResponse("world-tiles", "builder disabled", Instant.now()));
+		}
+		if (builder.isRunning()) {
+			return ResponseEntity.status(409)
+					.body(new TriggerResponse("world-tiles", "already running", Instant.now()));
+		}
+		log.info("Manual world tile rebuild triggered");
+		builder.rebuildAsync();
+		return ResponseEntity.accepted().body(new TriggerResponse("world-tiles", "dispatched", Instant.now()));
 	}
 
 	@Operation(summary = "Refresh pre-aggregated DVF stats for one year", description = "Recomputes city_dvf_yearly_stats for the given year from transactions_<year>. Useful to repair the pre-agg without re-running the full import (e.g. after an ANALYZE/aggregator failure).")

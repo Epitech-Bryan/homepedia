@@ -304,6 +304,9 @@ export function PersistentMap() {
   // tile pipeline already ships those polygons with stats baked into the
   // MVT properties. Hoisted here so the city-level useMemos can short-circuit.
   const useVectorTiles = showCityDetail && import.meta.env.VITE_USE_VECTOR_TILES === "true";
+  // Same feature flag for the world layer (countries + admin-1 + admin-2)
+  // — independent toggle so we can roll one out without the other.
+  const useWorldVectorTiles = import.meta.env.VITE_USE_WORLD_TILES === "true";
 
   // Pre-fetch every layer so zoom-driven switching is instant.
   const { data: geoCountries } = useGeoCountries();
@@ -835,6 +838,7 @@ export function PersistentMap() {
         precisionHeatPoints={heatEnabled ? precisionHeatPoints : undefined}
         transactionMarkers={markersEnabled ? transactionMarkers : undefined}
         useVectorTilesForCities={useVectorTiles}
+        useVectorTilesForWorld={useWorldVectorTiles}
         mapStyle={style}
         height="100%"
         onZoomChange={setZoom}

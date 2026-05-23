@@ -14,6 +14,7 @@ COPY webapp/ webapp/
 # the two failure modes: requests firing = different bug; no requests =
 # the isolation fix isn't enough.
 ENV VITE_USE_VECTOR_TILES=true
+ENV VITE_USE_WORLD_TILES=true
 RUN pnpm --filter webapp build
 
 FROM docker.io/library/nginx:alpine

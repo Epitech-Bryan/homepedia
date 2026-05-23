@@ -3,6 +3,7 @@ package com.homepedia.api.controller;
 import com.homepedia.api.batch.tiles.CityTileBuilder;
 import com.homepedia.api.batch.tiles.CityTileBuilder.MetricRange;
 import com.homepedia.api.service.VectorTileService;
+import com.homepedia.api.service.WorldVectorTileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -45,6 +46,8 @@ public class TileController {
 
 	private final VectorTileService vectorTileService;
 
+	private final WorldVectorTileService worldVectorTileService;
+
 	// Optional: only present when the tile builder is wired in (default in
 	// prod, off in dev/test). When absent, /metric-ranges responds with an
 	// empty map so the frontend just falls back to its existing range
@@ -63,6 +66,17 @@ public class TileController {
 			return ResponseEntity.badRequest().build();
 		}
 		return vectorTileService.getCityTile(z, x, y).map(this::okPbf).orElseGet(this::noContentPbf);
+	}
+
+	@Operation(summary = "World vector tile", description = "MVT/PBF tile of the world-level polygons (countries at z=0..4, admin-1 at z=5..7, admin-2 at z=8..10). Replaces the previous SVG GeoJSON layers for the world / region scale — drops the per-pan parse + paint cost on ~25k features. Same 204 fallback as the cities endpoint when a tile is outside the source bbox.")
+	@GetMapping(value = "/world/{z}/{x}/{y}.pbf", produces = "application/vnd.mapbox-vector-tile")
+	public ResponseEntity<byte[]> worldTile(@Parameter(description = "Zoom level") @PathVariable final int z,
+			@Parameter(description = "Tile column (XYZ)") @PathVariable final int x,
+			@Parameter(description = "Tile row (XYZ)") @PathVariable final int y) {
+		if (z < 0 || z > 22 || x < 0 || y < 0) {
+			return ResponseEntity.badRequest().build();
+		}
+		return worldVectorTileService.getWorldTile(z, x, y).map(this::okPbf).orElseGet(this::noContentPbf);
 	}
 
 	/**

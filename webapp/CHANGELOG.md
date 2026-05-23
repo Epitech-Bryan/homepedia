@@ -1,5 +1,11 @@
 # app
 
+## [0.58.0] - 2026-05-23
+
+### Features
+
+- feat(admin): add rebuild tiles button + auto evict geo cache
+
 ## [0.57.0] - 2026-05-23
 
 ### Features

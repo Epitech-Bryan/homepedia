@@ -1,5 +1,11 @@
 # app
 
+## [0.60.0] - 2026-05-23
+
+### Features
+
+- feat(admin): expose ExitStatus message under FAILED jobs
+
 ## [0.59.0] - 2026-05-23
 
 ### Features

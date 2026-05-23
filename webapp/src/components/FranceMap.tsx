@@ -151,6 +151,46 @@ interface FranceMapProps {
  * them while staying light enough not to compete with the foreground at
  * world zoom.
  */
+/**
+ * Overlay tile layer that adds the OSM/CARTO street, city and POI labels
+ * on top of the base raster. Mounted only past {@code minZoom} so the
+ * world-level browse stays clean (the choropleth + admin polygons are the
+ * point at low zoom), and turns on at city scale where the user
+ * suddenly needs to know the names of streets, towns and major POIs
+ * outside France — without those labels the map looks empty past z=10
+ * anywhere we don't ship our own commune polygons.
+ *
+ * <p>
+ * Uses {@code voyager_only_labels} (transparent except for text) so it
+ * stacks cleanly above the {@code voyager_nolabels} base used at every
+ * zoom for consistent styling.
+ */
+function ZoomGatedLabels({ minZoom }: { minZoom: number }) {
+  const map = useMap();
+  const [zoom, setZoom] = useState(() => map.getZoom());
+  useEffect(() => {
+    const update = () => setZoom(map.getZoom());
+    map.on("zoomend", update);
+    return () => {
+      map.off("zoomend", update);
+    };
+  }, [map]);
+  if (zoom < minZoom) return null;
+  return (
+    <TileLayer
+      // Empty attribution — the base TileLayer already credits OSM/CARTO,
+      // duplicating it would crowd the map corner.
+      attribution=""
+      url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png"
+      subdomains="abcd"
+      maxZoom={20}
+      // Below the gate we don't fetch anything, so no rebuild churn when
+      // panning at lower zooms.
+      opacity={1}
+    />
+  );
+}
+
 function BackdropCountriesLayer({ data }: { data: GeoJSON.FeatureCollection }) {
   const map = useMap();
   const layerRef = useRef<L.GeoJSON | null>(null);
@@ -932,6 +972,11 @@ function FranceMapComponent({
                   subdomains="abcd"
                   maxZoom={20}
                 />
+                {/* Street / city / POI labels kick in at z=9 — past that
+                    point our own commune polygons stop being readable as
+                    a substitute for actual place names, especially
+                    outside France where we don't ship any. */}
+                <ZoomGatedLabels minZoom={9} />
                 {baseGeojson && <BackdropCountriesLayer data={baseGeojson} />}
                 {/* In heat and bubbles modes the polygon borders compete
                     visually with the gradient/markers — drop the foreground

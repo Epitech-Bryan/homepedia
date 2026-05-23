@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.65.0] - 2026-05-23
+
+### Features
+
+- feat(world): admin-1 detail page + global search + admin-3 MVT layer
+
 ## [3.64.0] - 2026-05-23
 
 ### Features

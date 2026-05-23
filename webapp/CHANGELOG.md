@@ -1,5 +1,13 @@
 # app
 
+## [0.61.0] - 2026-05-23
+
+### Features
+
+- feat(world): admin-1 detail page + global search + admin-3 MVT layer
+- feat(world): admin-1 round 4 — +50 missing countries + GDP backfill
+- feat(world): admin-2 for USA/BRA/MEX/CHN/IND + ~50 missing countries
+
 ## [0.60.1] - 2026-05-23
 
 ### Bug Fixes

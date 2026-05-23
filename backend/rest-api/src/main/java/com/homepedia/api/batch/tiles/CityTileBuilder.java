@@ -624,9 +624,9 @@ public class CityTileBuilder {
 						+ "\",\"minzoom\":4,\"maxzoom\":6,\"simplification\":12}",
 				"-L",
 				"{\"layer\":\"departments\",\"file\":\"" + departmentsSrc
-						+ "\",\"minzoom\":7,\"maxzoom\":9,\"simplification\":10}",
+						+ "\",\"minzoom\":7,\"maxzoom\":8,\"simplification\":10}",
 				"-L", "{\"layer\":\"cities\",\"file\":\"" + communesSrc
-						+ "\",\"minzoom\":10,\"maxzoom\":14,\"simplification\":8}");
+						+ "\",\"minzoom\":9,\"maxzoom\":14,\"simplification\":8}");
 		pb.redirectErrorStream(true);
 		final var process = pb.start();
 		try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {

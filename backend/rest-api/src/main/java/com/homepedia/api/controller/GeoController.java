@@ -55,6 +55,12 @@ public class GeoController {
 		return ResponseEntity.ok(countryGeoService.getWorldAdmin1GeoJson());
 	}
 
+	@Operation(summary = "World admin-2 (counties/districts/Kreise)", description = "Simplified GADM 4.1 admin-2 boundaries (~3 km tolerance) for ~18 European countries — DEU Kreise, GBR districts, ITA province, etc. Lets the map render sub-region detail past zoom 7 outside France. Excludes FR/BE (covered by their own dedicated endpoints).")
+	@GetMapping(value = "/world/admin2", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<String> getWorldAdmin2() {
+		return ResponseEntity.ok(countryGeoService.getWorldAdmin2GeoJson());
+	}
+
 	@Operation(summary = "Region boundaries", description = "GeoJSON FeatureCollection of all French regions")
 	@GetMapping(GEO_REGIONS)
 	public ResponseEntity<FeatureCollection> getRegionBoundaries() {

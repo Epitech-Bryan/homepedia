@@ -120,7 +120,20 @@ export function WorldVectorGridLayer({
       }
     ).vectorGrid.protobuf(url, {
       vectorTileLayerStyles: {
-        countries: (props: Record<string, unknown>) => styleForChoroplethable(props),
+        // Countries: rendered transparent + non-interactive at the MVT
+        // level. The SVG `wrappedCountries` LeafletGeoJSON underneath
+        // carries the normalised metric props (population, gdpNominal,
+        // density, transactionCount-via-stats) and handles the
+        // choropleth + hit-test. The MVT source ships raw Natural
+        // Earth fields (POP_EST / GDP_MD / ISO_A3) which don't match
+        // the frontend's lookup keys — drawing them would paint a
+        // gray sheet over the SVG choropleth and break every world-
+        // zoom metric (transactionCount most visibly).
+        countries: () => ({
+          fill: false,
+          stroke: false,
+          interactive: false,
+        }),
         admin1: (props: Record<string, unknown>) => styleForChoroplethable(props),
         admin2: () => styleForAdmin2(),
         // admin-3 (European communes / Gemeinden) — same fill treatment as

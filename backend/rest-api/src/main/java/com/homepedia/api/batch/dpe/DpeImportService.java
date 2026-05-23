@@ -148,6 +148,17 @@ public class DpeImportService {
 			}
 
 			final var inseeCode = stripQuotes(StringUtils.trimToNull(fields[0]));
+			// `indicators.geographic_code` is varchar(9) (sized for IRIS codes).
+			// The ADEME dataset's `code_insee_ban` is usually a 5-char INSEE
+			// commune code, but a small fraction of rows ship composite BAN
+			// addresses like `13201_AB12` or raw OSM-style identifiers that
+			// blow past 9 chars and crash the batch INSERT. Skip them — the
+			// 5-char check is also a cheap defence against malformed CSV
+			// where a quote-stripped value spilled across fields.
+			if (inseeCode != null && inseeCode.length() > 9) {
+				log.debug("Skipping DPE row with over-long code: {}", inseeCode);
+				return null;
+			}
 			final var dpeLabel = stripQuotes(StringUtils.trimToNull(fields[1]));
 			final var gesLabel = stripQuotes(StringUtils.trimToNull(fields[2]));
 			final var year = fields.length > 3 ? ParseUtils.parseInteger(stripQuotes(fields[3])) : null;

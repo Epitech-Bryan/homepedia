@@ -1,5 +1,13 @@
 # app
 
+## [0.59.0] - 2026-05-23
+
+### Features
+
+- feat(world): MVT pipeline for countries + admin-1 + admin-2
+- feat(world): +48 admin-2 countries with adaptive simplification
+- feat(world): +30 admin-1 countries (Africa/MENA/Central America/Pacific)
+
 ## [0.58.0] - 2026-05-23
 
 ### Features

@@ -978,19 +978,26 @@ function FranceMapComponent({
                 {transactionMarkers && transactionMarkers.length > 0 && (
                   <TransactionMarkerLayer markers={transactionMarkers} />
                 )}
-                {useVectorTilesForCities && (
-                  <CityVectorGridLayer
+                {/* World layer must mount BEFORE the city layer so the
+                    latter ends up on top in Leaflet's stacking order.
+                    Without this, at z=9-10 (where the city MVT band
+                    z=9-14 overlaps the world admin-2 band z=8-10) the
+                    World canvas eats every click — even over France
+                    where the world tile is empty — because Leaflet
+                    routes events to the last-added layer first. */}
+                {useVectorTilesForWorld && (
+                  <WorldVectorGridLayer
                     metricFromFeature={metricFromFeature}
-                    metricByCode={metricByCode}
                     range={choroplethRange}
                     palette={CHOROPLETH_SCALE}
                     onFeatureClick={onFeatureClick}
                     metricLabel={metricLabel}
                   />
                 )}
-                {useVectorTilesForWorld && (
-                  <WorldVectorGridLayer
+                {useVectorTilesForCities && (
+                  <CityVectorGridLayer
                     metricFromFeature={metricFromFeature}
+                    metricByCode={metricByCode}
                     range={choroplethRange}
                     palette={CHOROPLETH_SCALE}
                     onFeatureClick={onFeatureClick}

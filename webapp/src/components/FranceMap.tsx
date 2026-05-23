@@ -153,6 +153,20 @@ function BackdropCountriesLayer({ data }: { data: GeoJSON.FeatureCollection }) {
     if (z >= 13) return 2.5;
     return 0.5 + (z - 4) * (2 / 9);
   };
+  // Dedicated pane so the backdrop SVG never intercepts events. The default
+  // overlayPane (z 400) sits above the tilePane (z 200) where the MVT
+  // commune layer lives, and even with `interactive: false` on each path
+  // the parent <svg> stays `pointer-events: auto` and swallows mousemove
+  // — breaking hover on the vector-tile choropleth underneath. Setting
+  // `pointer-events: none` on the pane itself lets every event fall
+  // through to the canvas below regardless of z-order.
+  useEffect(() => {
+    if (!map.getPane("backdrop")) {
+      const pane = map.createPane("backdrop");
+      pane.style.zIndex = "350";
+      pane.style.pointerEvents = "none";
+    }
+  }, [map]);
   useEffect(() => {
     const update = () => {
       const layer = layerRef.current;
@@ -172,6 +186,7 @@ function BackdropCountriesLayer({ data }: { data: GeoJSON.FeatureCollection }) {
       // choropleth, no events — purely contextual.
       key={`base-${data.features.length}`}
       data={data}
+      pane="backdrop"
       style={{
         color: "#64748b",
         weight: weightForZoom(map.getZoom()),

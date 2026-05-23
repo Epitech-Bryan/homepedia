@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { Map, X, Search, Compass, ShieldCheck, LogIn, LogOut, BookOpen } from "lucide-react";
 import { PersistentMap } from "@/components/PersistentMap";
 import { LoginDialog } from "@/components/LoginDialog";
-import { useRegions, useDepartments, useCitySearch } from "@/api/hooks";
+import { useRegions, useDepartments, useCitySearch, useWorldSearch } from "@/api/hooks";
 import { useAuth } from "@/auth/AuthContext";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ function QuickSearch() {
   }, [query]);
 
   const { data: cityPage } = useCitySearch(debounced);
+  const { data: worldHits } = useWorldSearch(debounced);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -68,8 +69,22 @@ function QuickSearch() {
         key: `c-${c.inseeCode}`,
       });
     }
-    return results.slice(0, 10);
-  }, [query, regions, departments, cityPage]);
+    // World admin-1 hits (Bavaria, Texas, Tokyo prefecture, etc.) come
+    // last so French data stays on top — the typical user is FR-focused
+    // and would be surprised if "Provence" surfaced Cape Province first.
+    for (const w of worldHits ?? []) {
+      if (!w.code) continue;
+      const pop = w.population ? `${w.population.toLocaleString("fr-FR")} hab.` : null;
+      const sub = [w.country, "admin-1 monde", pop].filter(Boolean).join(" · ");
+      results.push({
+        label: w.name ?? w.code,
+        sub,
+        to: `/world/admin1/${encodeURIComponent(w.code)}`,
+        key: `w-${w.code}`,
+      });
+    }
+    return results.slice(0, 12);
+  }, [query, regions, departments, cityPage, worldHits]);
 
   useEffect(() => {
     if (!open) return;
@@ -93,7 +108,7 @@ function QuickSearch() {
       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
       <Input
         type="text"
-        placeholder="Régions, départements, communes…"
+        placeholder="Régions, communes, monde…"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);

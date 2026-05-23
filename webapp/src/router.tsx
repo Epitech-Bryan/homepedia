@@ -14,6 +14,9 @@ const DepartmentPage = lazy(() =>
   import("@/pages/DepartmentPage").then((m) => ({ default: m.DepartmentPage })),
 );
 const CityPage = lazy(() => import("@/pages/CityPage").then((m) => ({ default: m.CityPage })));
+const WorldRegionPage = lazy(() =>
+  import("@/pages/WorldRegionPage").then((m) => ({ default: m.WorldRegionPage })),
+);
 const ExplorerPage = lazy(() =>
   import("@/pages/ExplorerPage").then((m) => ({ default: m.ExplorerPage })),
 );
@@ -73,6 +76,7 @@ export const router = createBrowserRouter([
       { path: "regions/:code", element: withSuspense(<RegionPage />) },
       { path: "departments/:code", element: withSuspense(<DepartmentPage />) },
       { path: "cities/:code", element: withSuspense(<CityPage />) },
+      { path: "world/admin1/:code", element: withSuspense(<WorldRegionPage />) },
       { path: "cities/:code/reviews", element: withSuspense(<ReviewsPage />) },
       { path: "explorer", element: withSuspense(<ExplorerPage />) },
       { path: "admin", element: withSuspense(<AdminPage />) },

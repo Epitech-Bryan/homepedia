@@ -1,5 +1,12 @@
 # app
 
+## [0.60.1] - 2026-05-23
+
+### Bug Fixes
+
+- fix(ui): format Select trigger labels instead of leaking raw values
+- fix(dpe): skip rows whose insee code exceeds the varchar(9) column
+
 ## [0.60.0] - 2026-05-23
 
 ### Features

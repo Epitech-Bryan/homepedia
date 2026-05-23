@@ -506,10 +506,19 @@ export function AdminPage() {
                 </div>
               )}
               {(error || (s?.lastStatus && s.lastStatus !== "COMPLETED" && !running)) && (
-                <div className="px-3 pb-3 text-xs">
+                <div className="px-3 pb-3 text-xs space-y-1">
                   {error && <span className="text-destructive">{error}</span>}
                   {!error && s?.lastStatus && s.lastStatus !== "COMPLETED" && !running && (
-                    <span className="text-amber-600">Dernier run : {s.lastStatus}</span>
+                    <>
+                      <div>
+                        <span className="text-amber-600">Dernier run : {s.lastStatus}</span>
+                      </div>
+                      {s.lastExitMessage && (
+                        <div className="font-mono text-[10px] text-muted-foreground break-words">
+                          {s.lastExitMessage}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

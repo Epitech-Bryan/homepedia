@@ -38,6 +38,12 @@ const DevopsSchemaPage = lazy(() =>
 const DataSchemaPage = lazy(() =>
   import("@/pages/schemas/DataSchemaPage").then((m) => ({ default: m.DataSchemaPage })),
 );
+const MapSchemaPage = lazy(() =>
+  import("@/pages/schemas/MapSchemaPage").then((m) => ({ default: m.MapSchemaPage })),
+);
+const SparkSchemaPage = lazy(() =>
+  import("@/pages/schemas/SparkSchemaPage").then((m) => ({ default: m.SparkSchemaPage })),
+);
 const NotFoundPage = lazy(() =>
   import("@/pages/NotFoundPage").then((m) => ({ default: m.NotFoundPage })),
 );
@@ -78,6 +84,8 @@ export const router = createBrowserRouter([
           { path: "architecture", element: withSuspense(<ArchitectureSchemaPage />) },
           { path: "db", element: withSuspense(<DbSchemaPage />) },
           { path: "data", element: withSuspense(<DataSchemaPage />) },
+          { path: "map", element: withSuspense(<MapSchemaPage />) },
+          { path: "spark", element: withSuspense(<SparkSchemaPage />) },
           { path: "devops", element: withSuspense(<DevopsSchemaPage />) },
         ],
       },

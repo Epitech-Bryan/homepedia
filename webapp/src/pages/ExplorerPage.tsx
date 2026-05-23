@@ -24,6 +24,19 @@ import type { TransactionSummary } from "@/api/client";
 
 const PAGE_SIZE = 20;
 
+// Sentinel used as Select value when the filter is cleared. Base UI's
+// SelectItem requires a non-empty string value, so we can't pass "" — and
+// undefined would lose Select's controlled-component contract. The render
+// helpers below map this back to a human label inside the trigger.
+const ALL = "__all__";
+
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  MAISON: "Maison",
+  APPARTEMENT: "Appartement",
+  DEPENDANCE: "Dépendance",
+  LOCAL: "Local",
+};
+
 export function ExplorerPage() {
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [page, setPage] = useState(0);
@@ -47,7 +60,7 @@ export function ExplorerPage() {
     setPage(0);
     setFilters((prev) => {
       const next = Object.fromEntries(Object.entries(prev).filter(([k]) => k !== key));
-      if (value && value !== "__all__") {
+      if (value && value !== ALL) {
         next[key] = value;
       }
       if (key === "regionCode") {
@@ -85,14 +98,18 @@ export function ExplorerPage() {
             <div className="space-y-1 sm:col-span-2">
               <label className="text-xs font-medium text-muted-foreground">Region</label>
               <Select
-                value={filters.regionCode ?? "__all__"}
+                value={filters.regionCode ?? ALL}
                 onValueChange={(v) => updateFilter("regionCode", v)}
               >
                 <SelectTrigger className="w-full h-8 text-xs">
-                  <SelectValue placeholder="All regions" />
+                  <SelectValue placeholder="All regions">
+                    {(v: string) =>
+                      v === ALL ? "All regions" : (regions?.find((r) => r.code === v)?.name ?? v)
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">All regions</SelectItem>
+                  <SelectItem value={ALL}>All regions</SelectItem>
                   {(regions ?? []).map((r) => (
                     <SelectItem key={r.code} value={r.code}>
                       {r.name}
@@ -105,14 +122,20 @@ export function ExplorerPage() {
             <div className="space-y-1 sm:col-span-2">
               <label className="text-xs font-medium text-muted-foreground">Department</label>
               <Select
-                value={filters.departmentCode ?? "__all__"}
+                value={filters.departmentCode ?? ALL}
                 onValueChange={(v) => updateFilter("departmentCode", v)}
               >
                 <SelectTrigger className="w-full h-8 text-xs">
-                  <SelectValue placeholder="All depts" />
+                  <SelectValue placeholder="All depts">
+                    {(v: string) => {
+                      if (v === ALL) return "All departments";
+                      const d = departments.find((dep) => dep.code === v);
+                      return d ? `${d.name} (${v})` : v;
+                    }}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">All departments</SelectItem>
+                  <SelectItem value={ALL}>All departments</SelectItem>
                   {departments.map((d) => (
                     <SelectItem key={d.code} value={d.code}>
                       {d.name} ({d.code})
@@ -124,15 +147,14 @@ export function ExplorerPage() {
 
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Year</label>
-              <Select
-                value={filters.year ?? "__all__"}
-                onValueChange={(v) => updateFilter("year", v)}
-              >
+              <Select value={filters.year ?? ALL} onValueChange={(v) => updateFilter("year", v)}>
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="All years" />
+                  <SelectValue placeholder="All years">
+                    {(v: string) => (v === ALL ? "All years" : v)}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">All years</SelectItem>
+                  <SelectItem value={ALL}>All years</SelectItem>
                   {[2024, 2023, 2022, 2021, 2020, 2019].map((y) => (
                     <SelectItem key={y} value={y.toString()}>
                       {y}
@@ -145,18 +167,21 @@ export function ExplorerPage() {
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Type</label>
               <Select
-                value={filters.propertyType ?? "__all__"}
+                value={filters.propertyType ?? ALL}
                 onValueChange={(v) => updateFilter("propertyType", v)}
               >
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="All types" />
+                  <SelectValue placeholder="All types">
+                    {(v: string) => (v === ALL ? "All types" : (PROPERTY_TYPE_LABELS[v] ?? v))}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__all__">All types</SelectItem>
-                  <SelectItem value="MAISON">Maison</SelectItem>
-                  <SelectItem value="APPARTEMENT">Appartement</SelectItem>
-                  <SelectItem value="DEPENDANCE">Dépendance</SelectItem>
-                  <SelectItem value="LOCAL">Local</SelectItem>
+                  <SelectItem value={ALL}>All types</SelectItem>
+                  {Object.entries(PROPERTY_TYPE_LABELS).map(([code, label]) => (
+                    <SelectItem key={code} value={code}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

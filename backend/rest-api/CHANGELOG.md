@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.60.0] - 2026-05-23
+
+### Features
+
+- feat(world): +30 admin-1 countries (Africa/MENA/Central America/Pacific)
+- feat(admin): add rebuild tiles button + auto evict geo cache
+
 ## [3.59.0] - 2026-05-23
 
 ### Features

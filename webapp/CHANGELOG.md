@@ -1,5 +1,11 @@
 # app
 
+## [0.54.0] - 2026-05-23
+
+### Features
+
+- feat(tiles): bake IRIS layer for sub-commune drilldown at z=13-14
+
 ## [0.53.5] - 2026-05-23
 
 ### Bug Fixes

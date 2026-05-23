@@ -5,6 +5,19 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.57.0] - 2026-05-23
+
+### Features
+
+- feat(tiles): bake IRIS layer for sub-commune drilldown at z=13-14
+
+### Bug Fixes
+
+- fix(map): create backdrop pane synchronously to avoid _removePath crash
+- perf(webapp): useDeferredValue on bounds, unbundle recharts, SW tile cache
+- fix(map): backdrop pane with pointer-events:none so MVT hover works
+- perf(map): debounce center + skip city-level fetches under vector tiles
+
 ## [3.56.0] - 2026-05-23
 
 ### Features

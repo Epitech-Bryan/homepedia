@@ -1,5 +1,11 @@
 # app
 
+## [0.53.2] - 2026-05-23
+
+### Bug Fixes
+
+- perf(map): debounce center + skip city-level fetches under vector tiles
+
 ## [0.53.1] - 2026-05-23
 
 ### Bug Fixes

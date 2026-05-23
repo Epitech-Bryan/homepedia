@@ -13,9 +13,9 @@
  * that the old cached tiles must NOT be served. Routine rebuilds (same
  * mbtiles shape, refreshed stats) are picked up transparently via SWR.
  */
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const TILE_CACHE = `homepedia-tiles-${CACHE_VERSION}`;
-const TILE_PATTERN = /^\/api\/tiles\/cities\/\d+\/\d+\/\d+\.pbf$/;
+const TILE_PATTERN = /^\/api\/tiles\/(cities|world)\/\d+\/\d+\/\d+\.pbf$/;
 
 self.addEventListener("install", () => {
   // Take over the moment the SW is parsed. No precache step — the cache

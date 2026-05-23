@@ -13,6 +13,7 @@ import "leaflet.heat";
 import type { Layer, LeafletMouseEvent, PathOptions } from "leaflet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CityVectorGridLayer } from "@/components/CityVectorGridLayer";
+import { WorldVectorGridLayer } from "@/components/WorldVectorGridLayer";
 import { useComparableSales } from "@/api/hooks";
 import "leaflet/dist/leaflet.css";
 
@@ -125,6 +126,14 @@ interface FranceMapProps {
    * the VectorGrid overlay mounts.
    */
   useVectorTilesForCities?: boolean;
+  /**
+   * When true, render the world layers (countries, admin-1, admin-2)
+   * through the {@code /api/tiles/world} MVT pipeline instead of the
+   * SVG GeoJSON path. Behind a feature flag so the rollout can be
+   * staged: SVG keeps working until the world.mbtiles is present in
+   * the PVC.
+   */
+  useVectorTilesForWorld?: boolean;
   mapStyle?: MapStyle;
   height?: string;
   onZoomChange?: (zoom: number) => void;
@@ -631,6 +640,7 @@ function FranceMapComponent({
   precisionHeatPoints,
   transactionMarkers,
   useVectorTilesForCities = false,
+  useVectorTilesForWorld = false,
   mapStyle = "choropleth",
   height = "500px",
   onZoomChange,
@@ -972,6 +982,15 @@ function FranceMapComponent({
                   <CityVectorGridLayer
                     metricFromFeature={metricFromFeature}
                     metricByCode={metricByCode}
+                    range={choroplethRange}
+                    palette={CHOROPLETH_SCALE}
+                    onFeatureClick={onFeatureClick}
+                    metricLabel={metricLabel}
+                  />
+                )}
+                {useVectorTilesForWorld && (
+                  <WorldVectorGridLayer
+                    metricFromFeature={metricFromFeature}
                     range={choroplethRange}
                     palette={CHOROPLETH_SCALE}
                     onFeatureClick={onFeatureClick}

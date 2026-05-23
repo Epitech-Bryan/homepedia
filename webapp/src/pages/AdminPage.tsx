@@ -7,6 +7,7 @@ import {
   fetchJobsStatus,
   triggerImport,
   triggerTilesRebuild,
+  triggerWorldTilesRebuild,
   IMPORT_JOBS,
   JobAlreadyRunningError,
   CACHES,
@@ -84,6 +85,9 @@ export function AdminPage() {
   const [tilesRebuildPending, setTilesRebuildPending] = useState(false);
   const [tilesRebuildError, setTilesRebuildError] = useState<string | null>(null);
   const [tilesRebuildAt, setTilesRebuildAt] = useState<number | null>(null);
+  const [worldTilesRebuildPending, setWorldTilesRebuildPending] = useState(false);
+  const [worldTilesRebuildError, setWorldTilesRebuildError] = useState<string | null>(null);
+  const [worldTilesRebuildAt, setWorldTilesRebuildAt] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/", { replace: true });
@@ -227,6 +231,32 @@ export function AdminPage() {
       }
     } finally {
       setTilesRebuildPending(false);
+    }
+  };
+
+  // Same pattern as onRebuildTiles but for the world.mbtiles pipeline —
+  // countries + admin-1 + admin-2 baked into one mbtiles. Faster (~2-3 min)
+  // since the GeoJSON sources are already on the PVC.
+  const onRebuildWorldTiles = async () => {
+    setWorldTilesRebuildPending(true);
+    setWorldTilesRebuildError(null);
+    try {
+      await triggerWorldTilesRebuild();
+      try {
+        await evictCache("geo");
+        setCacheEvictedAt((prev) => ({ ...prev, geo: Date.now() }));
+      } catch {
+        // non-fatal
+      }
+      setWorldTilesRebuildAt(Date.now());
+    } catch (err) {
+      if (err instanceof JobAlreadyRunningError) {
+        setWorldTilesRebuildError("Un rebuild world est déjà en cours dans le pod.");
+      } else {
+        setWorldTilesRebuildError(err instanceof Error ? err.message : "Erreur inconnue");
+      }
+    } finally {
+      setWorldTilesRebuildPending(false);
     }
   };
 
@@ -532,6 +562,47 @@ export function AdminPage() {
               Rebuild lancé. Le swap atomique du mbtiles aura lieu dans ~15-25 min ; rafraîchis la
               map après pour voir les nouveaux contours (arrondissements Paris/Lyon/Marseille +
               IRIS).
+            </span>
+          </div>
+        )}
+      </Card>
+
+      <Card className="border bg-background">
+        <CardContent className="p-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-sm font-medium">Rebuild MVT monde</span>
+            <span className="text-xs text-muted-foreground">
+              Pays + admin-1 (~110 pays) + admin-2 (~66 pays) → <code>world.mbtiles</code>. ~2-3 min
+              dans le pod.{" "}
+              {worldTilesRebuildAt
+                ? `Dernier déclenchement ${formatRelative(new Date(worldTilesRebuildAt).toISOString())}`
+                : "Aucun déclenchement durant cette session"}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onRebuildWorldTiles}
+            disabled={worldTilesRebuildPending}
+          >
+            {worldTilesRebuildPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Layers className="h-3 w-3" />
+            )}
+            Rebuild world
+          </Button>
+        </CardContent>
+        {worldTilesRebuildError && (
+          <div className="px-3 pb-3 text-xs">
+            <span className="text-destructive">{worldTilesRebuildError}</span>
+          </div>
+        )}
+        {worldTilesRebuildAt && !worldTilesRebuildError && (
+          <div className="px-3 pb-3 text-xs">
+            <span className="text-emerald-600">
+              Rebuild world lancé. Dans ~2-3 min, le nouveau mbtiles est en place et le navigateur
+              charge les nouvelles tuiles dès le prochain pan/zoom.
             </span>
           </div>
         )}

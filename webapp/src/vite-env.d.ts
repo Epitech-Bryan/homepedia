@@ -10,6 +10,12 @@ interface ImportMetaEnv {
    * GeoJSON fetched from geo.api.gouv.fr.
    */
   readonly VITE_USE_VECTOR_TILES?: string;
+  /**
+   * When set to "true", the world layers (countries, admin-1, admin-2)
+   * are rendered through the {@code /api/tiles/world} MVT endpoint
+   * instead of the SVG GeoJSON path. Independent of VITE_USE_VECTOR_TILES.
+   */
+  readonly VITE_USE_WORLD_TILES?: string;
   /** Backend origin used in dev — Vite proxies /api to this target. */
   readonly VITE_API_TARGET?: string;
 }

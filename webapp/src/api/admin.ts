@@ -163,3 +163,22 @@ export async function triggerTilesRebuild(): Promise<void> {
     throw new Error(`Failed to trigger tiles rebuild: ${res.status} ${res.statusText}`);
   }
 }
+
+/**
+ * Triggers an async rebuild of the world vector tiles (world.mbtiles —
+ * countries + admin-1 + admin-2 for ~110 / 66 countries respectively).
+ * Faster than the cities rebuild (~2-3 min) since the source files are
+ * already on the PVC.
+ */
+export async function triggerWorldTilesRebuild(): Promise<void> {
+  const res = await fetch(`${BASE_URL}/tiles/world/rebuild`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (res.status === 409) {
+    throw new JobAlreadyRunningError("world-tiles");
+  }
+  if (!res.ok) {
+    throw new Error(`Failed to trigger world tiles rebuild: ${res.status} ${res.statusText}`);
+  }
+}

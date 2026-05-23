@@ -46,6 +46,11 @@ public class CacheConfig implements CachingConfigurer {
 	public static final String CACHE_REFDATA = "refdata";
 	public static final String CACHE_STATS = "stats";
 	public static final String CACHE_REVIEWS = "reviews";
+	// OSM POI proxy cache — Overpass is rate-limited (~1 req/s on the
+	// public instance) so we hold each (bbox, type) result for a week.
+	// POIs don't move; the only reason to refetch is the rare new opening
+	// of a museum/station/etc. Far better than DDoSing Overpass.
+	public static final String CACHE_POIS = "pois";
 
 	// Bump the version suffix whenever the on-disk serialisation format
 	// changes (Jackson typing strategy, value class shape, etc.) so the
@@ -83,7 +88,8 @@ public class CacheConfig implements CachingConfigurer {
 
 		final var perCache = Map.of(CACHE_GEO, defaults.entryTtl(Duration.ofHours(24)), CACHE_REFDATA,
 				defaults.entryTtl(Duration.ofHours(12)), CACHE_STATS, defaults.entryTtl(Duration.ofMinutes(30)),
-				CACHE_REVIEWS, defaults.entryTtl(Duration.ofMinutes(15)));
+				CACHE_REVIEWS, defaults.entryTtl(Duration.ofMinutes(15)), CACHE_POIS,
+				defaults.entryTtl(Duration.ofDays(7)));
 
 		final var manager = RedisCacheManager.builder(connectionFactory).cacheDefaults(defaults)
 				.withInitialCacheConfigurations(perCache).transactionAware().build();

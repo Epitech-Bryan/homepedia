@@ -258,6 +258,46 @@
   "ARG.8_1": {
     "population": 1425578
   },
+  "ARM.10_1": {
+    "area": 2704.0,
+    "population": 114940
+  },
+  "ARM.11_1": {
+    "area": 2308.0,
+    "population": 47369
+  },
+  "ARM.1_1": {
+    "area": 2756.0,
+    "population": 128941
+  },
+  "ARM.2_1": {
+    "area": 2090.0,
+    "population": 260367
+  },
+  "ARM.3_1": {
+    "area": 1242.0,
+    "population": 253493
+  },
+  "ARM.4_1": {
+    "area": 227.0,
+    "population": 1106300
+  },
+  "ARM.5_1": {
+    "area": 5349.0,
+    "population": 209669
+  },
+  "ARM.6_1": {
+    "area": 2086.0,
+    "population": 269883
+  },
+  "ARM.7_1": {
+    "area": 3799.0,
+    "population": 222805
+  },
+  "ARM.8_1": {
+    "area": 2681.0,
+    "population": 235484
+  },
   "AUS.10_1": {
     "population": 7074468
   },
@@ -317,6 +357,46 @@
   },
   "AUT.9_1": {
     "population": 2028289
+  },
+  "AZE.6_1": {
+    "area": 70.0,
+    "population": 51300
+  },
+  "BDI.13_1": {
+    "area": 1836.26,
+    "population": 632409
+  },
+  "BDI.15_1": {
+    "area": 1473.86,
+    "population": 660717
+  },
+  "BDI.16_1": {
+    "area": 1959.45,
+    "population": 333510
+  },
+  "BDI.1_1": {
+    "area": 1089.04,
+    "population": 338023
+  },
+  "BDI.2_1": {
+    "area": 86.52,
+    "population": 497166
+  },
+  "BDI.3_1": {
+    "area": 1319.12,
+    "population": 555933
+  },
+  "BDI.4_1": {
+    "area": 2456.12,
+    "population": 574013
+  },
+  "BDI.6_1": {
+    "area": 1635.52,
+    "population": 460435
+  },
+  "BDI.7_1": {
+    "area": 4546.3,
+    "population": 725223
   },
   "BEN.10_1": {
     "area": 1281.0,
@@ -394,85 +474,157 @@
     "population": 9807000
   },
   "BGR.10_1": {
+    "gdpNominal": 1496000000.0,
     "population": 112737
   },
   "BGR.11_1": {
+    "gdpNominal": 2905000000.0,
     "population": 223494
   },
   "BGR.12_1": {
+    "gdpNominal": 1321000000.0,
     "population": 109886
   },
   "BGR.13_1": {
+    "gdpNominal": 2976000000.0,
     "population": 215326
   },
   "BGR.14_1": {
+    "gdpNominal": 10333000000.0,
     "population": 635630
   },
   "BGR.15_1": {
+    "gdpNominal": 1408000000.0,
     "population": 99459
   },
   "BGR.16_1": {
+    "gdpNominal": 3179000000.0,
     "population": 186093
   },
   "BGR.17_1": {
+    "gdpNominal": 2045000000.0,
     "population": 149279
   },
   "BGR.18_1": {
+    "gdpNominal": 1056000000.0,
     "population": 93549
   },
   "BGR.19_1": {
+    "gdpNominal": 1893000000.0,
     "population": 169299
   },
   "BGR.1_1": {
+    "gdpNominal": 3785000000.0,
     "population": 286333
   },
   "BGR.20_1": {
+    "gdpNominal": 1268000000.0,
     "population": 90534
   },
   "BGR.21_1": {
+    "gdpNominal": 4547000000.0,
     "population": 224701
   },
   "BGR.22_1": {
+    "gdpNominal": 6236000000.0,
     "population": 1300000
   },
   "BGR.23_1": {
+    "gdpNominal": 1367000000.0,
     "population": 94735
   },
   "BGR.24_1": {
+    "gdpNominal": 8389000000.0,
     "population": 437521
   },
   "BGR.25_1": {
+    "gdpNominal": 3112000000.0,
     "population": 200413
   },
   "BGR.26_1": {
+    "gdpNominal": 915000000.0,
     "population": 70542
   },
   "BGR.27_1": {
+    "gdpNominal": 2768000000.0,
     "population": 146002
   },
   "BGR.28_1": {
+    "gdpNominal": 1456000000.0,
     "population": 105429
   },
   "BGR.2_1": {
+    "gdpNominal": 6472000000.0,
     "population": 388919
   },
   "BGR.3_1": {
+    "gdpNominal": 2091000000.0,
     "population": 145207
   },
   "BGR.4_1": {
+    "gdpNominal": 1731000000.0,
     "population": 93817
   },
   "BGR.6_1": {
+    "gdpNominal": 2179000000.0,
     "population": 207356
   },
   "BGR.7_1": {
+    "gdpNominal": 1892000000.0,
     "population": 149478
   },
   "BGR.8_1": {
+    "gdpNominal": 1327000000.0,
     "population": 106131
   },
   "BGR.9_1": {
+    "gdpNominal": 1691000000.0,
     "population": 110823
+  },
+  "BHS.10_1": {
+    "area": 148.0,
+    "population": 323
+  },
+  "BHS.12_1": {
+    "area": 250.0,
+    "population": 6928
+  },
+  "BHS.16_1": {
+    "area": 1679.0
+  },
+  "BHS.17_1": {
+    "area": 596.0,
+    "population": 3024
+  },
+  "BHS.19_1": {
+    "area": 280.0,
+    "population": 271
+  },
+  "BHS.21_1": {
+    "area": 207.0,
+    "population": 274400
+  },
+  "BHS.25_1": {
+    "area": 23.0,
+    "population": 70
+  },
+  "BHS.26_1": {
+    "area": 78.0,
+    "population": 53
+  },
+  "BHS.2_1": {
+    "area": 31.0,
+    "population": 1002
+  },
+  "BHS.31_1": {
+    "population": 1551
+  },
+  "BHS.5_1": {
+    "area": 388.0,
+    "population": 1570
+  },
+  "BHS.7_1": {
+    "population": 662
   },
   "BIH.1_1": {
     "area": 493.0,
@@ -485,6 +637,18 @@
   "BLR.7_1": {
     "area": 409.5,
     "population": 1995091
+  },
+  "BLZ.2_1": {
+    "area": 5338.0,
+    "population": 99105
+  },
+  "BLZ.4_1": {
+    "area": 4737.0,
+    "population": 54152
+  },
+  "BLZ.5_1": {
+    "area": 2176.0,
+    "population": 46342
   },
   "BOL.1_1": {
     "area": 51524.0,
@@ -591,43 +755,183 @@
   "BRA.9_1": {
     "population": 6730848
   },
+  "BRB.10_1": {
+    "area": 60.0,
+    "population": 30662
+  },
+  "BRB.11_1": {
+    "area": 34.0,
+    "population": 14249
+  },
+  "BRB.1_1": {
+    "area": 57.0,
+    "population": 54336
+  },
+  "BRB.2_1": {
+    "area": 36.0,
+    "population": 5139
+  },
+  "BRB.3_1": {
+    "area": 44.0,
+    "population": 19767
+  },
+  "BRB.4_1": {
+    "area": 31.0,
+    "population": 28498
+  },
+  "BRB.5_1": {
+    "area": 34.0,
+    "population": 8963
+  },
+  "BRB.6_1": {
+    "area": 26.0,
+    "population": 6620
+  },
+  "BRB.7_1": {
+    "area": 36.0,
+    "population": 9758
+  },
+  "BRB.8_1": {
+    "area": 39.0,
+    "population": 88529
+  },
+  "BRB.9_1": {
+    "area": 34.0,
+    "population": 11300
+  },
+  "BTN.14_1": {
+    "area": 1617.0,
+    "population": 138736
+  },
+  "BTN.16_1": {
+    "area": 1815.0,
+    "population": 19960
+  },
+  "BTN.17_1": {
+    "area": 632.0,
+    "population": 22376
+  },
+  "BTN.2_1": {
+    "area": 1991.0,
+    "population": 68966
+  },
+  "BTN.3_1": {
+    "area": 1387.0,
+    "population": 24965
+  },
+  "BTN.4_1": {
+    "area": 3117.74,
+    "population": 3952
+  },
+  "BTN.5_1": {
+    "area": 1319.0,
+    "population": 13655
+  },
+  "BTN.6_1": {
+    "area": 2881.0,
+    "population": 15395
+  },
+  "BWA.1_1": {
+    "area": 147730.0,
+    "population": 563260
+  },
+  "CAF.10_1": {
+    "area": 19996.0,
+    "population": 117816
+  },
+  "CAF.11_1": {
+    "area": 26600.0,
+    "population": 233666
+  },
+  "CAF.12_1": {
+    "area": 31835.0,
+    "population": 356725
+  },
+  "CAF.14_1": {
+    "area": 32100.0,
+    "population": 430506
+  },
+  "CAF.16_1": {
+    "area": 19412.0,
+    "population": 101074
+  },
+  "CAF.1_1": {
+    "area": 58200.0,
+    "population": 43229
+  },
+  "CAF.2_1": {
+    "area": 67339690.0,
+    "population": 889231
+  },
+  "CAF.3_1": {
+    "area": 17604.0,
+    "population": 249150
+  },
+  "CAF.4_1": {
+    "area": 55530.0,
+    "population": 57602
+  },
+  "CAF.5_1": {
+    "area": 86650.0,
+    "population": 90316
+  },
+  "CAF.6_1": {
+    "area": 17204.0,
+    "population": 118420
+  },
+  "CAF.8_1": {
+    "area": 30203.0,
+    "population": 364795
+  },
   "CAN.10_1": {
+    "gdpNominal": 7508000000.0,
     "population": 152784
   },
   "CAN.11_1": {
+    "gdpNominal": 449051000000.0,
     "population": 8501833
   },
   "CAN.12_1": {
+    "gdpNominal": 77833000000.0,
     "population": 1132505
   },
   "CAN.13_1": {
+    "gdpNominal": 3182000000.0,
     "population": 40232
   },
   "CAN.1_1": {
+    "gdpNominal": 294818000000.0,
     "population": 4262635
   },
   "CAN.2_1": {
+    "gdpNominal": 309327000000.0,
     "population": 5000879
   },
   "CAN.3_1": {
+    "gdpNominal": 72849000000.0,
     "population": 1342153
   },
   "CAN.4_1": {
+    "gdpNominal": 37555000000.0,
     "population": 775610
   },
   "CAN.5_1": {
     "population": 521758
   },
   "CAN.6_1": {
+    "gdpNominal": 4322000000.0,
     "population": 41070
   },
   "CAN.7_1": {
+    "gdpNominal": 46849000000.0,
     "population": 969383
   },
   "CAN.8_1": {
+    "gdpNominal": 4160000000.0,
     "population": 36858
   },
   "CAN.9_1": {
+    "gdpNominal": 851176000000.0,
     "population": 14223942
   },
   "CHE.10_1": {
@@ -685,6 +989,7 @@
     "population": 1620020
   },
   "CHE.2_1": {
+    "gdpNominal": 3259162350.0,
     "population": 56495
   },
   "CHE.3_1": {
@@ -742,102 +1047,131 @@
     "population": 890284
   },
   "CHN.10_1": {
+    "gdpNominal": 3620690000000.0,
     "population": 74610235
   },
   "CHN.11_1": {
+    "gdpNominal": 1369850000000.0,
     "population": 31850088
   },
   "CHN.12_1": {
+    "gdpNominal": 5499710000000.0,
     "population": 94130000
   },
   "CHN.13_1": {
     "population": 57752557
   },
   "CHN.14_1": {
+    "gdpNominal": 4178150000000.0,
     "population": 65683722
   },
   "CHN.15_1": {
+    "gdpNominal": 10271900000000.0,
     "population": 84748016
   },
   "CHN.16_1": {
+    "gdpNominal": 2569150000000.0,
     "population": 44567475
   },
   "CHN.17_1": {
+    "gdpNominal": 1231130000000.0,
     "population": 24073453
   },
   "CHN.18_1": {
+    "gdpNominal": 2511500000000.0,
     "population": 42591407
   },
   "CHN.19_1": {
+    "gdpNominal": 1735980000000.0,
     "population": 24706321
   },
   "CHN.1_1": {
+    "gdpNominal": 3868060000000.0,
     "population": 59500510
   },
   "CHN.20_1": {
     "population": 7202654
   },
   "CHN.21_1": {
+    "gdpNominal": 300590000000.0,
     "population": 5923957
   },
   "CHN.22_1": {
+    "gdpNominal": 2618190000000.0,
     "population": 37327378
   },
   "CHN.23_1": {
+    "gdpNominal": 7312900000000.0,
     "population": 95793065
   },
   "CHN.24_1": {
+    "gdpNominal": 3870060000000.0,
     "population": 24870895
   },
   "CHN.25_1": {
+    "gdpNominal": 1765190000000.0,
     "population": 34915616
   },
   "CHN.26_1": {
+    "gdpNominal": 4859880000000.0,
     "population": 81100000
   },
   "CHN.27_1": {
+    "gdpNominal": 140837.0,
     "population": 13866009
   },
   "CHN.28_1": {
+    "gdpNominal": 1379760000000.0,
     "population": 25852345
   },
   "CHN.29_1": {
+    "gdpNominal": 190270000000.0,
     "population": 3648100
   },
   "CHN.2_1": {
+    "gdpNominal": 3610260000000.0,
     "population": 21893095
   },
   "CHN.30_1": {
+    "gdpNominal": 2452190000000.0,
     "population": 47209277
   },
   "CHN.31_1": {
+    "gdpNominal": 6461330000000.0,
     "population": 19959000
   },
   "CHN.3_1": {
     "population": 32054159
   },
   "CHN.4_1": {
+    "gdpNominal": 4390390000000.0,
     "population": 41540086
   },
   "CHN.5_1": {
+    "gdpNominal": 901670000000.0,
     "population": 25019831
   },
   "CHN.6_1": {
+    "gdpNominal": 11076090000000.0,
     "population": 126012510
   },
   "CHN.7_1": {
+    "gdpNominal": 221567.0,
     "population": 50126804
   },
   "CHN.8_1": {
     "population": 38562148
   },
   "CHN.9_1": {
+    "gdpNominal": 553240000000.0,
     "population": 8671518
   },
   "CHN.HKG": {
+    "gdpNominal": 359838598806.0,
     "population": 7413070
   },
   "CHN.MAC": {
+    "gdpNominal": 21979475561.0,
     "population": 682100
   },
   "CIV.10_1": {
@@ -985,6 +1319,22 @@
     "area": 95631.0,
     "population": 3417000
   },
+  "COG.10_1": {
+    "area": 2134.0,
+    "population": 1420612
+  },
+  "COG.12_1": {
+    "area": 55800.0,
+    "population": 209701
+  },
+  "COG.2_1": {
+    "area": 588.0,
+    "population": 2145783
+  },
+  "COG.6_1": {
+    "area": 20950.0,
+    "population": 100559
+  },
   "COL.13_2": {
     "population": 544767
   },
@@ -1130,6 +1480,7 @@
     "population": 596036
   },
   "CZE.11_1": {
+    "gdpNominal": 1193200000000.0,
     "population": 285380
   },
   "CZE.12_1": {
@@ -1148,9 +1499,11 @@
     "population": 1209879
   },
   "CZE.3_1": {
+    "gdpNominal": 89500000000.0,
     "population": 551590
   },
   "CZE.4_1": {
+    "gdpNominal": 190100000000.0,
     "population": 442476
   },
   "CZE.5_1": {
@@ -1215,6 +1568,9 @@
   },
   "DEU.9_1": {
     "population": 8003421
+  },
+  "DJI.1_2": {
+    "area": 2400.0
   },
   "DNK.1_1": {
     "population": 1848989
@@ -1523,6 +1879,12 @@
   "EGY.9_1": {
     "population": 4301601
   },
+  "ERI.3_1": {
+    "area": 27600.0
+  },
+  "ERI.4_1": {
+    "area": 33200.0
+  },
   "ESP.10_1": {
     "population": 5050000
   },
@@ -1560,6 +1922,7 @@
     "population": 84000
   },
   "ESP.6_1": {
+    "gdpNominal": 238308749.0,
     "population": 6900000
   },
   "ESP.9_1": {
@@ -1644,6 +2007,37 @@
   "FIN.5_1": {
     "population": 1450000
   },
+  "FJI.4_1": {
+    "area": 46.0
+  },
+  "GAB.2_1": {
+    "area": 36547.0,
+    "population": 250799
+  },
+  "GAB.3_1": {
+    "area": 18535.0,
+    "population": 69287
+  },
+  "GAB.4_1": {
+    "area": 37750.0,
+    "population": 100838
+  },
+  "GAB.5_1": {
+    "area": 21285.0,
+    "population": 52854
+  },
+  "GAB.6_1": {
+    "area": 46075.0,
+    "population": 63293
+  },
+  "GAB.7_1": {
+    "area": 25380.0,
+    "population": 65771
+  },
+  "GAB.8_1": {
+    "area": 22890.0,
+    "population": 157562
+  },
   "GBR.1_1": {
     "population": 56536000
   },
@@ -1654,7 +2048,52 @@
     "population": 5404700
   },
   "GBR.4_1": {
+    "gdpNominal": 92800000000.0,
     "population": 3131640
+  },
+  "GEO.10_1": {
+    "area": 6413.0,
+    "population": 155282
+  },
+  "GEO.11_1": {
+    "area": 4807.0,
+    "population": 254100
+  },
+  "GEO.12_1": {
+    "area": 720.0,
+    "population": 1118035
+  },
+  "GEO.1_1": {
+    "area": 8665.0,
+    "population": 2013
+  },
+  "GEO.2_1": {
+    "area": 2919.0,
+    "population": 402929
+  },
+  "GEO.3_1": {
+    "area": 2033.0,
+    "population": 102408
+  },
+  "GEO.4_1": {
+    "area": 6516.0,
+    "population": 510741
+  },
+  "GEO.5_1": {
+    "area": 11309.5,
+    "population": 303833
+  },
+  "GEO.6_1": {
+    "area": 6527.6,
+    "population": 423986
+  },
+  "GEO.7_1": {
+    "area": 6785.0,
+    "population": 94039
+  },
+  "GEO.9_1": {
+    "area": 7441.0,
+    "population": 305597
   },
   "GHA12_2": {
     "area": 8842.0,
@@ -1685,6 +2124,70 @@
   },
   "GHA9_2": {
     "area": 70384.0
+  },
+  "GIN.1_1": {
+    "area": 31186.0,
+    "population": 1036700
+  },
+  "GIN.2_1": {
+    "area": 450.0,
+    "population": 1667864
+  },
+  "GIN.3_1": {
+    "area": 35581.0
+  },
+  "GIN.4_1": {
+    "area": 72145.0,
+    "population": 1467000
+  },
+  "GIN.5_1": {
+    "area": 28873.0,
+    "population": 1559185
+  },
+  "GIN.6_1": {
+    "area": 22869.0
+  },
+  "GIN.7_1": {
+    "area": 17074.0
+  },
+  "GIN.8_1": {
+    "area": 37658.0
+  },
+  "GNB.1_1": {
+    "area": 5981.1,
+    "population": 225516
+  },
+  "GNB.4_1": {
+    "area": 2624.4,
+    "population": 32424
+  },
+  "GNB.6_1": {
+    "area": 9150.0,
+    "population": 214520
+  },
+  "GNB.8_1": {
+    "area": 3138.4,
+    "population": 63610
+  },
+  "GNQ.2_1": {
+    "area": 776.0,
+    "population": 410541
+  },
+  "GNQ.3_1": {
+    "area": 1241.0
+  },
+  "GNQ.4_1": {
+    "area": 9931.0
+  },
+  "GNQ.5_1": {
+    "area": 3943.0
+  },
+  "GNQ.6_1": {
+    "area": 6665.0,
+    "population": 400415
+  },
+  "GNQ.7_1": {
+    "area": 5478.0
   },
   "GRC.1_1": {
     "population": 200000
@@ -1793,6 +2296,46 @@
   "GTM.9_1": {
     "area": 9038.0,
     "population": 408688
+  },
+  "GUY.10_1": {
+    "area": 57750.0,
+    "population": 29944
+  },
+  "GUY.1_1": {
+    "area": 20339.0,
+    "population": 27643
+  },
+  "GUY.2_1": {
+    "area": 47213.0,
+    "population": 30324
+  },
+  "GUY.3_1": {
+    "area": 2232.0,
+    "population": 347759
+  },
+  "GUY.4_1": {
+    "area": 36234.0,
+    "population": 114574
+  },
+  "GUY.5_1": {
+    "area": 3755.0,
+    "population": 143884
+  },
+  "GUY.6_1": {
+    "area": 4190.0,
+    "population": 57667
+  },
+  "GUY.7_1": {
+    "area": 6195.0,
+    "population": 56469
+  },
+  "GUY.8_1": {
+    "area": 20051.0,
+    "population": 10190
+  },
+  "GUY.9_1": {
+    "area": 17040.0,
+    "population": 45499
   },
   "HND.10_1": {
     "area": 3123.0,
@@ -2322,6 +2865,54 @@
     "area": 20367.0,
     "population": 1868819
   },
+  "IRQ.11_1": {
+    "area": 12900.0,
+    "population": 2000000
+  },
+  "IRQ.13_1": {
+    "area": 14700.0,
+    "population": 1371035
+  },
+  "IRQ.14_1": {
+    "area": 5030.0,
+    "population": 1013254
+  },
+  "IRQ.15_1": {
+    "area": 16070.0,
+    "population": 922890
+  },
+  "IRQ.16_1": {
+    "area": 36700.0,
+    "population": 3106948
+  },
+  "IRQ.18_1": {
+    "area": 17150.0,
+    "population": 1149059
+  },
+  "IRQ.1_1": {
+    "area": 135000.0,
+    "population": 1561400
+  },
+  "IRQ.5_1": {
+    "area": 28820.0,
+    "population": 1285500
+  },
+  "IRQ.6_1": {
+    "area": 12000.0,
+    "population": 1532081
+  },
+  "IRQ.7_1": {
+    "area": 20000.0,
+    "population": 1694895
+  },
+  "IRQ.8_1": {
+    "area": 10500.0,
+    "population": 1325853
+  },
+  "IRQ.9_1": {
+    "area": 5800.0,
+    "population": 2000000
+  },
   "ISL.1_1": {
     "population": 27923
   },
@@ -2582,6 +3173,62 @@
     "area": 118631.0,
     "population": 673601
   },
+  "KHM.10_1": {
+    "area": 336.0,
+    "population": 42665
+  },
+  "KHM.14_1": {
+    "area": 14288.0,
+    "population": 92213
+  },
+  "KHM.16_1": {
+    "area": 678.46,
+    "population": 2129371
+  },
+  "KHM.18_1": {
+    "area": 13788.0,
+    "population": 254827
+  },
+  "KHM.19_1": {
+    "area": 4883.0,
+    "population": 1057720
+  },
+  "KHM.1_1": {
+    "area": 6679.0,
+    "population": 861883
+  },
+  "KHM.20_1": {
+    "area": 10782.0,
+    "population": 217453
+  },
+  "KHM.2_1": {
+    "area": 11702.0,
+    "population": 997169
+  },
+  "KHM.3_1": {
+    "area": 4549.0,
+    "population": 899791
+  },
+  "KHM.4_1": {
+    "area": 5521.0,
+    "population": 899791
+  },
+  "KHM.6_1": {
+    "area": 13814.0,
+    "population": 681549
+  },
+  "KHM.7_1": {
+    "area": 4873.0,
+    "population": 593829
+  },
+  "KHM.8_1": {
+    "area": 3568.0,
+    "population": 1201581
+  },
+  "KHM.9_1": {
+    "area": 11160.0,
+    "population": 125902
+  },
   "KOR.10_1": {
     "population": 3350350
   },
@@ -2633,9 +3280,136 @@
   "KOR.9_1": {
     "population": 2546960
   },
+  "KWT.1_1": {
+    "area": 5120.0,
+    "population": 682582
+  },
+  "KWT.2_1": {
+    "area": 190.0
+  },
+  "KWT.4_1": {
+    "area": 200.0
+  },
+  "KWT.5_1": {
+    "area": 82.0
+  },
+  "LAO.10_1": {
+    "area": 16925.0,
+    "population": 177989
+  },
+  "LAO.11_1": {
+    "area": 10691.0,
+    "population": 396942
+  },
+  "LAO.12_1": {
+    "area": 21774.0,
+    "population": 969697
+  },
+  "LAO.13_1": {
+    "area": 3920.0
+  },
+  "LAO.14_1": {
+    "area": 3920.0
+  },
+  "LAO.15_1": {
+    "area": 16389.0,
+    "population": 423496
+  },
+  "LAO.17_1": {
+    "area": 7665.0,
+    "population": 113048
+  },
+  "LAO.18_1": {
+    "area": 16358.0,
+    "population": 267172
+  },
+  "LAO.1_1": {
+    "area": 10320.0,
+    "population": 139628
+  },
+  "LAO.2_1": {
+    "area": 6196.0,
+    "population": 179243
+  },
+  "LAO.4_1": {
+    "area": 15415.0,
+    "population": 694023
+  },
+  "LAO.5_1": {
+    "area": 16500.0,
+    "population": 310976
+  },
+  "LAO.6_1": {
+    "area": 16315.0,
+    "population": 433570
+  },
+  "LAO.7_1": {
+    "area": 9325.0,
+    "population": 199090
+  },
+  "LAO.9_1": {
+    "area": 15370.0,
+    "population": 345425
+  },
   "LBN.5_1": {
     "area": 1238.0,
     "population": 1520016
+  },
+  "LBR.10_1": {
+    "area": 2297.0,
+    "population": 172587
+  },
+  "LBR.11_1": {
+    "area": 1908.0,
+    "population": 1920965
+  },
+  "LBR.12_1": {
+    "area": 11551.0,
+    "population": 621841
+  },
+  "LBR.13_1": {
+    "area": 5594.0,
+    "population": 90819
+  },
+  "LBR.14_1": {
+    "area": 5113.0,
+    "population": 124653
+  },
+  "LBR.15_1": {
+    "area": 10137.0,
+    "population": 151149
+  },
+  "LBR.1_1": {
+    "area": 1942.0,
+    "population": 133705
+  },
+  "LBR.2_1": {
+    "area": 8754.0,
+    "population": 333481
+  },
+  "LBR.4_1": {
+    "area": 5162.0,
+    "population": 178867
+  },
+  "LBR.5_1": {
+    "area": 7936.0,
+    "population": 293689
+  },
+  "LBR.6_1": {
+    "area": 10484.0,
+    "population": 216692
+  },
+  "LBR.7_1": {
+    "area": 3895.0,
+    "population": 109342
+  },
+  "LBR.8_1": {
+    "area": 9978.0,
+    "population": 270114
+  },
+  "LBR.9_1": {
+    "area": 2616.0,
+    "population": 304946
   },
   "LBY.11_1": {
     "population": 198567
@@ -2678,6 +3452,14 @@
   "LBY.9_1": {
     "area": 110680.0
   },
+  "LSO.6_1": {
+    "area": 3530.0,
+    "population": 165590
+  },
+  "LSO.8_1": {
+    "area": 2349.0,
+    "population": 74566
+  },
   "LTU.1_1": {
     "population": 142000
   },
@@ -2718,6 +3500,7 @@
     "population": 257000
   },
   "LVA.3_1": {
+    "gdpNominal": 17647619000.0,
     "population": 595053
   },
   "LVA.4_1": {
@@ -2767,6 +3550,17 @@
   "MDA.8_1": {
     "area": 878.0,
     "population": 33181
+  },
+  "MDG.3_1": {
+    "area": 103272.0
+  },
+  "MDG.5_1": {
+    "area": 71911.0,
+    "population": 2855600
+  },
+  "MDG.6_1": {
+    "area": 161405.0,
+    "population": 2229550
   },
   "MEX.10_1": {
     "population": 1754754
@@ -2864,6 +3658,217 @@
   "MEX.9_1": {
     "population": 9209944
   },
+  "MKD.10_1": {
+    "area": 3.52,
+    "population": 62586
+  },
+  "MKD.11_1": {
+    "area": 819.45,
+    "population": 7942
+  },
+  "MKD.14_1": {
+    "area": 132.2,
+    "population": 5471
+  },
+  "MKD.15_1": {
+    "area": 240.78,
+    "population": 9200
+  },
+  "MKD.16_1": {
+    "area": 145.67,
+    "population": 15412
+  },
+  "MKD.17_1": {
+    "area": 425.39,
+    "population": 3719
+  },
+  "MKD.18_1": {
+    "area": 422.39,
+    "population": 13585
+  },
+  "MKD.20_1": {
+    "area": 311.06,
+    "population": 3777
+  },
+  "MKD.21_1": {
+    "area": 412.43,
+    "population": 13126
+  },
+  "MKD.24_1": {
+    "area": 317.0,
+    "population": 21582
+  },
+  "MKD.27_1": {
+    "area": 236.19
+  },
+  "MKD.2_1": {
+    "area": 31.3,
+    "population": 12676
+  },
+  "MKD.30_1": {
+    "area": 229.7,
+    "population": 3420
+  },
+  "MKD.33_1": {
+    "area": 48.0,
+    "population": 39669
+  },
+  "MKD.34_1": {
+    "area": 34.0,
+    "population": 61965
+  },
+  "MKD.35_1": {
+    "area": 375.44,
+    "population": 31602
+  },
+  "MKD.36_1": {
+    "area": 233.05,
+    "population": 2725
+  },
+  "MKD.37_1": {
+    "area": 375.44,
+    "population": 7545
+  },
+  "MKD.38_1": {
+    "area": 480.81,
+    "population": 18059
+  },
+  "MKD.39_1": {
+    "area": 93.57,
+    "population": 5167
+  },
+  "MKD.3_1": {
+    "area": 598.7,
+    "population": 10890
+  },
+  "MKD.40_1": {
+    "area": 190.68,
+    "population": 8385
+  },
+  "MKD.41_1": {
+    "area": 509.48,
+    "population": 105484
+  },
+  "MKD.43_1": {
+    "area": 267.82,
+    "population": 22308
+  },
+  "MKD.44_1": {
+    "area": 166.32,
+    "population": 2264
+  },
+  "MKD.45_1": {
+    "area": 190.37,
+    "population": 6439
+  },
+  "MKD.49_1": {
+    "area": 132.9,
+    "population": 18194
+  },
+  "MKD.4_1": {
+    "area": 422.39,
+    "population": 85164
+  },
+  "MKD.51_1": {
+    "area": 237.83,
+    "population": 6972
+  },
+  "MKD.52_1": {
+    "area": 389.93,
+    "population": 51428
+  },
+  "MKD.54_1": {
+    "area": 207.0,
+    "population": 3983
+  },
+  "MKD.55_1": {
+    "area": 201.93,
+    "population": 9150
+  },
+  "MKD.57_1": {
+    "area": 1194.44,
+    "population": 69025
+  },
+  "MKD.58_1": {
+    "area": 325.57,
+    "population": 13417
+  },
+  "MKD.59_1": {
+    "area": 497.48,
+    "population": 24122
+  },
+  "MKD.5_1": {
+    "area": 114.54,
+    "population": 7339
+  },
+  "MKD.61_1": {
+    "area": 739.0,
+    "population": 14373
+  },
+  "MKD.62_1": {
+    "area": 132.9,
+    "population": 3796
+  },
+  "MKD.63_1": {
+    "area": 229.06,
+    "population": 38399
+  },
+  "MKD.64_1": {
+    "area": 222.1,
+    "population": 6713
+  },
+  "MKD.66_1": {
+    "area": 433.41,
+    "population": 12011
+  },
+  "MKD.67_1": {
+    "area": 583.24,
+    "population": 44866
+  },
+  "MKD.68_1": {
+    "area": 483.0,
+    "population": 50980
+  },
+  "MKD.70_1": {
+    "area": 276.16,
+    "population": 21970
+  },
+  "MKD.71_1": {
+    "area": 7.48,
+    "population": 25726
+  },
+  "MKD.72_1": {
+    "area": 482.89,
+    "population": 15320
+  },
+  "MKD.74_1": {
+    "area": 261.89,
+    "population": 84770
+  },
+  "MKD.75_1": {
+    "area": 331.4,
+    "population": 12092
+  },
+  "MKD.77_1": {
+    "area": 427.45,
+    "population": 48463
+  },
+  "MKD.78_1": {
+    "area": 22.8,
+    "population": 2359
+  },
+  "MKD.81_1": {
+    "area": 157.0,
+    "population": 19842
+  },
+  "MKD.84_1": {
+    "area": 201.04,
+    "population": 18988
+  },
+  "MKD.85_1": {
+    "area": 55.82,
+    "population": 2086
+  },
   "MLT.1_1": {
     "population": 60749
   },
@@ -2899,6 +3904,98 @@
     "area": 12296.6,
     "population": 1717166
   },
+  "MNE.10_1": {
+    "area": 335.0,
+    "population": 22651
+  },
+  "MNE.14_1": {
+    "area": 1346.0,
+    "population": 28124
+  },
+  "MNE.3_1": {
+    "area": 717.0,
+    "population": 27256
+  },
+  "MNE.8_1": {
+    "area": 235.0,
+    "population": 30690
+  },
+  "MNG.10_1": {
+    "area": 141448.0,
+    "population": 56209
+  },
+  "MNG.11_1": {
+    "area": 5542.0,
+    "population": 16522
+  },
+  "MNG.12_1": {
+    "area": 80325.08,
+    "population": 73663
+  },
+  "MNG.13_1": {
+    "area": 76133.38,
+    "population": 86000
+  },
+  "MNG.14_1": {
+    "area": 100628.82,
+    "population": 128159
+  },
+  "MNG.15_1": {
+    "area": 165380.47,
+    "population": 61655
+  },
+  "MNG.16_1": {
+    "area": 844.0,
+    "population": 100731
+  },
+  "MNG.17_1": {
+    "area": 62895.33,
+    "population": 100731
+  },
+  "MNG.19_1": {
+    "area": 82287.15,
+    "population": 59034
+  },
+  "MNG.1_1": {
+    "area": 55314.0,
+    "population": 92059
+  },
+  "MNG.20_1": {
+    "area": 74042.37,
+    "population": 90421
+  },
+  "MNG.21_1": {
+    "area": 4704.4,
+    "population": 1396288
+  },
+  "MNG.2_1": {
+    "area": 45704.89,
+    "population": 100189
+  },
+  "MNG.3_1": {
+    "area": 115977.8,
+    "population": 83936
+  },
+  "MNG.4_1": {
+    "area": 48733.0,
+    "population": 60014
+  },
+  "MNG.5_1": {
+    "area": 3275.0,
+    "population": 100939
+  },
+  "MNG.6_1": {
+    "area": 123597.43,
+    "population": 76476
+  },
+  "MNG.7_1": {
+    "area": 109472.3,
+    "population": 65267
+  },
+  "MNG.8_1": {
+    "area": 74690.32,
+    "population": 44429
+  },
   "MOZ.10_1": {
     "area": 98417.0
   },
@@ -2928,6 +4025,72 @@
   },
   "MOZ.9_1": {
     "area": 68018.0
+  },
+  "MRT.10_1": {
+    "area": 1000.0,
+    "population": 1446761
+  },
+  "MRT.11_1": {
+    "area": 98186.0
+  },
+  "MRT.12_1": {
+    "area": 252900.0,
+    "population": 53261
+  },
+  "MRT.13_1": {
+    "area": 65764.0,
+    "population": 323903
+  },
+  "MRT.1_1": {
+    "area": 222107.0,
+    "population": 62658
+  },
+  "MRT.2_1": {
+    "area": 35984.0,
+    "population": 451804
+  },
+  "MRT.3_1": {
+    "area": 33329.0,
+    "population": 247006
+  },
+  "MRT.4_1": {
+    "area": 37793.0,
+    "population": 184459
+  },
+  "MRT.5_1": {
+    "area": 13600.0,
+    "population": 442490
+  },
+  "MRT.6_1": {
+    "area": 10300.0,
+    "population": 363075
+  },
+  "MRT.9_1": {
+    "area": 31582.0,
+    "population": 29484
+  },
+  "MUS.12_1": {
+    "area": 244.8,
+    "population": 70471
+  },
+  "MUS.2_1": {
+    "area": 259.0,
+    "population": 76627
+  },
+  "MUS.3_1": {
+    "area": 297.9,
+    "population": 140294
+  },
+  "MUS.4_1": {
+    "area": 260.3,
+    "population": 115546
+  },
+  "MUS.7_1": {
+    "area": 203.3,
+    "population": 385034
+  },
+  "MUS.8_1": {
+    "area": 44.0
   },
   "MYS.10_1": {
     "population": 251500
@@ -3048,6 +4211,74 @@
   "NGA.8_1": {
     "area": 70898.0,
     "population": 5860183
+  },
+  "NIC.11_1": {
+    "area": 5138.0,
+    "population": 355779
+  },
+  "NIC.12_1": {
+    "area": 1708.0,
+    "population": 132459
+  },
+  "NIC.13_1": {
+    "area": 3465.0,
+    "population": 1262978
+  },
+  "NIC.14_1": {
+    "area": 610.8,
+    "population": 289988
+  },
+  "NIC.15_1": {
+    "area": 6804.0,
+    "population": 469172
+  },
+  "NIC.16_1": {
+    "area": 3491.0,
+    "population": 208523
+  },
+  "NIC.17_1": {
+    "area": 7541.0,
+    "population": 95596
+  },
+  "NIC.18_1": {
+    "area": 2162.0,
+    "population": 156283
+  },
+  "NIC.1_1": {
+    "area": 33106.0,
+    "population": 314130
+  },
+  "NIC.2_1": {
+    "area": 27260.0,
+    "population": 306510
+  },
+  "NIC.3_1": {
+    "area": 4177.0,
+    "population": 150636
+  },
+  "NIC.4_1": {
+    "area": 1081.0,
+    "population": 166073
+  },
+  "NIC.5_1": {
+    "area": 4822.0,
+    "population": 378970
+  },
+  "NIC.6_1": {
+    "area": 6481.0,
+    "population": 153932
+  },
+  "NIC.7_1": {
+    "area": 2230.0,
+    "population": 201548
+  },
+  "NIC.8_1": {
+    "area": 1040.0,
+    "population": 168186
+  },
+  "NIC.9_1": {
+    "area": 9222.0,
+    "population": 331335
   },
   "NLD.10_1": {
     "population": 1142360
@@ -3457,6 +4688,21 @@
   "PRT.9_1": {
     "population": 60974
   },
+  "QAT.1_1": {
+    "area": 234.0
+  },
+  "QAT.3_1": {
+    "area": 996.0,
+    "population": 202031
+  },
+  "QAT.4_1": {
+    "area": 75.8,
+    "population": 87970
+  },
+  "QAT.5_1": {
+    "area": 23281.0,
+    "population": 605712
+  },
   "ROU.10_1": {
     "population": 1716961
   },
@@ -3810,6 +5056,14 @@
     "area": 29616.0,
     "population": 833657
   },
+  "SLB.4_1": {
+    "area": 22.0,
+    "population": 84520
+  },
+  "SLE.4_1": {
+    "area": 696.0,
+    "population": 1271330
+  },
   "SLV.10_1": {
     "area": 886.1,
     "population": 1563371
@@ -3865,6 +5119,19 @@
   "SLV.9_1": {
     "area": 2077.0,
     "population": 447634
+  },
+  "SOM.12_1": {
+    "area": 26180.0
+  },
+  "SOM.3_1": {
+    "area": 370.0,
+    "population": 1650227
+  },
+  "SOM.4_1": {
+    "area": 70088.0
+  },
+  "SOM.7_1": {
+    "area": 85389.0
   },
   "SVK.1_1": {
     "population": 660563
@@ -3989,6 +5256,10 @@
   "SWE.9_1": {
     "population": 202843
   },
+  "SWZ.4_1": {
+    "area": 3786.0,
+    "population": 204111
+  },
   "SYR.10_1": {
     "area": 6097.0,
     "population": 1501000
@@ -4020,6 +5291,62 @@
   "SYR.7_1": {
     "area": 33060.0,
     "population": 1239000
+  },
+  "TCD.10_1": {
+    "area": 21500.0,
+    "population": 617000
+  },
+  "TCD.14_1": {
+    "area": 18350.0,
+    "population": 1106500
+  },
+  "TCD.15_1": {
+    "area": 12950.0,
+    "population": 815100
+  },
+  "TCD.17_1": {
+    "area": 30000.0,
+    "population": 1032500
+  },
+  "TCD.19_1": {
+    "area": 36000.0,
+    "population": 544200
+  },
+  "TCD.20_1": {
+    "area": 17604.0,
+    "population": 960900
+  },
+  "TCD.23_1": {
+    "area": 54310.0,
+    "population": 728200
+  },
+  "TCD.3_1": {
+    "area": 150000.0,
+    "population": 133600
+  },
+  "TCD.8_1": {
+    "area": 31426.0,
+    "population": 794300
+  },
+  "TCD.9_1": {
+    "area": 114520.0,
+    "population": 481100
+  },
+  "TGO.2_1": {
+    "area": 11629.0,
+    "population": 985512
+  },
+  "TGO.3_1": {
+    "area": 6395.0,
+    "population": 2599955
+  },
+  "TGO.4_1": {
+    "area": 16975.0,
+    "population": 1635946
+  },
+  "TGO.5_1": {
+    "area": 8470.0,
+    "population": 1143520
   },
   "THA.10_1": {
     "population": 1784370
@@ -4260,6 +5587,56 @@
   "TJK.4_1": {
     "area": 25400.0,
     "population": 2823900
+  },
+  "TKM.1_1": {
+    "area": 97160.0,
+    "population": 939700
+  },
+  "TKM.2_1": {
+    "area": 765.0,
+    "population": 1030063
+  },
+  "TKM.3_1": {
+    "area": 139270.0,
+    "population": 529895
+  },
+  "TKM.4_1": {
+    "area": 93730.0,
+    "population": 1447298
+  },
+  "TKM.5_1": {
+    "area": 87150.0,
+    "population": 1613386
+  },
+  "TKM.6_1": {
+    "area": 73430.0,
+    "population": 1550354
+  },
+  "TON.5_1": {
+    "area": 194.0,
+    "population": 14922
+  },
+  "TTO.10_1": {
+    "area": 18.64,
+    "population": 55419
+  },
+  "TTO.11_1": {
+    "area": 898.94
+  },
+  "TTO.1_1": {
+    "area": 12.0,
+    "population": 33807
+  },
+  "TTO.2_1": {
+    "area": 23.03,
+    "population": 83489
+  },
+  "TTO.6_1": {
+    "area": 246.91
+  },
+  "TTO.7_1": {
+    "area": 23.88,
+    "population": 19056
   },
   "TUN.12_1": {
     "area": 2966.0,
@@ -5145,6 +6522,30 @@
   "VNM.61_1": {
     "population": 1028820
   },
+  "VUT.1_1": {
+    "area": 2779.0,
+    "population": 36727
+  },
+  "VUT.2_1": {
+    "area": 1198.0
+  },
+  "VUT.3_1": {
+    "area": 4248.0
+  },
+  "VUT.4_1": {
+    "area": 1455.0
+  },
+  "VUT.5_1": {
+    "area": 1628.0,
+    "population": 32540
+  },
+  "VUT.6_1": {
+    "area": 882.0
+  },
+  "WSM.1_1": {
+    "area": 193.0,
+    "population": 21769
+  },
   "YEM.10_1": {
     "area": 9587.0,
     "population": 967634
@@ -5225,12 +6626,15 @@
     "population": 1747834
   },
   "Z02.28_1": {
+    "gdpNominal": 1379760000000.0,
     "population": 25852345
   },
   "Z03.28_1": {
+    "gdpNominal": 1379760000000.0,
     "population": 25852345
   },
   "Z03.29_1": {
+    "gdpNominal": 190270000000.0,
     "population": 3648100
   },
   "Z04.13_1": {
@@ -5251,6 +6655,7 @@
     "population": 1382611
   },
   "Z08.29_1": {
+    "gdpNominal": 190270000000.0,
     "population": 3648100
   },
   "Z09.13_1": {

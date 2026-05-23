@@ -1,5 +1,11 @@
 # app
 
+## [0.55.0] - 2026-05-23
+
+### Features
+
+- feat(reviews): loading checkpoints + skeleton placeholders
+
 ## [0.54.0] - 2026-05-23
 
 ### Features

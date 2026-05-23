@@ -1,5 +1,11 @@
 # app
 
+## [0.63.0] - 2026-05-23
+
+### Features
+
+- feat(map): satellite basemap + OSM POIs + hover reverse-geocode + admin-3 expansion
+
 ## [0.62.0] - 2026-05-23
 
 ### Features

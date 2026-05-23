@@ -1,10 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Database, GitBranch, LayoutGrid, Workflow } from "lucide-react";
+import { Database, Flame, GitBranch, LayoutGrid, Map, Workflow } from "lucide-react";
 
 const TABS = [
   { to: "/schemas/architecture", label: "Architecture", Icon: LayoutGrid },
   { to: "/schemas/db", label: "Schéma BDD", Icon: Database },
   { to: "/schemas/data", label: "Données", Icon: Workflow },
+  { to: "/schemas/map", label: "Carte", Icon: Map },
+  { to: "/schemas/spark", label: "Spark", Icon: Flame },
   { to: "/schemas/devops", label: "DevOps & CI/CD", Icon: GitBranch },
 ];
 

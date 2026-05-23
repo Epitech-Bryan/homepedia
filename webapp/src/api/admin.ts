@@ -144,3 +144,22 @@ export async function refreshDvfYearStats(year: number): Promise<void> {
     throw new Error(`Failed to refresh stats for ${year}: ${res.status} ${res.statusText}`);
   }
 }
+
+/**
+ * Triggers an async rebuild of the commune vector tiles (cities.mbtiles).
+ * Returns immediately — actual tippecanoe pipeline takes ~20 min in the pod.
+ * Throws {@link JobAlreadyRunningError} on 409 (a build is already in flight),
+ * generic error on other failure codes.
+ */
+export async function triggerTilesRebuild(): Promise<void> {
+  const res = await fetch(`${BASE_URL}/tiles/rebuild`, {
+    method: "POST",
+    credentials: "include",
+  });
+  if (res.status === 409) {
+    throw new JobAlreadyRunningError("tiles");
+  }
+  if (!res.ok) {
+    throw new Error(`Failed to trigger tiles rebuild: ${res.status} ${res.statusText}`);
+  }
+}

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   fetchJobsStatus,
   triggerImport,
+  triggerTilesRebuild,
   IMPORT_JOBS,
   JobAlreadyRunningError,
   CACHES,
@@ -80,6 +81,9 @@ export function AdminPage() {
   const [bulkProgress, setBulkProgress] = useState<{ year: number; total: number } | null>(null);
   const [pendingTruncate, setPendingTruncate] = useState<number | null>(null);
   const [pendingRefresh, setPendingRefresh] = useState<number | null>(null);
+  const [tilesRebuildPending, setTilesRebuildPending] = useState(false);
+  const [tilesRebuildError, setTilesRebuildError] = useState<string | null>(null);
+  const [tilesRebuildAt, setTilesRebuildAt] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/", { replace: true });
@@ -193,6 +197,36 @@ export function AdminPage() {
       setErrors((prev) => ({ ...prev, dvf: message }));
     } finally {
       setBulkProgress(null);
+    }
+  };
+
+  // Kick off the tile rebuild and evict the geo cache so the new MVT is
+  // served fresh. The HTTP call returns immediately (202 dispatched); the
+  // tippecanoe pipeline finishes in ~15-25 min in the pod.
+  const onRebuildTiles = async () => {
+    setTilesRebuildPending(true);
+    setTilesRebuildError(null);
+    try {
+      await triggerTilesRebuild();
+      // Best-effort cache flush — the new mbtiles will be served by the
+      // VectorTileService once it lands, and the geo cache only holds the
+      // SVG admin-1/admin-2 payloads, so a flush here keeps everything
+      // coherent for the user about to refresh the map.
+      try {
+        await evictCache("geo");
+        setCacheEvictedAt((prev) => ({ ...prev, geo: Date.now() }));
+      } catch {
+        // non-fatal
+      }
+      setTilesRebuildAt(Date.now());
+    } catch (err) {
+      if (err instanceof JobAlreadyRunningError) {
+        setTilesRebuildError("Un rebuild est déjà en cours dans le pod.");
+      } else {
+        setTilesRebuildError(err instanceof Error ? err.message : "Erreur inconnue");
+      }
+    } finally {
+      setTilesRebuildPending(false);
     }
   };
 
@@ -453,6 +487,55 @@ export function AdminPage() {
           );
         })}
       </div>
+
+      <header className="flex flex-col gap-1 mt-4">
+        <h2 className="text-sm font-semibold">Tuiles vectorielles</h2>
+        <p className="text-xs text-muted-foreground">
+          Reconstruit <code>cities.mbtiles</code> via tippecanoe (régions, départements, communes,
+          arrondissements, IRIS). ~15-25 min dans le pod, le job tourne en async — la map continue
+          de servir l&apos;ancien mbtiles le temps du build, swap atomique à la fin.
+        </p>
+      </header>
+
+      <Card className="border bg-background">
+        <CardContent className="p-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-sm font-medium">Rebuild MVT + reload vecteurs</span>
+            <span className="text-xs text-muted-foreground">
+              {tilesRebuildAt
+                ? `Dernier déclenchement ${formatRelative(new Date(tilesRebuildAt).toISOString())}`
+                : "Aucun déclenchement durant cette session"}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onRebuildTiles}
+            disabled={tilesRebuildPending}
+          >
+            {tilesRebuildPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Layers className="h-3 w-3" />
+            )}
+            Rebuild tiles
+          </Button>
+        </CardContent>
+        {tilesRebuildError && (
+          <div className="px-3 pb-3 text-xs">
+            <span className="text-destructive">{tilesRebuildError}</span>
+          </div>
+        )}
+        {tilesRebuildAt && !tilesRebuildError && (
+          <div className="px-3 pb-3 text-xs">
+            <span className="text-emerald-600">
+              Rebuild lancé. Le swap atomique du mbtiles aura lieu dans ~15-25 min ; rafraîchis la
+              map après pour voir les nouveaux contours (arrondissements Paris/Lyon/Marseille +
+              IRIS).
+            </span>
+          </div>
+        )}
+      </Card>
 
       <header className="flex flex-col gap-1 mt-4">
         <h2 className="text-sm font-semibold">Cache Redis</h2>

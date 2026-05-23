@@ -1,5 +1,11 @@
 # app
 
+## [0.53.4] - 2026-05-23
+
+### Bug Fixes
+
+- perf(webapp): useDeferredValue on bounds, unbundle recharts, SW tile cache
+
 ## [0.53.3] - 2026-05-23
 
 ### Bug Fixes

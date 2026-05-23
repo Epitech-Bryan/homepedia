@@ -547,8 +547,20 @@ export function PersistentMap() {
           const v = props.transactionCount;
           return typeof v === "number" ? v : null;
         }
-        case "gdpPerCapita":
+        case "gdpPerCapita": {
+          // Baked by CountryGeoService for the world admin-1 layer; coverage
+          // is sparse (~30% of regions) and the field is missing on
+          // commune-level features, both of which the null-guard handles
+          // naturally — null falls through to the gray "no data" fill.
+          const v = props.gdpPerCapita;
+          if (typeof v === "number") return v;
+          const gdp = props.gdpNominal;
+          const pop = props.population;
+          if (typeof gdp === "number" && typeof pop === "number" && pop > 0) {
+            return gdp / pop;
+          }
           return null;
+        }
       }
     };
   }, [metric]);
@@ -640,25 +652,41 @@ export function PersistentMap() {
     for (const s of stats) {
       map[s.code] = extractValue(s, metric);
     }
-    // Pull non-FR admin-1 (Belgian provinces today) values straight from
-    // the geojson properties — population + area are baked in there. Only
-    // population/density are supported because we don't have housing
-    // market data for those countries yet.
-    if (!showDepartments && geoBelgiumProvinces) {
-      for (const f of geoBelgiumProvinces.features) {
-        const props = f.properties as { code?: string; population?: number; area?: number } | null;
-        if (!props?.code) continue;
-        const pop = props.population ?? null;
-        const area = props.area ?? null;
-        switch (metric) {
-          case "population":
-            map[props.code] = pop;
-            break;
-          case "density":
-            map[props.code] = pop && area ? pop / area : null;
-            break;
-          default:
-            map[props.code] = null;
+    // Pull non-FR admin-1 (Belgian provinces + world admin-1) values
+    // straight from the geojson properties — population + area + gdpNominal
+    // are baked in there by CountryGeoService. Density derives client-side
+    // from pop/area; gdpPerCapita from gdp/pop. Housing market metrics
+    // stay empty (FR-only data so far).
+    if (!showDepartments) {
+      const collections = [geoBelgiumProvinces, geoWorldAdmin1].filter(
+        (c): c is GeoJSON.FeatureCollection => !!c,
+      );
+      for (const fc of collections) {
+        for (const f of fc.features) {
+          const props = f.properties as {
+            code?: string;
+            population?: number;
+            area?: number;
+            gdpNominal?: number;
+            gdpPerCapita?: number;
+          } | null;
+          if (!props?.code) continue;
+          const pop = props.population ?? null;
+          const area = props.area ?? null;
+          const gdp = props.gdpNominal ?? null;
+          switch (metric) {
+            case "population":
+              map[props.code] = pop;
+              break;
+            case "density":
+              map[props.code] = pop && area ? pop / area : null;
+              break;
+            case "gdpPerCapita":
+              map[props.code] = props.gdpPerCapita ?? (gdp && pop && pop > 0 ? gdp / pop : null);
+              break;
+            default:
+              map[props.code] = null;
+          }
         }
       }
     }
@@ -674,6 +702,7 @@ export function PersistentMap() {
     regionStats,
     allDepartmentStats,
     geoBelgiumProvinces,
+    geoWorldAdmin1,
   ]);
 
   // City markers are only useful when we DON'T have commune polygons yet;

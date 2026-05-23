@@ -5,6 +5,17 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.66.0] - 2026-05-23
+
+### Features
+
+- feat(map): satellite basemap + OSM POIs + hover reverse-geocode + admin-3 expansion
+- feat(map): overlay OSM street/POI labels at z>=9 for non-FR detail
+
+### Bug Fixes
+
+- fix(map): mount world MVT layer below city so clicks at z=9+ work
+
 ## [3.65.0] - 2026-05-23
 
 ### Features

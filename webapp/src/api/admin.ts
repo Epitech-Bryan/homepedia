@@ -90,6 +90,7 @@ export const CACHES: CacheDef[] = [
   },
   { name: "stats", label: "Statistiques", description: "Agrégats DVF/DPE (TTL 30 min)" },
   { name: "reviews", label: "Avis", description: "Word clouds et sentiments (TTL 15 min)" },
+  { name: "pois", label: "POIs OSM", description: "Proxy Overpass musées/gares/etc. (TTL 7 j)" },
 ];
 
 export async function evictCache(name: string): Promise<void> {

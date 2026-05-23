@@ -8,6 +8,7 @@ import static com.homepedia.common.indicator.GeographicLevel.REGION;
 
 import com.homepedia.api.service.CountryGeoService;
 import com.homepedia.api.service.GeoService;
+import com.homepedia.api.service.OsmPoiService;
 import com.homepedia.common.geo.dto.FeatureCollection;
 import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +32,7 @@ public class GeoController {
 
 	private final GeoService geoService;
 	private final CountryGeoService countryGeoService;
+	private final OsmPoiService osmPoiService;
 
 	@Operation(summary = "Country boundaries (world view)", description = "Natural Earth Admin 0 boundaries for every country (177), trimmed to ISO_A3 + name + population + GDP + continent. Used by the map at world-level zoom before falling back to French regions.")
 	@GetMapping(value = "/countries", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -78,6 +80,16 @@ public class GeoController {
 			@org.springframework.web.bind.annotation.RequestParam("q") final String query,
 			@org.springframework.web.bind.annotation.RequestParam(value = "limit", defaultValue = "10") final int limit) {
 		return ResponseEntity.ok(countryGeoService.searchWorldAdmin1(query, Math.min(Math.max(limit, 1), 50)));
+	}
+
+	@Operation(summary = "OSM POIs in bbox", description = "Proxies a single Overpass query for museums, stations, schools, hospitals, parks and attractions within the bbox. Each (rounded) bbox is cached 7 days in Redis so panning around doesn't hammer the public Overpass server. Returns an empty list on timeout or bbox > 10°×10°.")
+	@GetMapping(value = "/pois", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<List<OsmPoiService.PoiDto>> getPois(
+			@org.springframework.web.bind.annotation.RequestParam("south") final double south,
+			@org.springframework.web.bind.annotation.RequestParam("west") final double west,
+			@org.springframework.web.bind.annotation.RequestParam("north") final double north,
+			@org.springframework.web.bind.annotation.RequestParam("east") final double east) {
+		return ResponseEntity.ok(osmPoiService.fetchPois(south, west, north, east));
 	}
 
 	@Operation(summary = "Region boundaries", description = "GeoJSON FeatureCollection of all French regions")

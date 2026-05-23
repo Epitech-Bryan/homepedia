@@ -37,10 +37,9 @@ const WORLD_ZOOM_THRESHOLD = 5;
 // Below this zoom, we show regions; at or above, we switch to departments.
 const DEPARTMENT_ZOOM_THRESHOLD = 7;
 // Above this zoom, we auto-detect the department under the map center and
-// show its cities as sized markers. The vector-tile commune layer kicks in
-// here ; mbtiles cover z=9..14 so Leaflet upsamples z=9 tiles down for the
-// brief window between this threshold and z=9.
-const CITY_DETAIL_ZOOM_THRESHOLD = 10;
+// show its cities. Aligned with the tippecanoe cities layer (z9-14) so the
+// switch from departments to cities is a clean hand-off, no overlap.
+const CITY_DETAIL_ZOOM_THRESHOLD = 9;
 // Above this zoom, big cities split into their municipal arrondissements.
 const ARRONDISSEMENT_ZOOM_THRESHOLD = 12;
 // INSEE codes of the only three communes that publish municipal

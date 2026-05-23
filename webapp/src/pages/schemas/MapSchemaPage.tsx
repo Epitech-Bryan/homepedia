@@ -92,7 +92,7 @@ const MAP_NODES: Node[] = [
       kind: "job",
       title: "tippecanoe (Felt 2.62)",
       subtitle: "3 layers en 1 mbtiles",
-      hint: "regions z4-6 · depts z7-9 · cities+arr z10-14",
+      hint: "regions z4-6 · depts z7-8 · cities+arr z9-14",
       ports: { left: true, right: true },
     },
   },
@@ -249,7 +249,7 @@ const LAYERS = [
   },
   {
     layer: "departments",
-    zoom: "7 → 9",
+    zoom: "7 → 8",
     features: "101",
     src: "geo.api.gouv.fr/departements",
     simplif: "10",
@@ -257,7 +257,7 @@ const LAYERS = [
   },
   {
     layer: "cities",
-    zoom: "10 → 14",
+    zoom: "9 → 14",
     features: "34 968 + 45 arr.",
     src: "geo.api.gouv.fr/communes + ?type=arrondissement-municipal",
     simplif: "8",
@@ -355,7 +355,7 @@ const QUIRKS = [
   {
     quirk: "Hover bloqué au zoom 9",
     cause: "Departments + cities se chevauchent à z=10, 2 layers sous le curseur",
-    fix: "Zones disjointes : depts z7-9, cities z10-14",
+    fix: "Zones disjointes : depts z7-8, cities z9-14",
   },
   {
     quirk: "Map blanche après pod restart",

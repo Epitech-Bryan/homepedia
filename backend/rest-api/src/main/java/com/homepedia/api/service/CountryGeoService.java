@@ -141,55 +141,81 @@ public class CountryGeoService {
 		if (worldAdmin1Cache != null) {
 			return;
 		}
-		final var populationByCode = loadAdmin1Populations();
+		final var metricsByCode = loadAdmin1Metrics();
 		final var resource = new ClassPathResource("data/world-admin1.geojson");
 		try (var in = resource.getInputStream()) {
 			final var root = (ObjectNode) objectMapper.readTree(in);
 			final var features = (ArrayNode) root.get("features");
 			var withPopulation = 0;
+			var withGdp = 0;
 			for (JsonNode f : features) {
 				final var props = (ObjectNode) f.get("properties");
 				if (props == null) {
 					continue;
 				}
+				// Computed area from the geometry — kept even when Wikidata
+				// publishes a number, because the spherical-cap calc gives
+				// a value for every feature whereas P2046 misses ~5 %.
 				final var areaKm2 = computeFeatureAreaKm2(f.get("geometry"));
 				if (areaKm2 > 0) {
 					props.put("area", areaKm2);
 				}
-				// Wikidata-sourced population for 94 % of admin-1 entries
-				// (manual overrides for the localised-name minority that
-				// the SPARQL label-EN binding can't match against GADM).
-				// Unlocks the choropleth on density / population for
-				// non-FR admin-1 zoom; missing entries fall back to "no
-				// data" gray like before.
 				final var code = props.path("code").asText(null);
-				if (code != null) {
-					final var pop = populationByCode.get(code);
-					if (pop != null) {
-						props.put("population", pop.longValue());
-						withPopulation++;
+				if (code == null) {
+					continue;
+				}
+				final var metrics = metricsByCode.get(code);
+				if (metrics == null) {
+					continue;
+				}
+				// Wikidata-sourced metrics. Pop covers ~94 % of admin-1
+				// entries, gdpNominal ~30 % (sparse but worth surfacing for
+				// the regions that do publish it — choropleth grays out the
+				// rest, per the design call). Missing fields are simply
+				// skipped so the frontend sees no key.
+				if (metrics.population != null) {
+					props.put("population", metrics.population);
+					withPopulation++;
+				}
+				if (metrics.gdpNominal != null) {
+					props.put("gdpNominal", metrics.gdpNominal);
+					if (metrics.population != null && metrics.population > 0) {
+						props.put("gdpPerCapita", metrics.gdpNominal / metrics.population);
 					}
+					withGdp++;
 				}
 			}
 			worldAdmin1Cache = objectMapper.writeValueAsString(root);
-			log.info("World admin-1 GeoJSON enriched: {} features, {} with population", features.size(),
-					withPopulation);
+			log.info("World admin-1 GeoJSON enriched: {} features, {} with pop, {} with gdp", features.size(),
+					withPopulation, withGdp);
 		}
 	}
 
-	private java.util.Map<String, Long> loadAdmin1Populations() {
-		final var resource = new ClassPathResource("data/world-admin1-population.json");
+	private record Admin1Metrics(Long population, Double area, Double gdpNominal) {
+	}
+
+	private java.util.Map<String, Admin1Metrics> loadAdmin1Metrics() {
+		final var resource = new ClassPathResource("data/world-admin1-metrics.json");
 		if (!resource.exists()) {
-			log.warn("world-admin1-population.json missing — admin-1 choropleth will fall back to area only");
+			log.warn("world-admin1-metrics.json missing — admin-1 choropleth will fall back to area only");
 			return java.util.Map.of();
 		}
 		try (var in = resource.getInputStream()) {
 			final var node = (ObjectNode) objectMapper.readTree(in);
-			final var out = new java.util.HashMap<String, Long>();
-			node.fields().forEachRemaining(e -> out.put(e.getKey(), e.getValue().asLong()));
+			final var out = new java.util.HashMap<String, Admin1Metrics>();
+			node.fields().forEachRemaining(e -> {
+				final var v = e.getValue();
+				final var pop = v.path("population");
+				final var area = v.path("area");
+				final var gdp = v.path("gdpNominal");
+				out.put(e.getKey(),
+						new Admin1Metrics(pop.isMissingNode() || pop.isNull() ? null : pop.asLong(),
+								area.isMissingNode() || area.isNull() ? null : area.asDouble(),
+								gdp.isMissingNode() || gdp.isNull() ? null : gdp.asDouble()));
+			});
 			return out;
 		} catch (IOException e) {
-			log.error("Failed to parse world-admin1-population.json: {}", e.getMessage());
+			log.error("Failed to parse world-admin1-metrics.json: {}", e.getMessage());
 			return java.util.Map.of();
 		}
 	}

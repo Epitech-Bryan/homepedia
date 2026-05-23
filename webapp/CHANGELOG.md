@@ -1,5 +1,15 @@
 # app
 
+## [0.56.0] - 2026-05-23
+
+### Features
+
+- feat(world): +25 admin-1 countries + bake area and gdp metrics
+
+### Bug Fixes
+
+- perf(spark): COPY FROM STDIN + drop/recreate indexes + PK pre-sort
+
 ## [0.55.0] - 2026-05-23
 
 ### Features

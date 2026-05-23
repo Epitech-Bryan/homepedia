@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { FranceMap, type MapMarker, type MapStyle } from "@/components/FranceMap";
 import {
@@ -269,25 +269,21 @@ export function PersistentMap() {
     }, 80);
   }, []);
 
-  // Debounce bounds updates: a single pan emits several `moveend` events as
-  // Leaflet eases the inertia, and each one fires a heatpoints + a
-  // transaction-markers bbox query against the backend. 50 ms is enough to
-  // coalesce the inertia burst into one update while staying invisible to
-  // the user — the vector-tile commune layer means we no longer pay the
-  // multi-department GeoJSON fetch the original 200 ms was sized for.
-  const boundsTimer = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (boundsTimer.current !== null) window.clearTimeout(boundsTimer.current);
-    },
-    [],
-  );
+  // Bounds updates feed straight into state — React 19's useDeferredValue
+  // below handles the prioritisation. Pan emits a burst of `moveend` events
+  // (Leaflet's inertia easing); React batches the state writes inside the
+  // current frame, then schedules dependent work (visibleDeptCodes /
+  // drilldownCityCodes / metric range recompute) at a lower priority so the
+  // camera animation stays at 60 fps even on a 4× CPU slowdown. Old manual
+  // 50 ms debounce removed — it was leaving the first pan visibly stuttery.
   const onBoundsChange = useCallback((south: number, west: number, north: number, east: number) => {
-    if (boundsTimer.current !== null) window.clearTimeout(boundsTimer.current);
-    boundsTimer.current = window.setTimeout(() => {
-      setBounds([south, west, north, east]);
-    }, 50);
+    setBounds([south, west, north, east]);
   }, []);
+  // Deferred view: the high-cost useMemos (bbox sweeps over 101 depts,
+  // arrondissement filter, MVT redraws keyed on range/min/max) read these
+  // instead of the live state. While the user is actively dragging, the
+  // deferred copy lags by one frame and React keeps the gesture responsive.
+  const deferredBounds = useDeferredValue(bounds);
 
   // URL drives the active feature highlight + cards below the map.
   // The MAP CONTENT (which layer to show) is purely zoom-driven.
@@ -351,7 +347,12 @@ export function PersistentMap() {
   // every pan is pure overhead.
   const visibleDeptCodes = useMemo(() => {
     if (!showCityDetail || useVectorTiles || !geoDepartments) return [];
-    const viewBbox: [number, number, number, number] = [bounds[1], bounds[0], bounds[3], bounds[2]];
+    const viewBbox: [number, number, number, number] = [
+      deferredBounds[1],
+      deferredBounds[0],
+      deferredBounds[3],
+      deferredBounds[2],
+    ];
     const codes: string[] = [];
     for (const f of geoDepartments.features) {
       const code = (f.properties as { code?: string } | null)?.code;
@@ -361,7 +362,7 @@ export function PersistentMap() {
       }
     }
     return codes.sort();
-  }, [showCityDetail, useVectorTiles, geoDepartments, bounds]);
+  }, [showCityDetail, useVectorTiles, geoDepartments, deferredBounds]);
 
   const geoCities = useGeoCitiesForDepartments(visibleDeptCodes);
 
@@ -371,7 +372,12 @@ export function PersistentMap() {
   // cities layer, no SVG overlay needed).
   const drilldownCityCodes = useMemo(() => {
     if (!showArrondissements || useVectorTiles || !geoCities) return [];
-    const viewBbox: [number, number, number, number] = [bounds[1], bounds[0], bounds[3], bounds[2]];
+    const viewBbox: [number, number, number, number] = [
+      deferredBounds[1],
+      deferredBounds[0],
+      deferredBounds[3],
+      deferredBounds[2],
+    ];
     const codes: string[] = [];
     for (const f of geoCities.features) {
       const code = (f.properties as { code?: string } | null)?.code;
@@ -379,7 +385,7 @@ export function PersistentMap() {
       if (bboxesOverlap(featureBbox(f), viewBbox)) codes.push(code);
     }
     return codes.sort();
-  }, [showArrondissements, useVectorTiles, geoCities, bounds]);
+  }, [showArrondissements, useVectorTiles, geoCities, deferredBounds]);
 
   const geoArrondissements = useArrondissementsForCities(drilldownCityCodes);
 
@@ -728,10 +734,10 @@ export function PersistentMap() {
   const heatEnabled =
     showCityDetail && (style === "heat" || style === "all") && heatBackendMetric != null;
   const { data: precisionHeatPoints } = useTransactionHeatPoints({
-    south: bounds[0],
-    west: bounds[1],
-    north: bounds[2],
-    east: bounds[3],
+    south: deferredBounds[0],
+    west: deferredBounds[1],
+    north: deferredBounds[2],
+    east: deferredBounds[3],
     metric: heatBackendMetric ?? "averagePricePerSqm",
     enabled: heatEnabled,
   });
@@ -742,10 +748,10 @@ export function PersistentMap() {
   // the heatmap alone.
   const markersEnabled = zoom >= ARRONDISSEMENT_ZOOM_THRESHOLD;
   const { data: transactionMarkers } = useTransactionMarkers({
-    south: bounds[0],
-    west: bounds[1],
-    north: bounds[2],
-    east: bounds[3],
+    south: deferredBounds[0],
+    west: deferredBounds[1],
+    north: deferredBounds[2],
+    east: deferredBounds[3],
     enabled: markersEnabled,
   });
 

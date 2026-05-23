@@ -53,3 +53,18 @@ schedule(() => {
     staleTime: 60 * 60 * 1000,
   });
 });
+
+// Disk-cache MVT vector tiles via a single-purpose service worker. Leaflet's
+// in-memory cache is wiped on every refresh; persisting to CacheStorage
+// drops the network round-trip for any tile the user has already seen,
+// across sessions. Registration is deferred until `load` so it never
+// competes with the LCP-critical bundle download. Only enabled in prod
+// builds — running a SW against the Vite dev server would shadow HMR.
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // SW registration failures are non-fatal: the app keeps working,
+      // just without the disk cache for tiles.
+    });
+  });
+}

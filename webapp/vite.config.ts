@@ -45,16 +45,23 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      // Manual chunks isolate the slow-moving libs (react, leaflet, recharts)
-      // from app code. A deploy that only touches src/ then doesn't bust the
-      // browser cache for ~1 MB of vendor JS.
+      // Manual chunks isolate the slow-moving libs (react, leaflet) from app
+      // code. A deploy that only touches src/ then doesn't bust the browser
+      // cache for ~600 KB of vendor JS.
+      //
+      // recharts is intentionally NOT in manualChunks: it's only consumed by
+      // three lazy()-loaded chart wrappers (PriceChart, PriceHistoryChart,
+      // SentimentChart). Listing it here forced Vite to emit a
+      // <link rel="modulepreload"> in index.html, pulling 391 KB eagerly on
+      // every visit even when the user never opens a chart page. Letting
+      // Vite handle the split automatically keeps recharts in a shared
+      // chunk that is only preloaded transitively by the lazy chart pages.
       rollupOptions: {
         output: {
           manualChunks: {
             "vendor-react": ["react", "react-dom", "react-router-dom"],
             "vendor-query": ["@tanstack/react-query"],
             "vendor-leaflet": ["leaflet", "leaflet.heat", "leaflet.vectorgrid", "react-leaflet"],
-            "vendor-charts": ["recharts"],
           },
         },
       },

@@ -1,5 +1,11 @@
 # app
 
+## [0.61.1] - 2026-05-23
+
+### Bug Fixes
+
+- fix(map): mount world MVT layer below city so clicks at z=9+ work
+
 ## [0.61.0] - 2026-05-23
 
 ### Features

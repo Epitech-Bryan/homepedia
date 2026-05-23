@@ -249,8 +249,24 @@ export function PersistentMap() {
     setClickedFeatureCode(undefined);
   }, [pathname]);
 
+  // Debounce center updates: Leaflet emits `move` at the screen refresh rate
+  // during a drag, and the only consumer of `center` is `autoDeptCode` —
+  // a point-in-polygon scan over the 101 departments. Running that scan at
+  // 60 Hz freezes the main thread mid-pan. 80 ms coalesces a drag into 2-3
+  // updates max, the PIP stays cheap, and `autoDeptCode → cityFetchDeptCode
+  // → useCitiesForDepartment` only refetches once the user actually lets go.
+  const centerTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (centerTimer.current !== null) window.clearTimeout(centerTimer.current);
+    },
+    [],
+  );
   const onCenterChange = useCallback((lat: number, lng: number) => {
-    setCenter([lat, lng]);
+    if (centerTimer.current !== null) window.clearTimeout(centerTimer.current);
+    centerTimer.current = window.setTimeout(() => {
+      setCenter([lat, lng]);
+    }, 80);
   }, []);
 
   // Debounce bounds updates: a single pan emits several `moveend` events as
@@ -285,6 +301,12 @@ export function PersistentMap() {
   const showDepartments = zoom >= DEPARTMENT_ZOOM_THRESHOLD;
   const showCityDetail = zoom >= CITY_DETAIL_ZOOM_THRESHOLD;
   const showArrondissements = zoom >= ARRONDISSEMENT_ZOOM_THRESHOLD;
+  // Vector tiles take over the commune layer at city zoom. When on, the
+  // legacy SVG-per-polygon path (GeoJSON commune fetches, Belgium municipal
+  // overlay, drilldown arrondissement merge) becomes pure overhead — the
+  // tile pipeline already ships those polygons with stats baked into the
+  // MVT properties. Hoisted here so the city-level useMemos can short-circuit.
+  const useVectorTiles = showCityDetail && import.meta.env.VITE_USE_VECTOR_TILES === "true";
 
   // Pre-fetch every layer so zoom-driven switching is instant.
   const { data: geoCountries } = useGeoCountries();
@@ -324,8 +346,11 @@ export function PersistentMap() {
 
   // At city zoom, load commune polygons for every department whose bbox
   // intersects the viewport — neighbours included so the borders look natural.
+  // Skipped entirely when vector tiles are on: the MVT layer already ships
+  // those polygons + their stats, paying for the geo.api.gouv.fr fetch on
+  // every pan is pure overhead.
   const visibleDeptCodes = useMemo(() => {
-    if (!showCityDetail || !geoDepartments) return [];
+    if (!showCityDetail || useVectorTiles || !geoDepartments) return [];
     const viewBbox: [number, number, number, number] = [bounds[1], bounds[0], bounds[3], bounds[2]];
     const codes: string[] = [];
     for (const f of geoDepartments.features) {
@@ -336,14 +361,16 @@ export function PersistentMap() {
       }
     }
     return codes.sort();
-  }, [showCityDetail, geoDepartments, bounds]);
+  }, [showCityDetail, useVectorTiles, geoDepartments, bounds]);
 
   const geoCities = useGeoCitiesForDepartments(visibleDeptCodes);
 
   // At arrondissement zoom, only fetch for the drilldown communes whose bbox
   // intersects the viewport. Outside Paris/Lyon/Marseille this is a no-op.
+  // Skipped when vector tiles are on (arrondissements are baked into the MVT
+  // cities layer, no SVG overlay needed).
   const drilldownCityCodes = useMemo(() => {
-    if (!showArrondissements || !geoCities) return [];
+    if (!showArrondissements || useVectorTiles || !geoCities) return [];
     const viewBbox: [number, number, number, number] = [bounds[1], bounds[0], bounds[3], bounds[2]];
     const codes: string[] = [];
     for (const f of geoCities.features) {
@@ -352,21 +379,25 @@ export function PersistentMap() {
       if (bboxesOverlap(featureBbox(f), viewBbox)) codes.push(code);
     }
     return codes.sort();
-  }, [showArrondissements, geoCities, bounds]);
+  }, [showArrondissements, useVectorTiles, geoCities, bounds]);
 
   const geoArrondissements = useArrondissementsForCities(drilldownCityCodes);
 
   // Belgian communes — 581 GADM polygons with Wikidata-sourced population.
-  // Fetched only at city zoom (we don't need them at world / region level)
-  // and merged into cityLevelGeojson so a user panning across the border
-  // sees a continuous commune layer instead of FR ending sharply at the BE
-  // line. Vector tiles only ship FR communes; the BE layer renders as
-  // SVG GeoJSON on top of the basemap, sliced at the same zoom band.
-  const { data: geoBelgiumMunicipalities } = useGeoBelgiumMunicipalities(showCityDetail);
+  // Fetched only at city zoom when vector tiles are off; when on, the MVT
+  // pipeline ships its own commune layer and the BE overlay would just
+  // double-draw the borders.
+  const { data: geoBelgiumMunicipalities } = useGeoBelgiumMunicipalities(
+    showCityDetail && !useVectorTiles,
+  );
 
   // City-level geojson: start from communes (FR + BE), then at arrondissement
   // zoom swap out drilldown parent communes for their arrondissement polygons.
+  // Returns null early under vector tiles — every downstream consumer
+  // (`geojson` final, `cityStatCodes`, `metricByCode` city branch) already
+  // short-circuits in that case, so computing it would waste cycles.
   const cityLevelGeojson = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (useVectorTiles) return null;
     if (!geoCities) return null;
     const baseFeatures = geoBelgiumMunicipalities
       ? [...geoCities.features, ...geoBelgiumMunicipalities.features]
@@ -383,6 +414,7 @@ export function PersistentMap() {
       features: [...filtered, ...geoArrondissements.features],
     };
   }, [
+    useVectorTiles,
     geoCities,
     geoBelgiumMunicipalities,
     showArrondissements,
@@ -425,13 +457,6 @@ export function PersistentMap() {
       }),
     };
   }, [wrappedCountries, preciselyOverlaidCountries]);
-
-  // Vector tiles toggle: when on, the commune layer at city zoom is rendered
-  // by the backend MVT endpoint via Leaflet.VectorGrid (issue #6) instead
-  // of the SVG-per-polygon path coming from geo.api.gouv.fr. Off by default
-  // — flip VITE_USE_VECTOR_TILES=true to opt in once the mbtiles file is
-  // provisioned in prod.
-  const useVectorTiles = showCityDetail && import.meta.env.VITE_USE_VECTOR_TILES === "true";
 
   // 4-tier zoom: world (countries) → regions+BE provinces → departments
   // → city/arrondissement. At world zoom France is just one country shape

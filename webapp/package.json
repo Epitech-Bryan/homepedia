@@ -62,5 +62,5 @@
     "test:watch": "vitest"
   },
   "type": "module",
-  "version": "0.53.3"
+  "version": "0.53.4"
 }

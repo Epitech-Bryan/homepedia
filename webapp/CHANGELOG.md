@@ -1,5 +1,11 @@
 # app
 
+## [0.57.0] - 2026-05-23
+
+### Features
+
+- feat(world): admin-2 layer for European countries past zoom 7
+
 ## [0.56.0] - 2026-05-23
 
 ### Features

@@ -207,6 +207,15 @@ const METRIC_LABELS: Record<MapMetric, string> = {
   transactionCount: "Transactions",
 };
 
+// Human label per MapStyle. The Select.Value render function reads from
+// here so the trigger shows "Choropleth" instead of the raw value "choropleth".
+const MAP_STYLE_LABELS: Record<string, string> = {
+  choropleth: "Choropleth",
+  bubbles: "Bubbles",
+  heat: "Heatmap",
+  all: "All",
+};
+
 function extractValue(
   s: RegionStats | DepartmentStats | CityStats,
   metric: MapMetric,
@@ -849,7 +858,7 @@ export function PersistentMap() {
       <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2 pointer-events-auto">
         <Select value={metric} onValueChange={(v) => setMetric(v as MapMetric)}>
           <SelectTrigger className="w-44 h-8 text-xs bg-background/90 backdrop-blur shadow-sm">
-            <SelectValue />
+            <SelectValue>{(v: string) => METRIC_LABELS[v as MapMetric] ?? v}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {Object.entries(METRIC_LABELS).map(([key, label]) => (
@@ -861,13 +870,14 @@ export function PersistentMap() {
         </Select>
         <Select value={style} onValueChange={(v) => setStyle(v as MapStyle)}>
           <SelectTrigger className="w-32 h-8 text-xs bg-background/90 backdrop-blur shadow-sm">
-            <SelectValue />
+            <SelectValue>{(v: string) => MAP_STYLE_LABELS[v] ?? v}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="choropleth">Choropleth</SelectItem>
-            <SelectItem value="bubbles">Bubbles</SelectItem>
-            <SelectItem value="heat">Heatmap</SelectItem>
-            <SelectItem value="all">All</SelectItem>
+            {Object.entries(MAP_STYLE_LABELS).map(([key, label]) => (
+              <SelectItem key={key} value={key}>
+                {label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

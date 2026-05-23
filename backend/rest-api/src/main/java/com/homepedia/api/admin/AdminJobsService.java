@@ -119,6 +119,7 @@ public class AdminJobsService {
 		final boolean running = !jobExplorer.findRunningJobExecutions(beanName).isEmpty();
 		Instant lastRunAt = null;
 		String lastStatus = null;
+		String lastExitMessage = null;
 		Long lastDurationMs = null;
 		final List<JobInstance> instances = jobExplorer.findJobInstancesByJobName(beanName, 0, 1);
 		if (!instances.isEmpty()) {
@@ -127,13 +128,25 @@ public class AdminJobsService {
 				final var last = execs.get(0);
 				lastRunAt = toInstant(last.getStartTime());
 				lastStatus = last.getStatus().toString();
+				// Spring Batch packs the failure reason (exception class +
+				// truncated stack trace) into ExitStatus.exitDescription —
+				// surface it so the Admin UI can show *why* a job is FAILED
+				// instead of just the status code.
+				final var exitDesc = last.getExitStatus() != null ? last.getExitStatus().getExitDescription() : null;
+				if (exitDesc != null && !exitDesc.isBlank()) {
+					// Truncate at 500 chars so a full stack trace doesn't bloat
+					// the polled /status payload — the first lines carry the
+					// signal, the rest is JVM frames.
+					lastExitMessage = exitDesc.length() > 500 ? exitDesc.substring(0, 500) + "…" : exitDesc;
+				}
 				if (last.getStartTime() != null && last.getEndTime() != null) {
 					lastDurationMs = Duration.between(last.getStartTime(), last.getEndTime()).toMillis();
 				}
 			}
 		}
 		final BatchStatus state = running ? BatchStatus.STARTED : BatchStatus.UNKNOWN;
-		return new JobStatusView(running ? "RUNNING" : "IDLE", lastRunAt, lastStatus, state.toString(), lastDurationMs);
+		return new JobStatusView(running ? "RUNNING" : "IDLE", lastRunAt, lastStatus, state.toString(), lastDurationMs,
+				lastExitMessage);
 	}
 
 	private static Instant toInstant(LocalDateTime ldt) {
@@ -141,6 +154,6 @@ public class AdminJobsService {
 	}
 
 	public record JobStatusView(String state, Instant lastRunAt, String lastStatus, String lastBatchStatus,
-			Long lastDurationMs) {
+			Long lastDurationMs, String lastExitMessage) {
 	}
 }

@@ -8,6 +8,13 @@ export type JobStatusView = {
   lastStatus: string | null;
   lastBatchStatus: string;
   lastDurationMs: number | null;
+  /**
+   * Truncated ExitStatus.exitDescription from the last execution — usually
+   * the failure stack trace's first lines. Null when the run completed
+   * cleanly. Shown in the admin UI under the FAILED badge to surface root
+   * cause without digging through pod logs.
+   */
+  lastExitMessage?: string | null;
 };
 
 export type JobsStatus = Record<string, JobStatusView>;

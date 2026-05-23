@@ -160,13 +160,18 @@ function BackdropCountriesLayer({ data }: { data: GeoJSON.FeatureCollection }) {
   // — breaking hover on the vector-tile choropleth underneath. Setting
   // `pointer-events: none` on the pane itself lets every event fall
   // through to the canvas below regardless of z-order.
-  useEffect(() => {
-    if (!map.getPane("backdrop")) {
-      const pane = map.createPane("backdrop");
-      pane.style.zIndex = "350";
-      pane.style.pointerEvents = "none";
-    }
-  }, [map]);
+  //
+  // Created synchronously in render (idempotent via getPane check) — a
+  // useEffect runs AFTER the child <LeafletGeoJSON pane="backdrop"> has
+  // mounted, leaving Leaflet with no renderer for the path. The onRemove
+  // cleanup then crashes with "Cannot read properties of undefined
+  // (reading '_removePath')" because the ad-hoc renderer Leaflet allocated
+  // gets garbage-collected before the layer's teardown runs.
+  if (!map.getPane("backdrop")) {
+    const pane = map.createPane("backdrop");
+    pane.style.zIndex = "350";
+    pane.style.pointerEvents = "none";
+  }
   useEffect(() => {
     const update = () => {
       const layer = layerRef.current;

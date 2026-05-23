@@ -1,5 +1,17 @@
 # app
 
+## [0.53.0] - 2026-05-23
+
+### Features
+
+- feat(schemas): add Carte and Spark schema tabs
+- feat(geo): +17 countries to world admin-1 (1353 features, 1047 with population)
+
+### Bug Fixes
+
+- fix(tiles): no zoom overlap between layers (regions z4-6, depts z7-9, cities z10-14)
+- perf(spark): broadcast cities, partition JDBC reads, kryo serializer
+
 ## [0.52.0] - 2026-05-22
 
 ### Features

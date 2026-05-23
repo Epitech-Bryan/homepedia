@@ -124,6 +124,25 @@ public class CountryGeoService {
 	 * admin-1 regions without yet another payload. Population is not available in
 	 * the GADM source — that's what the future Eurostat NUTS 2 importer is for.
 	 */
+	/**
+	 * Admin-2 polygons (counties / districts / Kreise / province) for ~18 European
+	 * countries — the level just below admin-1. Total ~6 k features, 3-4 MB on disk
+	 * after Douglas-Peucker simplification at 3 km tolerance. Loaded straight from
+	 * disk; no enrichment pass since GADM provides name + parent code in the source
+	 * already.
+	 */
+	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'world-admin2'")
+	public String getWorldAdmin2GeoJson() {
+		try {
+			final var resource = new ClassPathResource("data/world-admin2.geojson");
+			try (var in = resource.getInputStream()) {
+				return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+			}
+		} catch (IOException e) {
+			throw new IllegalStateException("World admin-2 GeoJSON not available", e);
+		}
+	}
+
 	@Cacheable(value = CacheConfig.CACHE_GEO, key = "'world-admin1'")
 	public String getWorldAdmin1GeoJson() {
 		if (worldAdmin1Cache != null) {

@@ -14,6 +14,7 @@ import {
   useGeoDepartments,
   useGeoRegions,
   useGeoWorldAdmin1,
+  useGeoWorldAdmin2,
   useRegionStats,
   useTileMetricRanges,
   useTransactionHeatPoints,
@@ -313,6 +314,11 @@ export function PersistentMap() {
   const { data: geoWorldAdmin1 } = useGeoWorldAdmin1();
   const { data: geoRegions } = useGeoRegions();
   const { data: geoDepartments } = useGeoDepartments(); // no filter = all 101
+  // Admin-2 covers the level below admin-1 (DEU Kreise, GBR districts,
+  // ITA province etc.) — only fetch past department zoom, where the
+  // detail becomes readable. ~3.7 MB on the wire so we avoid paying for
+  // it on world / region browse.
+  const { data: geoWorldAdmin2 } = useGeoWorldAdmin2(showDepartments);
   const { data: regionStats } = useRegionStats();
   const { data: allDepartmentStats } = useDepartmentStats(); // all
 
@@ -464,22 +470,38 @@ export function PersistentMap() {
     };
   }, [wrappedCountries, preciselyOverlaidCountries]);
 
-  // 4-tier zoom: world (countries) → regions+BE provinces → departments
-  // → city/arrondissement. At world zoom France is just one country shape
-  // among the others — the user is dezoomed past the point where regional
-  // detail would even be readable. As soon as we cross the threshold we
-  // drop into the data-rich stack with countries kept as a grey backdrop.
-  // When vector tiles take over the commune layer we pass {@code null} for
-  // the geojson prop so FranceMap doesn't double-draw with its
+  // FR departements + world admin-2 stitched into one collection at
+  // department zoom: they're geographically disjoint (FR has départements,
+  // DE has Kreise, etc.) so a single LeafletGeoJSON renders them all and
+  // the choropleth styleFor closure reads each feature's properties
+  // uniformly. World admin-2 only loads past showDepartments so a
+  // France-only session never pays for it.
+  const departmentsFeatureCollection = useMemo<GeoJSON.FeatureCollection | null>(() => {
+    if (!geoDepartments) return geoWorldAdmin2 ?? null;
+    if (!geoWorldAdmin2) return geoDepartments;
+    return {
+      type: "FeatureCollection",
+      features: [...geoDepartments.features, ...geoWorldAdmin2.features],
+    };
+  }, [geoDepartments, geoWorldAdmin2]);
+
+  // 4-tier zoom: world (countries) → regions+BE provinces+world admin-1
+  // → departments+world admin-2 → city/arrondissement. At world zoom
+  // France is just one country shape among the others — the user is
+  // dezoomed past the point where regional detail would even be
+  // readable. As soon as we cross the threshold we drop into the
+  // data-rich stack with countries kept as a grey backdrop. When vector
+  // tiles take over the commune layer we pass {@code null} for the
+  // geojson prop so FranceMap doesn't double-draw with its
   // LeafletGeoJSON polygons.
   const geojson = showWorld
     ? (wrappedCountries ?? null)
     : showCityDetail
       ? useVectorTiles
         ? null
-        : (cityLevelGeojson ?? geoDepartments ?? null)
+        : (cityLevelGeojson ?? departmentsFeatureCollection ?? null)
       : showDepartments
-        ? (geoDepartments ?? null)
+        ? (departmentsFeatureCollection ?? null)
         : (regionsFeatureCollection ?? null);
 
   // Backend stats for every commune code visible on screen — used to colour

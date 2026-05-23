@@ -328,6 +328,23 @@ export function useGeoWorldAdmin1() {
   });
 }
 
+/**
+ * GADM admin-2 boundaries (~6 k features over ~18 European countries) —
+ * the level below admin-1. Lets the map render sub-region detail past
+ * zoom 7 outside France. ~3.7 MB on the wire after Brotli, gated on the
+ * `enabled` flag so we don't pay it on world / region zoom where the
+ * detail is unreadable anyway.
+ */
+export function useGeoWorldAdmin2(enabled: boolean) {
+  return useQuery({
+    queryKey: ["geo", "world", "admin2"],
+    queryFn: () => api.geo.worldAdmin2(),
+    enabled,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+}
+
 export function useGeoRegions() {
   return useQuery({ queryKey: ["geo", "regions"], queryFn: () => api.geo.regions() });
 }

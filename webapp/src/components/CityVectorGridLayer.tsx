@@ -192,17 +192,28 @@ export function CityVectorGridLayer({
         };
       }
     ).vectorGrid.protobuf(url, {
-      // The mbtiles ships three layers: regions (z 4-7), departments
-      // (z 6-10), cities (z 10-14). Each level shares the same styleFor
-      // closure — the `code` property is the join key across all three,
-      // so a metric lookup by region code / department code / INSEE
-      // commune code all resolve the same way. Tippecanoe drops layers
-      // outside their zoom band, so departments don't fight cities at
-      // z=12 even though the style is registered.
+      // The mbtiles ships four layers: regions (z 4-6), departments
+      // (z 7-8), cities (z 9-14), iris (z 13-14). Each level shares the
+      // same styleFor closure — the `code` property is the join key
+      // across the first three. The iris layer carries a 9-char code
+      // (no commune-level metric) so it falls back to a neutral fill
+      // through styleFor's null branch.
       vectorTileLayerStyles: {
         regions: (props: Record<string, unknown> & { code?: string }) => styleFor(props),
         departments: (props: Record<string, unknown> & { code?: string }) => styleFor(props),
         cities: (props: Record<string, unknown> & { code?: string }) => styleFor(props),
+        // IRIS gets its own style: thin border + soft translucent fill so
+        // the underlying commune choropleth bleeds through. No hover
+        // colour change either — just a tooltip with the IRIS name and
+        // a click that routes to the parent commune.
+        iris: () => ({
+          fillColor: "#ffffff",
+          fill: true,
+          fillOpacity: 0.05,
+          weight: 0.6,
+          color: "#1f2937",
+          interactive: true,
+        }),
       },
       interactive: true,
       // The mbtiles span z=4..14 across the three layers (TileController
@@ -216,12 +227,22 @@ export function CityVectorGridLayer({
       getFeatureId: (f: { properties?: { code?: string } }) => f.properties?.code,
     });
 
-    layer.on("click", (e: { layer: { properties?: { code?: string; name?: string } } }) => {
-      const code = e.layer?.properties?.code;
-      if (code) {
-        onFeatureClickRef.current?.(code, e.layer.properties?.name);
-      }
-    });
+    layer.on(
+      "click",
+      (e: { layer: { properties?: { code?: string; name?: string; commune_code?: string } } }) => {
+        const props = e.layer?.properties;
+        if (!props) return;
+        // IRIS click → route to the parent commune (commune_code is the
+        // 5-char INSEE prefix baked by CityTileBuilder). The IRIS code
+        // itself isn't a navigable entity in the rest of the app.
+        const isIris =
+          typeof props.code === "string" && props.code.length === 9 && !!props.commune_code;
+        const targetCode = isIris ? props.commune_code : props.code;
+        if (targetCode) {
+          onFeatureClickRef.current?.(targetCode, props.name);
+        }
+      },
+    );
 
     // Single floating tooltip shared across the layer — cheaper than
     // creating one per feature and avoids the canvas/DOM hit-test mismatch
@@ -240,6 +261,13 @@ export function CityVectorGridLayer({
       props: Record<string, unknown>,
     ): string => {
       const label = name ?? code;
+      // IRIS features carry a 9-char code + commune_code prop — no metric
+      // baked in, so we just show the IRIS name and hint that the click
+      // will navigate to the parent commune.
+      const isIris = code.length === 9 && typeof props.commune_code === "string";
+      if (isIris) {
+        return `<strong>${label}</strong><br/><span style="color:#6b7280">IRIS · ${props.commune_code}</span>`;
+      }
       // Same precedence as styleFor: tile-baked value first, parent map
       // second. Prevents a "no value" tooltip on a polygon that's already
       // coloured by the embedded stats.

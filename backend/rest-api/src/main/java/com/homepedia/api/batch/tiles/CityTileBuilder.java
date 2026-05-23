@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -101,6 +102,9 @@ public class CityTileBuilder {
 	@Value("${homepedia.tiles.departments-geojson:/data/tiles/departments-fr.geojson}")
 	private String departmentsGeojsonPath;
 
+	@Value("${homepedia.tiles.iris-geojson:/data/tiles/iris-fr.geojson}")
+	private String irisGeojsonPath;
+
 	@Value("${homepedia.tiles.geo-api-base-url:https://geo.api.gouv.fr}")
 	private String geoApiBaseUrl;
 
@@ -113,6 +117,8 @@ public class CityTileBuilder {
 	private final CityTileStatsRepository statsRepository;
 
 	private final VectorTileService vectorTileService;
+
+	private final JdbcTemplate jdbcTemplate;
 
 	private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -240,9 +246,15 @@ public class CityTileBuilder {
 			final var communesSrc = Path.of(sourceGeojsonPath);
 			final var regionsSrc = Path.of(regionsGeojsonPath);
 			final var departmentsSrc = Path.of(departmentsGeojsonPath);
+			final var irisSrc = Path.of(irisGeojsonPath);
 			ensurePolygonSource(communesSrc);
 			ensureRegionsSource(regionsSrc);
 			ensureDepartmentsSource(departmentsSrc);
+			// IRIS is best-effort: if the Filosofi importer hasn't populated
+			// geo_boundaries yet, we just skip the layer rather than failing
+			// the whole rebuild. The frontend treats an absent iris layer the
+			// same as one with no features.
+			final var irisAvailable = ensureIrisSource(irisSrc);
 
 			final var target = Path.of(mbtilesPath);
 			Files.createDirectories(target.getParent());
@@ -255,7 +267,7 @@ public class CityTileBuilder {
 				metricRanges = computeRanges(stats.values());
 				persistRanges();
 				enrich(communesSrc, enrichedTmp, stats);
-				runTippecanoe(regionsSrc, departmentsSrc, enrichedTmp, mbtilesTmp);
+				runTippecanoe(regionsSrc, departmentsSrc, enrichedTmp, irisAvailable ? irisSrc : null, mbtilesTmp);
 				Files.move(mbtilesTmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 				vectorTileService.reload();
 				log.info("city tiles rebuilt at {} in {} ms", target, System.currentTimeMillis() - start);
@@ -445,6 +457,87 @@ public class CityTileBuilder {
 				source);
 	}
 
+	/**
+	 * Stream every IRIS polygon out of {@code geo_boundaries} (where the Filosofi
+	 * importer parks them) into a FeatureCollection on disk for tippecanoe to
+	 * consume. Returns {@code false} when the table holds no IRIS rows yet — the
+	 * rebuild then proceeds without the iris layer rather than failing.
+	 *
+	 * <p>
+	 * Uses {@link JdbcTemplate#query(String, java.sql.PreparedStatement)} with a
+	 * {@code fetchSize} so the ~50 k rows stream through Postgres' cursor protocol
+	 * instead of materialising the full result set in memory — critical because
+	 * each {@code geometry} column can be tens of KB of GeoJSON. Each row is
+	 * written straight to the output stream, never held in a Java collection.
+	 *
+	 * <p>
+	 * Properties emitted per feature: {@code code} (9-char IRIS), {@code name}
+	 * (label), {@code commune_code} (first 5 chars — what the frontend click
+	 * handler routes to). No stats baked yet; the iris layer renders as a neutral
+	 * fill that inherits its parent commune's colour via the shared styleFor
+	 * closure on the frontend.
+	 */
+	private boolean ensureIrisSource(Path source) throws IOException {
+		Files.createDirectories(source.getParent());
+		final var tmp = source.resolveSibling(source.getFileName() + ".tmp");
+		final var written = new java.util.concurrent.atomic.AtomicInteger();
+		try (var out = Files.newOutputStream(tmp); var generator = JSON_FACTORY.createGenerator(out)) {
+			generator.setCodec(MAPPER);
+			generator.writeStartObject();
+			generator.writeStringField("type", "FeatureCollection");
+			generator.writeArrayFieldStart("features");
+			jdbcTemplate.query(con -> {
+				// PostgreSQL cursor streaming requires autocommit=off + an
+				// explicit fetch size. Spring's JdbcTemplate wraps the
+				// connection in a transaction when the query runs inside
+				// query(PreparedStatementCreator, RowCallbackHandler), which
+				// is enough to disable autocommit here.
+				final var ps = con.prepareStatement(
+						"SELECT geographic_code, name, geometry FROM geo_boundaries WHERE geographic_level = 'IRIS'",
+						java.sql.ResultSet.TYPE_FORWARD_ONLY, java.sql.ResultSet.CONCUR_READ_ONLY);
+				ps.setFetchSize(500);
+				return ps;
+			}, rs -> {
+				try {
+					final var code = rs.getString(1);
+					final var name = rs.getString(2);
+					final var geometryJson = rs.getString(3);
+					if (code == null || geometryJson == null || geometryJson.isBlank()) {
+						return;
+					}
+					generator.writeStartObject();
+					generator.writeStringField("type", "Feature");
+					generator.writeFieldName("geometry");
+					generator.writeRawValue(geometryJson);
+					generator.writeObjectFieldStart("properties");
+					generator.writeStringField("code", code);
+					generator.writeStringField("name", name != null ? name : code);
+					// commune_code = the 5-char INSEE prefix the click handler
+					// uses to navigate to /cities/{code}.
+					generator.writeStringField("commune_code", code.length() >= 5 ? code.substring(0, 5) : code);
+					generator.writeEndObject();
+					generator.writeEndObject();
+					written.incrementAndGet();
+				} catch (IOException e) {
+					throw new java.io.UncheckedIOException(e);
+				}
+			});
+			generator.writeEndArray();
+			generator.writeEndObject();
+			generator.flush();
+		} catch (java.io.UncheckedIOException e) {
+			throw e.getCause();
+		}
+		if (written.get() == 0) {
+			log.info("no IRIS rows in geo_boundaries — skipping iris layer in this rebuild");
+			Files.deleteIfExists(tmp);
+			return false;
+		}
+		Files.move(tmp, source, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		log.info("iris source written: {} features → {}", written.get(), source);
+		return true;
+	}
+
 	private void fetchGeoApiCollection(URI url, Path destination) throws IOException, InterruptedException {
 		final var http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
 				.followRedirects(HttpClient.Redirect.NORMAL).build();
@@ -603,30 +696,49 @@ public class CityTileBuilder {
 	}
 
 	/**
-	 * Bake three layers into a single mbtiles using tippecanoe's per-layer JSON
-	 * spec. Each level only appears at its useful zoom band — regions at z=4..7,
-	 * departments at z=7..10, communes at z=10..14 — so the browser never downloads
-	 * commune polygons when the user is staring at the whole country and never
-	 * fights with region polygons when zoomed into a single city. Saves a couple of
-	 * MB on first paint vs three separate JSON endpoints.
+	 * Bake the available layers into a single mbtiles using tippecanoe's per-layer
+	 * JSON spec. Each level only appears at its useful zoom band — regions at
+	 * z=4..6, departments at z=7..8, communes (+ arrondissements for
+	 * Paris/Lyon/Marseille) at z=9..14, IRIS (~50 k Filosofi neighbourhood
+	 * polygons) at z=13..14 when the source is available. Disjoint bands so the
+	 * browser never downloads two layers competing for the same hover target.
+	 *
+	 * <p>
+	 * IRIS is layered ABOVE cities at z=13..14: at that zoom level the user sees a
+	 * single commune at most, so swapping the commune polygon for its IRIS
+	 * subdivision is more useful than keeping the parent outline.
 	 */
-	private void runTippecanoe(Path regionsSrc, Path departmentsSrc, Path communesSrc, Path destination)
+	private void runTippecanoe(Path regionsSrc, Path departmentsSrc, Path communesSrc, Path irisSrc, Path destination)
 			throws IOException, InterruptedException {
 		// Per-layer JSON keeps each level under its own simplification curve
 		// so regions stay readable past z=4 while communes don't dissolve
 		// before z=12. `extend-zooms-if-still-dropping` lets tippecanoe push
 		// past --maximum-zoom on dense city blocks if dropping would lose
-		// data — important for Paris arrondissements.
-		final var pb = new ProcessBuilder(tippecanoeBin, "--output=" + destination, "--force", "--minimum-zoom=4",
-				"--maximum-zoom=14", "--drop-densest-as-needed", "--extend-zooms-if-still-dropping",
-				"--no-tile-size-limit", "-L",
-				"{\"layer\":\"regions\",\"file\":\"" + regionsSrc
-						+ "\",\"minzoom\":4,\"maxzoom\":6,\"simplification\":12}",
-				"-L",
-				"{\"layer\":\"departments\",\"file\":\"" + departmentsSrc
-						+ "\",\"minzoom\":7,\"maxzoom\":8,\"simplification\":10}",
-				"-L", "{\"layer\":\"cities\",\"file\":\"" + communesSrc
-						+ "\",\"minzoom\":9,\"maxzoom\":14,\"simplification\":8}");
+		// data — important for Paris arrondissements and IRIS detail.
+		final var args = new java.util.ArrayList<String>();
+		args.add(tippecanoeBin);
+		args.add("--output=" + destination);
+		args.add("--force");
+		args.add("--minimum-zoom=4");
+		args.add("--maximum-zoom=14");
+		args.add("--drop-densest-as-needed");
+		args.add("--extend-zooms-if-still-dropping");
+		args.add("--no-tile-size-limit");
+		args.add("-L");
+		args.add("{\"layer\":\"regions\",\"file\":\"" + regionsSrc
+				+ "\",\"minzoom\":4,\"maxzoom\":6,\"simplification\":12}");
+		args.add("-L");
+		args.add("{\"layer\":\"departments\",\"file\":\"" + departmentsSrc
+				+ "\",\"minzoom\":7,\"maxzoom\":8,\"simplification\":10}");
+		args.add("-L");
+		args.add("{\"layer\":\"cities\",\"file\":\"" + communesSrc
+				+ "\",\"minzoom\":9,\"maxzoom\":14,\"simplification\":8}");
+		if (irisSrc != null) {
+			args.add("-L");
+			args.add("{\"layer\":\"iris\",\"file\":\"" + irisSrc
+					+ "\",\"minzoom\":13,\"maxzoom\":14,\"simplification\":6}");
+		}
+		final var pb = new ProcessBuilder(args);
 		pb.redirectErrorStream(true);
 		final var process = pb.start();
 		try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {

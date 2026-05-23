@@ -1,5 +1,11 @@
 # app
 
+## [0.64.1] - 2026-05-23
+
+### Bug Fixes
+
+- fix(world): skip MVT countries draw so SVG choropleth shows at z<5
+
 ## [0.64.0] - 2026-05-23
 
 ### Features

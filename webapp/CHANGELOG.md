@@ -1,5 +1,11 @@
 # app
 
+## [0.53.1] - 2026-05-23
+
+### Bug Fixes
+
+- fix(tiles): cities start at z9 (depts z7-8 · cities+arr z9-14)
+
 ## [0.53.0] - 2026-05-23
 
 ### Features

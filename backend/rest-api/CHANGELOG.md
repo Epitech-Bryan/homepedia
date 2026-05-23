@@ -5,6 +5,16 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.56.0] - 2026-05-23
+
+### Features
+
+- feat(schemas): add Carte and Spark schema tabs
+
+### Bug Fixes
+
+- fix(tiles): cities start at z9 (depts z7-8 · cities+arr z9-14)
+
 ## [3.55.1] - 2026-05-22
 
 ### Bug Fixes

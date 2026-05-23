@@ -1,5 +1,11 @@
 # app
 
+## [0.53.3] - 2026-05-23
+
+### Bug Fixes
+
+- fix(map): backdrop pane with pointer-events:none so MVT hover works
+
 ## [0.53.2] - 2026-05-23
 
 ### Bug Fixes

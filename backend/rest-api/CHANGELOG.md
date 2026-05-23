@@ -5,6 +5,17 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.58.0] - 2026-05-23
+
+### Features
+
+- feat(world): +25 admin-1 countries + bake area and gdp metrics
+- feat(reviews): loading checkpoints + skeleton placeholders
+
+### Bug Fixes
+
+- perf(spark): COPY FROM STDIN + drop/recreate indexes + PK pre-sort
+
 ## [3.57.0] - 2026-05-23
 
 ### Features

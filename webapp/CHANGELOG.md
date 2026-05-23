@@ -1,5 +1,11 @@
 # app
 
+## [0.62.0] - 2026-05-23
+
+### Features
+
+- feat(map): overlay OSM street/POI labels at z>=9 for non-FR detail
+
 ## [0.61.1] - 2026-05-23
 
 ### Bug Fixes

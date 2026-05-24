@@ -16,4 +16,11 @@ public interface CityRepository extends JpaRepository<City, String> {
 
 	@Query("SELECT c FROM City c WHERE LOWER(c.name) LIKE LOWER(CONCAT('%', :query, '%'))")
 	Page<City> searchByName(String query, Pageable pageable);
+
+	// Projection used by the review generator — it only needs the INSEE
+	// code to seed deterministic per-city review templates. Pulling the
+	// full City entity for all ~35 k rows added ~250 MB of heap churn for
+	// columns the consumer never touches.
+	@Query("SELECT c.inseeCode FROM City c")
+	List<String> findAllInseeCodes();
 }

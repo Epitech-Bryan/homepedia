@@ -4,9 +4,12 @@ import com.homepedia.common.city.CityRepository;
 import com.homepedia.common.review.CityReview;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,54 +20,132 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ReviewScraperService {
 
-	private static final int BATCH_SIZE = 2000;
-	private static final int GENERATION_THREADS = 4;
+	private static final int BATCH_SIZE = 4000;
+	private static final int GENERATION_THREADS = Math.max(2, Runtime.getRuntime().availableProcessors());
+	private static final int WRITE_THREADS = 2;
+	// Sentinel placed on the queue when generation is finished so the writers
+	// can drain whatever is left and exit cleanly.
+	private static final List<CityReview> POISON_PILL = List.of();
 
 	private final CityRepository cityRepository;
 	private final MongoTemplate mongoTemplate;
 	private final ReviewDataGenerator reviewDataGenerator;
 	private final SentimentAnalysisService sentimentAnalysisService;
 
-	// No @Transactional: cities are read once into memory at the start, and
-	// reviewRepository writes go to MongoDB (different store, not bound to
-	// the JPA transaction manager anyway). Wrapping the whole loop in a
-	// JPA transaction kept a Postgres connection idle-in-transaction holding
-	// a RowShareLock on `cities`, which blocked DROP/ALTER on tables with
-	// FKs to cities (e.g. partition swaps during DVF imports).
+	// No @Transactional: cities are read once at the start, and review writes
+	// go to MongoDB. Wrapping the whole loop in a JPA transaction kept a
+	// Postgres connection idle-in-transaction holding a RowShareLock on
+	// `cities`, which blocked DROP/ALTER on tables with FKs to cities
+	// (e.g. partition swaps during DVF imports).
 	public void importReviews() {
-		final var cities = cityRepository.findAll();
-		log.info("Generating reviews for {} cities", cities.size());
+		// Projection (insee codes only) instead of full City entities —
+		// the generator never touches lat/lng/name/FKs, and the full set
+		// of ~35 k hydrated rows was costing ~250 MB of JPA heap pressure
+		// on every import.
+		final var inseeCodes = cityRepository.findAllInseeCodes();
+		log.info("Generating reviews for {} cities (gen threads={}, write threads={})", inseeCodes.size(),
+				GENERATION_THREADS, WRITE_THREADS);
 
-		// Generation + sentiment analysis are pure CPU work. Run on a
-		// dedicated thread pool so the rest of the cluster's CPU isn't
-		// monopolized but we still get a meaningful speedup on the ~350k
-		// generated reviews.
-		final ExecutorService executor = Executors.newFixedThreadPool(GENERATION_THREADS);
-		final List<CityReview> allReviews;
+		// Bounded queue acts as backpressure between the generator pool
+		// (CPU-bound: sentiment analysis is the dominant cost) and the
+		// writer pool (IO-bound: round-trips to Mongo). Capacity is sized
+		// so the writers stay fed but we never buffer the full ~350 k
+		// reviews in RAM the way the previous "collect everything then
+		// batch-insert" did.
+		final BlockingQueue<List<CityReview>> queue = new LinkedBlockingQueue<>(GENERATION_THREADS * 4);
+		final ExecutorService genPool = Executors.newFixedThreadPool(GENERATION_THREADS);
+		final ExecutorService writePool = Executors.newFixedThreadPool(WRITE_THREADS);
+		final AtomicInteger written = new AtomicInteger();
+		final AtomicInteger lastLogged = new AtomicInteger();
+		final var writers = new ArrayList<java.util.concurrent.Future<?>>(WRITE_THREADS);
+
 		try {
-			final List<CompletableFuture<List<CityReview>>> futures = cities.stream()
-					.map(city -> CompletableFuture.supplyAsync(() -> generateForCity(city.getInseeCode()), executor))
-					.toList();
-			allReviews = futures.stream().map(CompletableFuture::join).flatMap(List::stream).toList();
+			for (int i = 0; i < WRITE_THREADS; i++) {
+				writers.add(writePool.submit(() -> drainAndWrite(queue, written, lastLogged)));
+			}
+			for (final var code : inseeCodes) {
+				genPool.submit(() -> {
+					try {
+						final var reviews = generateForCity(code);
+						if (!reviews.isEmpty()) {
+							pushInBatches(queue, reviews);
+						}
+					} catch (InterruptedException e) {
+						// Pool is being shut down. Restore the flag so the
+						// worker thread exits, don't keep generating.
+						Thread.currentThread().interrupt();
+					} catch (RuntimeException e) {
+						log.warn("review generation failed for {}: {}", code, e.getMessage());
+					}
+				});
+			}
+			genPool.shutdown();
+			if (!genPool.awaitTermination(2, TimeUnit.HOURS)) {
+				log.warn("generator pool didn't terminate within 2h — proceeding to drain anyway");
+			}
+			for (int i = 0; i < WRITE_THREADS; i++) {
+				queue.put(POISON_PILL);
+			}
+			for (final var f : writers) {
+				f.get();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("review import interrupted", e);
+		} catch (java.util.concurrent.ExecutionException e) {
+			throw new IllegalStateException("writer thread failed", e.getCause());
 		} finally {
-			executor.shutdown();
-		}
-		log.info("Generated {} reviews, persisting in batches of {}...", allReviews.size(), BATCH_SIZE);
-
-		// MongoTemplate.insert(List) issues one bulk-insert command per
-		// batch — single round-trip per BATCH_SIZE docs. The previous
-		// reviewRepository.saveAll() did one upsert call per document
-		// through Spring Data, which on ~350 k generated reviews meant
-		// ~5 min of network ping-pong. Bulk drops that to ~20 s.
-		var totalCount = 0;
-		for (int i = 0; i < allReviews.size(); i += BATCH_SIZE) {
-			final var batch = allReviews.subList(i, Math.min(i + BATCH_SIZE, allReviews.size()));
-			mongoTemplate.insert(batch, CityReview.class);
-			totalCount += batch.size();
-			log.info("Saved {} / {} reviews...", totalCount, allReviews.size());
+			writePool.shutdown();
 		}
 
-		log.info("Review import finished. Total reviews: {}", totalCount);
+		log.info("Review import finished. Total reviews: {}", written.get());
+	}
+
+	private static void pushInBatches(final BlockingQueue<List<CityReview>> queue, final List<CityReview> reviews)
+			throws InterruptedException {
+		// Per-city payloads are small (a few dozen reviews); coalesce them
+		// to BATCH_SIZE before handing off so the writers see Mongo-sized
+		// batches instead of one InsertMany per city.
+		for (int i = 0; i < reviews.size(); i += BATCH_SIZE) {
+			queue.put(new ArrayList<>(reviews.subList(i, Math.min(i + BATCH_SIZE, reviews.size()))));
+		}
+	}
+
+	private void drainAndWrite(final BlockingQueue<List<CityReview>> queue, final AtomicInteger written,
+			final AtomicInteger lastLogged) {
+		final var pending = new ArrayList<CityReview>(BATCH_SIZE);
+		try {
+			while (true) {
+				final var next = queue.take();
+				if (next == POISON_PILL) {
+					if (!pending.isEmpty()) {
+						mongoTemplate.insert(new ArrayList<>(pending), CityReview.class);
+						bumpAndMaybeLog(pending.size(), written, lastLogged);
+						pending.clear();
+					}
+					return;
+				}
+				pending.addAll(next);
+				while (pending.size() >= BATCH_SIZE) {
+					final var slice = new ArrayList<>(pending.subList(0, BATCH_SIZE));
+					mongoTemplate.insert(slice, CityReview.class);
+					pending.subList(0, BATCH_SIZE).clear();
+					bumpAndMaybeLog(slice.size(), written, lastLogged);
+				}
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+	}
+
+	private static void bumpAndMaybeLog(final int delta, final AtomicInteger written, final AtomicInteger lastLogged) {
+		final int total = written.addAndGet(delta);
+		final int last = lastLogged.get();
+		// Throttle progress logs to one line per 50 k reviews so a long
+		// import doesn't spam thousands of lines into the structured log.
+		if (total - last >= 50_000 && lastLogged.compareAndSet(last, total)) {
+			log.info("Saved {} reviews...", total);
+		}
 	}
 
 	private List<CityReview> generateForCity(final String inseeCode) {

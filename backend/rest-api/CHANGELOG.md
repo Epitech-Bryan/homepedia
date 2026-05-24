@@ -5,6 +5,16 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.67.1] - 2026-05-24
+
+### Bug Fixes
+
+- perf(reviews): stream generation into bounded queue with parallel mongo writers
+- fix(tiles): pull regions/departements geojson from github after geo.api.gouv.fr regression
+- fix(map): isolate vector tile panes, gate layers by zoom band, clear stale canvas
+- fix(webapp): rewrite /api prefix in vite dev proxy
+- fix(world): skip MVT countries draw so SVG choropleth shows at z<5
+
 ## [3.67.0] - 2026-05-23
 
 ### Features

@@ -1,5 +1,14 @@
 # app
 
+## [0.64.2] - 2026-05-24
+
+### Bug Fixes
+
+- perf(reviews): stream generation into bounded queue with parallel mongo writers
+- fix(tiles): pull regions/departements geojson from github after geo.api.gouv.fr regression
+- fix(map): isolate vector tile panes, gate layers by zoom band, clear stale canvas
+- fix(webapp): rewrite /api prefix in vite dev proxy
+
 ## [0.64.1] - 2026-05-23
 
 ### Bug Fixes

@@ -74,6 +74,15 @@ function formatValue(value: number): string {
  * flag back to GeoJSON is a one-line revert if the tile bundle is stale
  * or the endpoint returns 404s.
  */
+// Dedicated pane name so the city VG canvas tiles always render above the
+// world VG canvas tiles (`worldVectorTiles`, zIndex 410). Without explicit
+// panes both layers land in the default `tilePane` and Leaflet has no
+// deterministic z-order between them, so the world admin-2 canvas (still
+// active at z=9-10 over France with a transparent-but-interactive fill)
+// can absorb mouseover/click before the city layer sees them — exactly
+// what was breaking hover/click on Lille at city zoom.
+const CITY_VG_PANE = "cityVectorTiles";
+
 export function CityVectorGridLayer({
   url = "/api/tiles/cities/{z}/{x}/{y}.pbf",
   metricFromFeature,
@@ -84,6 +93,12 @@ export function CityVectorGridLayer({
   metricLabel,
 }: CityVectorGridLayerProps) {
   const map = useMap();
+
+  if (!map.getPane(CITY_VG_PANE)) {
+    const pane = map.createPane(CITY_VG_PANE);
+    pane.style.zIndex = "420";
+    pane.style.pointerEvents = "auto";
+  }
 
   // Refs let the style closure read the LATEST props without forcing the
   // layer to remount. Without this, every pan at city zoom recomputes
@@ -192,6 +207,10 @@ export function CityVectorGridLayer({
         };
       }
     ).vectorGrid.protobuf(url, {
+      // Render into the dedicated pane created above so this layer
+      // always sits on top of `worldVectorTiles` (zIndex 410) and
+      // claims pointer events first over France/Belgium.
+      pane: CITY_VG_PANE,
       // The mbtiles ships four layers: regions (z 4-6), departments
       // (z 7-8), cities (z 9-14), iris (z 13-14). Each level shares the
       // same styleFor closure — the `code` property is the join key
@@ -199,9 +218,26 @@ export function CityVectorGridLayer({
       // (no commune-level metric) so it falls back to a neutral fill
       // through styleFor's null branch.
       vectorTileLayerStyles: {
-        regions: (props: Record<string, unknown> & { code?: string }) => styleFor(props),
-        departments: (props: Record<string, unknown> & { code?: string }) => styleFor(props),
-        cities: (props: Record<string, unknown> & { code?: string }) => styleFor(props),
+        // Each style fn receives (props, zoom). Tippecanoe's
+        // --extend-zooms-if-still-dropping leaks `regions` (built for z=4-6)
+        // and `departments` (built for z=7-8) into z>=9 tiles when the
+        // densest features get dropped at maxzoom. Drawing them at city
+        // zoom paints the FR départements as one big fill *on top* of the
+        // commune polygons. Gate each level to its intended zoom band so
+        // only one administrative layer is visible at a time:
+        //   z=4-6 → regions, z=7-8 → departments, z>=9 → cities.
+        regions: (props: Record<string, unknown> & { code?: string }, zoom: number) =>
+          zoom <= 6
+            ? styleFor(props)
+            : { fill: false, stroke: false, weight: 0, interactive: false },
+        departments: (props: Record<string, unknown> & { code?: string }, zoom: number) =>
+          zoom >= 7 && zoom <= 8
+            ? styleFor(props)
+            : { fill: false, stroke: false, weight: 0, interactive: false },
+        cities: (props: Record<string, unknown> & { code?: string }, zoom: number) =>
+          zoom >= 9
+            ? styleFor(props)
+            : { fill: false, stroke: false, weight: 0, interactive: false },
         // IRIS gets its own style: thin border + soft translucent fill so
         // the underlying commune choropleth bleeds through. No hover
         // colour change either — just a tooltip with the IRIS name and
@@ -317,13 +353,30 @@ export function CityVectorGridLayer({
       if (hoveredId) tooltip.setLatLng(e.latlng);
     });
 
-    layer.on("mouseout", () => {
-      if (hoveredId) {
-        layer.resetFeatureStyle(hoveredId);
-        hoveredId = null;
-      }
-      map.closeTooltip(tooltip);
-    });
+    layer.on(
+      "mouseout",
+      (e: { layer?: { properties?: Record<string, unknown> & { code?: string } } }) => {
+        // leaflet.vectorgrid fires mouseout per-feature. When the cursor
+        // moves directly between two adjacent communes the event order
+        // is sometimes mouseover(B) → mouseout(A) — resetting blindly
+        // would clear B's highlight even though the cursor is still
+        // over it. Only act when the leaving feature matches the
+        // currently-tracked hover, OR when there's no leaving feature
+        // at all (cursor left the map entirely).
+        const code = e?.layer?.properties?.code;
+        if (code) {
+          if (hoveredId === code) {
+            layer.resetFeatureStyle(code);
+            hoveredId = null;
+            map.closeTooltip(tooltip);
+          }
+        } else if (hoveredId) {
+          layer.resetFeatureStyle(hoveredId);
+          hoveredId = null;
+          map.closeTooltip(tooltip);
+        }
+      },
+    );
 
     layer.addTo(map);
     layerRef.current = layer;

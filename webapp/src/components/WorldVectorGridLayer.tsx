@@ -32,6 +32,12 @@ function formatValue(value: number): string {
  * style callback always reads the latest metric without forcing a layer
  * remount on every pan.
  */
+// Pane stays UNDER `cityVectorTiles` (zIndex 420) so that at z>=9 over
+// France the city VG receives mouseover/click first. Outside France/Belgium
+// the city tiles are empty (no fill drawn), so events fall through to this
+// pane naturally and admin-2/admin-3 hover keeps working for DE/IT/UK/etc.
+const WORLD_VG_PANE = "worldVectorTiles";
+
 export function WorldVectorGridLayer({
   url = "/api/tiles/world/{z}/{x}/{y}.pbf",
   metricFromFeature,
@@ -41,6 +47,12 @@ export function WorldVectorGridLayer({
   metricLabel,
 }: WorldVectorGridLayerProps) {
   const map = useMap();
+
+  if (!map.getPane(WORLD_VG_PANE)) {
+    const pane = map.createPane(WORLD_VG_PANE);
+    pane.style.zIndex = "410";
+    pane.style.pointerEvents = "auto";
+  }
 
   const metricFromFeatureRef = useRef(metricFromFeature);
   const rangeRef = useRef(range);
@@ -119,6 +131,7 @@ export function WorldVectorGridLayer({
         vectorGrid: { protobuf: (url: string, options: unknown) => VGLayer };
       }
     ).vectorGrid.protobuf(url, {
+      pane: WORLD_VG_PANE,
       vectorTileLayerStyles: {
         // Countries: rendered transparent + non-interactive at the MVT
         // level. The SVG `wrappedCountries` LeafletGeoJSON underneath
@@ -134,19 +147,36 @@ export function WorldVectorGridLayer({
           stroke: false,
           interactive: false,
         }),
-        admin1: (props: Record<string, unknown>) => styleForChoroplethable(props),
-        admin2: () => styleForAdmin2(),
+        // Each style fn gets (props, zoom). World MVT bands are admin1
+        // z=5-7, admin2 z=8-10, admin3 z=11-12 in tippecanoe — but
+        // --extend-zooms-if-still-dropping leaks lower-detail layers
+        // into higher zooms when densest features get dropped at maxzoom.
+        // Without zoom gates, admin1 fill (full choropleth) ends up painted
+        // on top of the city VG commune polygons at z=8+, visually covering
+        // them. Pin each layer to its tippecanoe band so only one administrative
+        // level renders at any zoom.
+        admin1: (props: Record<string, unknown>, zoom: number) =>
+          zoom >= 5 && zoom <= 7
+            ? styleForChoroplethable(props)
+            : { fill: false, stroke: false, weight: 0, interactive: false },
+        admin2: (_props: Record<string, unknown>, zoom: number) =>
+          zoom >= 8 && zoom <= 10
+            ? styleForAdmin2()
+            : { fill: false, stroke: false, weight: 0, interactive: false },
         // admin-3 (European communes / Gemeinden) — same fill treatment as
         // admin-2 but a slightly thinner border so the two levels visually
         // nest when both appear during the z=11 transition.
-        admin3: () => ({
-          fillColor: "#ffffff",
-          fill: true,
-          fillOpacity: 0.04,
-          weight: 0.3,
-          color: "#374151",
-          interactive: true,
-        }),
+        admin3: (_props: Record<string, unknown>, zoom: number) =>
+          zoom >= 11
+            ? {
+                fillColor: "#ffffff",
+                fill: true,
+                fillOpacity: 0.04,
+                weight: 0.3,
+                color: "#374151",
+                interactive: true,
+              }
+            : { fill: false, stroke: false, weight: 0, interactive: false },
       },
       interactive: true,
       minNativeZoom: 0,
@@ -216,13 +246,25 @@ export function WorldVectorGridLayer({
       if (hoveredId) tooltip.setLatLng(e.latlng);
     });
 
-    layer.on("mouseout", () => {
-      if (hoveredId) {
-        layer.resetFeatureStyle(hoveredId);
-        hoveredId = null;
-      }
-      map.closeTooltip(tooltip);
-    });
+    layer.on(
+      "mouseout",
+      (e: { layer?: { properties?: Record<string, unknown> & { code?: string } } }) => {
+        // Same race as the city VG: mouseover(B) → mouseout(A) on
+        // adjacent admin-2 polygons would otherwise wipe B's highlight.
+        const code = e?.layer?.properties?.code;
+        if (code) {
+          if (hoveredId === code) {
+            layer.resetFeatureStyle(code);
+            hoveredId = null;
+            map.closeTooltip(tooltip);
+          }
+        } else if (hoveredId) {
+          layer.resetFeatureStyle(hoveredId);
+          hoveredId = null;
+          map.closeTooltip(tooltip);
+        }
+      },
+    );
 
     layer.addTo(map);
     layerRef.current = layer;

@@ -314,15 +314,16 @@ export function PersistentMap() {
   const showDepartments = zoom >= DEPARTMENT_ZOOM_THRESHOLD;
   const showCityDetail = zoom >= CITY_DETAIL_ZOOM_THRESHOLD;
   const showArrondissements = zoom >= ARRONDISSEMENT_ZOOM_THRESHOLD;
-  // Vector tiles take over the commune layer at city zoom. When on, the
-  // legacy SVG-per-polygon path (GeoJSON commune fetches, Belgium municipal
-  // overlay, drilldown arrondissement merge) becomes pure overhead — the
-  // tile pipeline already ships those polygons with stats baked into the
-  // MVT properties. Hoisted here so the city-level useMemos can short-circuit.
-  const useVectorTiles = showCityDetail && import.meta.env.VITE_USE_VECTOR_TILES === "true";
-  // Same feature flag for the world layer (countries + admin-1 + admin-2)
-  // — independent toggle so we can roll one out without the other.
-  const useWorldVectorTiles = import.meta.env.VITE_USE_WORLD_TILES === "true";
+  // Vector tiles take over the commune layer at city zoom. The MVT pipeline
+  // ships polygons with stats baked in, so the SVG path is pure overhead
+  // (and at city zoom it would otherwise blast ~45 k polygons through one
+  // shared canvas in overlayPane, painting the entire département with the
+  // choropleth fill and visually covering the underlying basemap).
+  //
+  // Default ON — flip to "false" to fall back to SVG when running without
+  // the mbtiles file (tests, CI, or a stripped dev image).
+  const useVectorTiles = showCityDetail && import.meta.env.VITE_USE_VECTOR_TILES !== "false";
+  const useWorldVectorTiles = import.meta.env.VITE_USE_WORLD_TILES !== "false";
 
   // Pre-fetch every layer so zoom-driven switching is instant.
   const { data: geoCountries } = useGeoCountries();
@@ -422,17 +423,20 @@ export function PersistentMap() {
     showCityDetail && !useVectorTiles,
   );
 
-  // City-level geojson: start from communes (FR + BE), then at arrondissement
-  // zoom swap out drilldown parent communes for their arrondissement polygons.
-  // Returns null early under vector tiles — every downstream consumer
-  // (`geojson` final, `cityStatCodes`, `metricByCode` city branch) already
-  // short-circuits in that case, so computing it would waste cycles.
+  // City-level geojson: start from communes (FR + BE) + world admin-2 so
+  // German Kreise, Italian province, UK districts etc. stay visible at
+  // city zoom instead of vanishing into a bare basemap. At arrondissement
+  // zoom we swap drilldown parent communes for their arrondissement
+  // polygons. Returns null early under vector tiles — every downstream
+  // consumer (`geojson` final, `cityStatCodes`, `metricByCode` city
+  // branch) already short-circuits in that case.
   const cityLevelGeojson = useMemo<GeoJSON.FeatureCollection | null>(() => {
     if (useVectorTiles) return null;
-    if (!geoCities) return null;
-    const baseFeatures = geoBelgiumMunicipalities
-      ? [...geoCities.features, ...geoBelgiumMunicipalities.features]
-      : geoCities.features;
+    if (!geoCities && !geoWorldAdmin2) return null;
+    const baseFeatures: GeoJSON.Feature[] = [];
+    if (geoCities) baseFeatures.push(...geoCities.features);
+    if (geoBelgiumMunicipalities) baseFeatures.push(...geoBelgiumMunicipalities.features);
+    if (geoWorldAdmin2) baseFeatures.push(...geoWorldAdmin2.features);
     if (!showArrondissements || !geoArrondissements)
       return { type: "FeatureCollection", features: baseFeatures };
     const drilldownSet = new Set(drilldownCityCodes);
@@ -448,6 +452,7 @@ export function PersistentMap() {
     useVectorTiles,
     geoCities,
     geoBelgiumMunicipalities,
+    geoWorldAdmin2,
     showArrondissements,
     geoArrondissements,
     drilldownCityCodes,
@@ -533,7 +538,9 @@ export function PersistentMap() {
     const codes: string[] = [];
     for (const f of cityLevelGeojson.features) {
       const code = (f.properties as { code?: string } | null)?.code;
-      if (code) codes.push(code);
+      // GADM codes ("DEU.1.1_1" etc.) carry "." and aren't known to the
+      // /stats/cities endpoint — keep this list FR/BE-shaped only.
+      if (code && !code.includes(".")) codes.push(code);
     }
     return codes;
   }, [showCityDetail, useVectorTiles, cityLevelGeojson]);

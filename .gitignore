@@ -32,3 +32,8 @@ Thumbs.db
 ci/bump-report.json
 ci/pipeline.env
 package-lock.json
+
+# Docker compose local overrides (per-dev tweaks like host ports / env)
+compose.override.yml
+compose.override.yaml
+docker-compose.override.yml

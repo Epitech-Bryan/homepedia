@@ -74,6 +74,10 @@ export default defineConfig(({ mode }) => {
           target: apiTarget,
           changeOrigin: true,
           secure: false,
+          // Backend serves controllers at the root path; in prod Traefik
+          // strips `/api` via its stripprefix middleware. The dev proxy
+          // needs the same rewrite or every call comes back 404.
+          rewrite: (path) => path.replace(/^\/api/, ""),
         },
       },
     },

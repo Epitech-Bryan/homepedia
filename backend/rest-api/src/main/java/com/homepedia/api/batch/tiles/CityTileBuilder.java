@@ -108,6 +108,14 @@ public class CityTileBuilder {
 	@Value("${homepedia.tiles.geo-api-base-url:https://geo.api.gouv.fr}")
 	private String geoApiBaseUrl;
 
+	// geo.api.gouv.fr's /regions and /departements endpoints regressed in
+	// 2026: they now ignore `format=geojson&geometry=contour` and return a
+	// bare JSON array with no geometry, which breaks our FeatureCollection
+	// parser. Fall back to the same static GeoJSON source that
+	// GeoJsonImportService consumes — stable, exact shape we need.
+	@Value("${homepedia.tiles.geojson-fallback-base-url:https://raw.githubusercontent.com/gregoiredavid/france-geojson/master}")
+	private String geojsonFallbackBaseUrl;
+
 	@Value("${homepedia.tiles.tippecanoe-bin:tippecanoe}")
 	private String tippecanoeBin;
 
@@ -440,10 +448,7 @@ public class CityTileBuilder {
 		}
 		log.info("regions source missing at {}, fetching", source);
 		Files.createDirectories(source.getParent());
-		fetchGeoApiCollection(
-				URI.create(
-						geoApiBaseUrl + "/regions?fields=nom,code,population,surface&format=geojson&geometry=contour"),
-				source);
+		fetchGeoApiCollection(URI.create(geojsonFallbackBaseUrl + "/regions.geojson"), source);
 	}
 
 	private void ensureDepartmentsSource(Path source) throws IOException, InterruptedException {
@@ -452,9 +457,7 @@ public class CityTileBuilder {
 		}
 		log.info("departments source missing at {}, fetching", source);
 		Files.createDirectories(source.getParent());
-		fetchGeoApiCollection(URI.create(
-				geoApiBaseUrl + "/departements?fields=nom,code,population,surface&format=geojson&geometry=contour"),
-				source);
+		fetchGeoApiCollection(URI.create(geojsonFallbackBaseUrl + "/departements.geojson"), source);
 	}
 
 	/**

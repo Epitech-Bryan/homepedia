@@ -359,6 +359,40 @@ function MapResizer({ trigger }: { trigger: unknown }) {
 }
 
 /**
+ * Forces every L.Canvas renderer on the map to clear+redraw when the
+ * foreground geojson disappears. Leaflet has a known quirk with
+ * {@code preferCanvas: true}: when the last L.Path child of a renderer is
+ * removed (e.g. the world choropleth GeoJSON unmounting as the user
+ * crosses into city zoom where the MVT layer takes over), the renderer's
+ * canvas keeps its last paint. That leftover bleeds through the
+ * semi-transparent commune polygons drawn on top — perceived as "a region
+ * still covering the cities". Triggered on every transition that turns
+ * {@code geojsonPresent} from true to false.
+ */
+function CanvasCleanupOnGeojsonHide({ geojsonPresent }: { geojsonPresent: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    if (geojsonPresent) return;
+    type CanvasRenderer = L.Layer & {
+      _container?: HTMLCanvasElement;
+      _ctx?: CanvasRenderingContext2D;
+      _update?: () => void;
+      _layers?: Record<string, unknown>;
+    };
+    map.eachLayer((l) => {
+      const r = l as CanvasRenderer;
+      if (r._container instanceof HTMLCanvasElement && r._ctx) {
+        r._ctx.clearRect(0, 0, r._container.width, r._container.height);
+        if (typeof r._update === "function" && r._layers && Object.keys(r._layers).length > 0) {
+          r._update();
+        }
+      }
+    });
+  }, [map, geojsonPresent]);
+  return null;
+}
+
+/**
  * Closes any sticky tooltip when the user starts panning. Without this,
  * polygons crossed during a drag stack their tooltips on top of each other
  * because mouseover fires on the new polygon before mouseout reaches the
@@ -1117,6 +1151,7 @@ function FranceMapComponent({
                 {onBoundsChange && <BoundsReporter onChange={onBoundsChange} />}
                 <MapResizer trigger={height} />
                 <DragTooltipHandler />
+                <CanvasCleanupOnGeojsonHide geojsonPresent={!!geojson} />
                 <FitBounds geojson={geojson} activeFeatureCode={activeFeatureCode} />
               </MapContainer>
               {showChoropleth && choroplethRange && (

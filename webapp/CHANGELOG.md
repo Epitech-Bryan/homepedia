@@ -1,5 +1,11 @@
 # app
 
+## [0.72.0] - 2026-05-28
+
+### Features
+
+- feat(map): render real centroid bubbles on the globe in bubbles mode
+
 ## [0.71.0] - 2026-05-28
 
 ### Features

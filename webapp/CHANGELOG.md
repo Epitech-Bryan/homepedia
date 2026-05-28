@@ -1,5 +1,11 @@
 # app
 
+## [0.71.0] - 2026-05-28
+
+### Features
+
+- feat(map): add OSM POI layer, hover-address and bubbles fallback to the globe
+
 ## [0.70.0] - 2026-05-28
 
 ### Features

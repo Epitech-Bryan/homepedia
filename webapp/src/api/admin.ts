@@ -15,6 +15,12 @@ export type JobStatusView = {
    * cause without digging through pod logs.
    */
   lastExitMessage?: string | null;
+  /**
+   * Live phase label of the in-flight run (e.g. "Téléchargement ADEME…",
+   * "Écriture des indicateurs…"). Best-effort, only present while the job is
+   * RUNNING and the import service has pushed a phase. Null otherwise.
+   */
+  phase?: string | null;
 };
 
 export type JobsStatus = Record<string, JobStatusView>;

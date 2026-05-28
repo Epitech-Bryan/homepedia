@@ -46,13 +46,15 @@ public class AdminJobsService {
 	private final JobExplorer jobExplorer;
 	private final TaskExecutor adminTaskExecutor;
 	private final Map<String, Job> jobsByName;
+	private final com.homepedia.api.batch.config.BatchPhaseTracker phaseTracker;
 
 	public AdminJobsService(JobLauncher jobLauncher, JobExplorer jobExplorer, TaskExecutor adminTaskExecutor,
-			Map<String, Job> jobsByName) {
+			Map<String, Job> jobsByName, com.homepedia.api.batch.config.BatchPhaseTracker phaseTracker) {
 		this.jobLauncher = jobLauncher;
 		this.jobExplorer = jobExplorer;
 		this.adminTaskExecutor = adminTaskExecutor;
 		this.jobsByName = jobsByName;
+		this.phaseTracker = phaseTracker;
 	}
 
 	public Map<String, JobStatusView> statusAll() {
@@ -94,12 +96,17 @@ public class AdminJobsService {
 			}
 		}
 		final var params = builder.toJobParameters();
+		// Seed a phase immediately so the console shows something the instant
+		// the user clicks, before the import service pushes its first label.
+		phaseTracker.set(beanName, "Démarrage…");
 		adminTaskExecutor.execute(() -> {
 			try {
 				log.info("Manual job trigger: {} (params={})", beanName, extraParams);
 				jobLauncher.run(job, params);
 			} catch (Exception e) {
 				log.error("Manual job '{}' failed: {}", beanName, e.getMessage(), e);
+			} finally {
+				phaseTracker.clear(beanName);
 			}
 		});
 	}
@@ -145,8 +152,11 @@ public class AdminJobsService {
 			}
 		}
 		final BatchStatus state = running ? BatchStatus.STARTED : BatchStatus.UNKNOWN;
+		// Only surface the live phase while the job is actually running — a
+		// stale value from a previous run would be misleading otherwise.
+		final var phase = running ? phaseTracker.get(beanName) : null;
 		return new JobStatusView(running ? "RUNNING" : "IDLE", lastRunAt, lastStatus, state.toString(), lastDurationMs,
-				lastExitMessage);
+				lastExitMessage, phase);
 	}
 
 	private static Instant toInstant(LocalDateTime ldt) {
@@ -154,6 +164,6 @@ public class AdminJobsService {
 	}
 
 	public record JobStatusView(String state, Instant lastRunAt, String lastStatus, String lastBatchStatus,
-			Long lastDurationMs, String lastExitMessage) {
+			Long lastDurationMs, String lastExitMessage, String phase) {
 	}
 }

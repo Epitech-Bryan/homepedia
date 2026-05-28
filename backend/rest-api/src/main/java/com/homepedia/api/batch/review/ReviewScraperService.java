@@ -27,10 +27,13 @@ public class ReviewScraperService {
 	// can drain whatever is left and exit cleanly.
 	private static final List<CityReview> POISON_PILL = List.of();
 
+	private static final String JOB_NAME = "reviewImportJob";
+
 	private final CityRepository cityRepository;
 	private final MongoTemplate mongoTemplate;
 	private final ReviewDataGenerator reviewDataGenerator;
 	private final SentimentAnalysisService sentimentAnalysisService;
+	private final com.homepedia.api.batch.config.BatchPhaseTracker phaseTracker;
 
 	// No @Transactional: cities are read once at the start, and review writes
 	// go to MongoDB. Wrapping the whole loop in a JPA transaction kept a
@@ -45,6 +48,7 @@ public class ReviewScraperService {
 		final var inseeCodes = cityRepository.findAllInseeCodes();
 		log.info("Generating reviews for {} cities (gen threads={}, write threads={})", inseeCodes.size(),
 				GENERATION_THREADS, WRITE_THREADS);
+		phaseTracker.set(JOB_NAME, "Génération + écriture des avis…");
 
 		// Bounded queue acts as backpressure between the generator pool
 		// (CPU-bound: sentiment analysis is the dominant cost) and the

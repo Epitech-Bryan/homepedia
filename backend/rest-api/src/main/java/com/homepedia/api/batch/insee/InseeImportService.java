@@ -44,11 +44,14 @@ public class InseeImportService {
 			  latitude    = EXCLUDED.latitude
 			""";
 
+	private static final String JOB_NAME = "inseeImportJob";
+
 	private final InseeApiClient inseeApiClient;
 	private final RegionRepository regionRepository;
 	private final DepartmentRepository departmentRepository;
 	private final CityRepository cityRepository;
 	private final JdbcTemplate jdbcTemplate;
+	private final com.homepedia.api.batch.config.BatchPhaseTracker phaseTracker;
 
 	// No @Transactional anywhere here. The whole importAll() runs ~20 min
 	// (101 fetchCommunesForDepartment HTTP calls + ~35k city upserts), and
@@ -61,8 +64,11 @@ public class InseeImportService {
 	// bypassed on self-invocation. saveAll() opens its own short-lived tx
 	// per batch via Spring Data, which is what we actually want.
 	public void importAll() {
+		phaseTracker.set(JOB_NAME, "Régions…");
 		importRegions();
+		phaseTracker.set(JOB_NAME, "Départements…");
 		importDepartments();
+		phaseTracker.set(JOB_NAME, "Communes (101 départements)…");
 		importCommunes();
 	}
 

@@ -326,7 +326,10 @@ export function AdminPage() {
                   <span>{job.label}</span>
                   <span className="text-xs font-normal text-muted-foreground">
                     {running ? (
-                      "en cours…"
+                      <span className="inline-flex items-center gap-1 text-amber-600">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        {s?.phase ?? "en cours…"}
+                      </span>
                     ) : (
                       <>
                         {formatRelative(s?.lastRunAt ?? null)}

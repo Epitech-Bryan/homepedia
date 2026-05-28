@@ -34,8 +34,10 @@ public class DpeImportService {
 	// ADEME row right next to the DPE energy class.
 	private static final String[] GES_LABELS = {"A", "B", "C", "D", "E", "F", "G"};
 	private static final Pattern LINK_NEXT_PATTERN = Pattern.compile("<([^>]+)>;\\s*rel=\"?next\"?");
+	private static final String JOB_NAME = "dpeImportJob";
 
 	private final JdbcTemplate jdbcTemplate;
+	private final com.homepedia.api.batch.config.BatchPhaseTracker phaseTracker;
 
 	// No @Transactional: this method spends most of its time parsing the CSV
 	// in memory; the actual DB writes are isolated in saveIndicators(), which
@@ -86,6 +88,7 @@ public class DpeImportService {
 	// blocked the indicators table.
 	public int importFromApi(String baseUrl, RestClient restClient) {
 		log.info("Starting DPE import from API: {}", baseUrl);
+		phaseTracker.set(JOB_NAME, "Téléchargement ADEME…");
 
 		final var dpeAgg = new HashMap<String, Map<String, Integer>>();
 		final var dpeTotal = new HashMap<String, Integer>();
@@ -132,6 +135,7 @@ public class DpeImportService {
 
 			if (pageCount % 100 == 0) {
 				log.info("Processed {} pages, {} rows so far...", pageCount, rowCount);
+				phaseTracker.set(JOB_NAME, "Téléchargement ADEME… (" + (rowCount / 1000) + "k lignes)");
 			}
 
 			isFirstPage = false;
@@ -200,6 +204,7 @@ public class DpeImportService {
 	 * and keeps memory flat: the {@code Indicator} entities are never instantiated.
 	 */
 	private int saveIndicators(Map<String, Map<String, Integer>> aggregation, Map<String, Integer> totalPerCommune) {
+		phaseTracker.set(JOB_NAME, "Écriture des indicateurs DPE…");
 		final var insertSql = """
 				INSERT INTO indicators (geographic_level, geographic_code, category, label, indicator_value, unit)
 				VALUES (?, ?, ?, ?, ?, ?)
@@ -245,6 +250,7 @@ public class DpeImportService {
 	 * G the dirtiest (> 80 kgCO₂eq/m²/yr).
 	 */
 	private int saveGesIndicators(Map<String, Map<String, Integer>> aggregation, Map<String, Integer> totalPerCommune) {
+		phaseTracker.set(JOB_NAME, "Écriture des indicateurs GES…");
 		final var insertSql = """
 				INSERT INTO indicators (geographic_level, geographic_code, category, label, indicator_value, unit)
 				VALUES (?, ?, ?, ?, ?, ?)

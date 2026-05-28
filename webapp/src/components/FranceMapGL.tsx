@@ -202,6 +202,7 @@ export default function FranceMapGL({
     metricFromFeature,
     metricLabel,
     metricKey,
+    mapStyle,
   });
   useEffect(() => {
     cbRef.current = {
@@ -212,6 +213,7 @@ export default function FranceMapGL({
       metricFromFeature,
       metricLabel,
       metricKey,
+      mapStyle,
     };
   });
 
@@ -334,7 +336,10 @@ export default function FranceMapGL({
           .catch(() => {});
       }, 800);
     });
-    map.on("idle", () => recolor(map, cbRef.current.metricKey));
+    map.on("idle", () => {
+      recolor(map, cbRef.current.metricKey);
+      if (cbRef.current.mapStyle === "bubbles") recomputeBubbles(map, cbRef.current.metricKey);
+    });
 
     const FILL_LAYERS = ["c-cities-fill", "w-admin1-fill"];
 
@@ -429,6 +434,31 @@ export default function FranceMapGL({
       popupRef.current?.remove();
     });
 
+    map.on("mousemove", "bubbles-layer", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p = f.properties ?? {};
+      map.getCanvas().style.cursor = "pointer";
+      const label = cbRef.current.metricLabel ? ` · ${cbRef.current.metricLabel}` : "";
+      popupRef.current
+        ?.setLngLat(e.lngLat)
+        .setHTML(
+          `<strong>${escapeHtml(String(p.name ?? ""))}</strong><br/>${formatValue(Number(p.value))}${label}`,
+        )
+        .addTo(map);
+    });
+    map.on("mouseleave", "bubbles-layer", () => {
+      map.getCanvas().style.cursor = "";
+      popupRef.current?.remove();
+    });
+    map.on("click", "bubbles-layer", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p = f.properties ?? {};
+      const code = String(p.code ?? "");
+      if (code) cbRef.current.onFeatureClick?.(code, p.name ? String(p.name) : undefined);
+    });
+
     return () => {
       window.clearTimeout(kick);
       if (addrTimer !== null) window.clearTimeout(addrTimer);
@@ -499,8 +529,9 @@ export default function FranceMapGL({
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      const showFills = mapStyle !== "heat";
+      const showFills = mapStyle !== "heat" && mapStyle !== "bubbles";
       const showHeat = mapStyle === "heat" || mapStyle === "all";
+      const showBubbles = mapStyle === "bubbles";
       for (const d of LAYER_DEFS) {
         for (const id of [d.id, `${d.id}-line`]) {
           if (map.getLayer(id)) {
@@ -511,10 +542,14 @@ export default function FranceMapGL({
       if (map.getLayer("heat-layer")) {
         map.setLayoutProperty("heat-layer", "visibility", showHeat ? "visible" : "none");
       }
+      if (map.getLayer("bubbles-layer")) {
+        map.setLayoutProperty("bubbles-layer", "visibility", showBubbles ? "visible" : "none");
+      }
+      if (showBubbles) recomputeBubbles(map, metricKey);
     };
     if (map.isStyleLoaded()) apply();
     else map.once("idle", apply);
-  }, [mapStyle]);
+  }, [mapStyle, metricKey]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -657,6 +692,23 @@ export default function FranceMapGL({
         });
       }
 
+      if (!map.getSource("bubbles")) {
+        map.addSource("bubbles", { type: "geojson", data: emptyFC() });
+        map.addLayer({
+          id: "bubbles-layer",
+          type: "circle",
+          source: "bubbles",
+          layout: { visibility: "none" },
+          paint: {
+            "circle-radius": ["get", "r"],
+            "circle-color": "#fc8d59",
+            "circle-opacity": 0.6,
+            "circle-stroke-color": "#b3502c",
+            "circle-stroke-width": 1.5,
+          },
+        });
+      }
+
       recolor(map, metricKey);
     };
 
@@ -753,6 +805,68 @@ function recolor(map: maplibregl.Map, metricKey: MapMetricKey) {
       colorExpr(metricKey, range) as maplibregl.ExpressionSpecification,
     );
   }
+}
+
+function collectCoords(geom: GeoJSON.Geometry, out: number[][]): void {
+  const walk = (c: unknown): void => {
+    if (Array.isArray(c) && typeof c[0] === "number") {
+      out.push(c as number[]);
+    } else if (Array.isArray(c)) {
+      for (const child of c) walk(child);
+    }
+  };
+  if ("coordinates" in geom) walk((geom as { coordinates: unknown }).coordinates);
+}
+
+function recomputeBubbles(map: maplibregl.Map, metricKey: MapMetricKey) {
+  const src = map.getSource("bubbles") as maplibregl.GeoJSONSource | undefined;
+  if (!src) return;
+  const layers = LAYER_DEFS.map((d) => d.id).filter((id) => map.getLayer(id));
+  const feats = layers.length ? map.queryRenderedFeatures({ layers }) : [];
+  const agg = new Map<string, { sx: number; sy: number; n: number; value: number; name: string }>();
+  for (const f of feats) {
+    const props = f.properties ?? {};
+    const code = String(props.code ?? "");
+    if (!code) continue;
+    const value = jsMetricValue(props as Record<string, unknown>, metricKey);
+    if (value == null || value <= 0) continue;
+    const coords: number[][] = [];
+    collectCoords(f.geometry, coords);
+    if (!coords.length) continue;
+    let sx = 0;
+    let sy = 0;
+    for (const [x, y] of coords) {
+      sx += x;
+      sy += y;
+    }
+    const e = agg.get(code);
+    if (e) {
+      e.sx += sx;
+      e.sy += sy;
+      e.n += coords.length;
+    } else {
+      agg.set(code, {
+        sx,
+        sy,
+        n: coords.length,
+        value,
+        name: String(props.nom ?? props.name ?? code),
+      });
+    }
+  }
+  const range = deriveRange([...agg.values()].map((e) => e.value));
+  const features: GeoJSON.Feature[] = [];
+  for (const [code, e] of agg) {
+    const ratio = range
+      ? Math.max(0, Math.min(1, (e.value - range.min) / (range.max - range.min)))
+      : 0.5;
+    features.push({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [e.sx / e.n, e.sy / e.n] },
+      properties: { code, name: e.name, value: e.value, r: 6 + ratio * 22 },
+    });
+  }
+  src.setData({ type: "FeatureCollection", features });
 }
 
 function formatValue(value: number): string {

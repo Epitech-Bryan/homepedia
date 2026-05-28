@@ -95,7 +95,7 @@ homepedia:
     startup-enabled: ${HOMEPEDIA_BATCH_STARTUP_ENABLED:true}
   spark:
     enabled: ${HOMEPEDIA_SPARK_ENABLED:true}
-    submit-command: ${HOMEPEDIA_SPARK_SUBMIT_COMMAND:docker compose exec spark-master spark-submit --class com.homepedia.spark.DvfAggregateJob --master spark://spark-master:7077 --jars /opt/spark/jars/postgresql.jar /jobs/spark-jobs-3.11.1-spark.jar --input-path /data/dvf.csv --jdbc-url jdbc:postgresql://db:5432/homepedia --jdbc-user homepedia --jdbc-password homepedia}
+    submit-command: ${HOMEPEDIA_SPARK_SUBMIT_COMMAND:N=spark-dvf-aggregate-manual-$(date +%s); kubectl -n homepedia create job --from=cronjob/spark-dvf-aggregate "$N" && kubectl -n homepedia wait --for=condition=complete --timeout=1700s "job/$N"}
   insee:
     import-enabled: true
   geo:

@@ -18,6 +18,12 @@ interface ImportMetaEnv {
   readonly VITE_USE_WORLD_TILES?: string;
   /** Backend origin used in dev — Vite proxies /api to this target. */
   readonly VITE_API_TARGET?: string;
+  /**
+   * When not "false" (the default), the main map renders through MapLibre
+   * GL with a globe projection instead of the flat Leaflet map. Set to
+   * "false" to fall back to the Leaflet renderer.
+   */
+  readonly VITE_USE_MAPLIBRE?: string;
 }
 
 interface ImportMeta {

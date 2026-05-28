@@ -93,11 +93,18 @@ public class TransactionMarkerService {
 		}
 		sql.append(" ORDER BY mutation_date DESC LIMIT ").append(effectiveLimit);
 
-		return jdbcTemplate.query(sql.toString(),
-				(rs, i) -> new TransactionMarker(rs.getLong("id"), rs.getDouble("latitude"), rs.getDouble("longitude"),
-						rs.getDate("mutation_date").toLocalDate(), rs.getBigDecimal("property_value"),
-						PropertyType.valueOf(rs.getString("property_type")), (Double) rs.getObject("built_surface"),
-						(Integer) rs.getObject("room_count")),
-				params.toArray());
+		return jdbcTemplate.query(sql.toString(), (rs, i) -> {
+			// property_type / mutation_date can be NULL for DVF rows whose
+			// local type didn't map to a known PropertyType. Now that
+			// transactions carry geo-dvf coordinates this mapper actually runs
+			// (previously the un-geocoded table returned zero rows), so guard
+			// the nullable columns instead of NPE-ing on valueOf(null).
+			final var typeStr = rs.getString("property_type");
+			final var date = rs.getDate("mutation_date");
+			return new TransactionMarker(rs.getLong("id"), rs.getDouble("latitude"), rs.getDouble("longitude"),
+					date != null ? date.toLocalDate() : null, rs.getBigDecimal("property_value"),
+					typeStr != null ? PropertyType.valueOf(typeStr) : null, (Double) rs.getObject("built_surface"),
+					(Integer) rs.getObject("room_count"));
+		}, params.toArray());
 	}
 }

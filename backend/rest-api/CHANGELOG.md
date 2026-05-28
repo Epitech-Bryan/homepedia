@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.72.0] - 2026-05-28
+
+### Features
+
+- feat(spark): make the dvf aggregate output table configurable via --output-table
+
 ## [3.71.0] - 2026-05-28
 
 ### Features

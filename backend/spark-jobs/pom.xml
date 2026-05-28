@@ -15,8 +15,18 @@
     <description>Spark batch jobs for heavy DVF aggregations</description>
 
     <properties>
+        <!-- Compile to Java 17 bytecode: the official apache/spark 3.5.x
+             runtime image ships a Java 17 JRE, so a release-21 jar fails class
+             loading (UnsupportedClassVersionError 65.0 vs 61.0). All language
+             features used here exist in 17. -->
+        <java.version>17</java.version>
+        <maven.compiler.release>17</maven.compiler.release>
         <spark.version>3.5.8</spark.version>
-        <scala.version>2.13</scala.version>
+        <!-- Scala 2.12 to match the official apache/spark runtime image
+             (apache/spark only publishes 2.12 variants for 3.5.x). The jar is
+             submitted in local[*] mode against that image, so the build Scala
+             version must equal the runtime's or class loading fails. -->
+        <scala.version>2.12</scala.version>
     </properties>
 
     <dependencies>

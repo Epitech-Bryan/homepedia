@@ -38,7 +38,7 @@ public final class DvfAggregateJob {
 			jdbcProps.put("password", cfg.jdbcPassword());
 			jdbcProps.put("driver", "org.postgresql.Driver");
 
-			final var dvf = loadDvfCsv(spark, cfg.inputPath());
+			final var dvf = loadDvf(spark, cfg.inputPath());
 			// Broadcast the tiny cities dimension (~35 k rows × 2 ints =
 			// ~350 KB) so the join becomes a hash-broadcast instead of a
 			// shuffle join — easily the biggest gain on the previous
@@ -56,23 +56,25 @@ public final class DvfAggregateJob {
 		}
 	}
 
-	private static Dataset<Row> loadDvfCsv(SparkSession spark, String inputPath) {
-		// `inferSchema=false` skips the otherwise-mandatory full file scan
-		// just to guess types — explicit cast costs nothing and saves
-		// ~30 s on a 20 M row DVF dump. `multiLine=false` lets the parser
-		// stream line-by-line instead of buffering whole quoted blocks
-		// (rare in DVF but expensive when one shows up). Only the four
-		// columns we actually aggregate on are projected — the CSV ships
-		// ~45 of them, dropping 90 % of the bytes before the join.
-		return spark.read().option("header", "true").option("inferSchema", "false").option("multiLine", "false")
-				.csv(inputPath)
-				.select(functions.col("code_commune").alias("insee_code"),
-						functions.col("valeur_fonciere").cast(DataTypes.DoubleType).alias("price"),
-						functions.col("surface_reelle_bati").cast(DataTypes.DoubleType).alias("surface"),
-						functions.col("date_mutation").alias("date"))
-				// Push the price+surface filters down before the join so we
-				// never shuffle null-price rows we'd just drop after.
-				.filter(functions.col("price").isNotNull().and(functions.col("price").gt(0)));
+	private static Dataset<Row> loadDvf(SparkSession spark, String inputPath) {
+		// Parquet fast path: when fed a directory staged by
+		// DvfParquetStagingJob (any path that isn't a *.csv/*.csv.gz file),
+		// read columnar Parquet — only the projected columns are scanned and
+		// partition pruning skips untouched millésimes. Falls back to the CSV
+		// reader for a raw geo-dvf dump.
+		final var lower = inputPath.toLowerCase();
+		final var isCsv = lower.endsWith(".csv") || lower.endsWith(".csv.gz") || lower.endsWith(".gz");
+		final var raw = isCsv
+				? spark.read().option("header", "true").option("inferSchema", "false").option("multiLine", "false")
+						.csv(inputPath).select(functions.col("code_commune").alias("insee_code"),
+								functions.col("valeur_fonciere").cast(DataTypes.DoubleType).alias("price"),
+								functions.col("surface_reelle_bati").cast(DataTypes.DoubleType).alias("surface"),
+								functions.col("date_mutation").alias("date"))
+				: spark.read().parquet(inputPath).select(functions.col("insee_code"), functions.col("price"),
+						functions.col("surface"), functions.col("date"));
+		// Push the price filter down before the join so we never shuffle
+		// null/zero-price rows we'd just drop after.
+		return raw.filter(functions.col("price").isNotNull().and(functions.col("price").gt(0)));
 	}
 
 	private static Dataset<Row> loadCitiesMapping(SparkSession spark, String jdbcUrl, Properties jdbcProps) {

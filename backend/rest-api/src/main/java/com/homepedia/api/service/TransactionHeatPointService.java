@@ -28,12 +28,14 @@ import static com.homepedia.api.config.CacheConfig.CACHE_STATS;
 public class TransactionHeatPointService {
 
 	/**
-	 * Quantisation step in degrees. 0.001° ≈ 111 m at the equator (less further
-	 * north). Tight enough that adjacent buckets blur into a continuous heat blob
-	 * at Leaflet zoom 12+, loose enough to cap a Paris-sized viewport at a few
-	 * thousand rows.
+	 * Quantisation step in degrees. 0.0004° ≈ 44 m at the equator (less further
+	 * north). Now that geo-dvf coordinates are imported per mutation, a finer grid
+	 * gives the heatmap real spatial detail when zoomed into a neighbourhood
+	 * instead of chunky ~111 m squares. The viewport is small at the city zoom
+	 * where the heat layer is enabled, so the row count stays well under
+	 * {@link #ROW_LIMIT}.
 	 */
-	private static final double GRID_STEP = 0.001;
+	private static final double GRID_STEP = 0.0004;
 
 	/**
 	 * Hard ceiling on returned rows. The query orders by sample size so the

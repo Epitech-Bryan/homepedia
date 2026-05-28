@@ -219,6 +219,12 @@ export interface CityStats {
   transactionCount: number;
   averagePrice: number | null;
   averagePricePerSqm: number | null;
+  /**
+   * Weighted GES (greenhouse-gas) class on a 1..7 scale, computed from the
+   * ADEME DPE feed: GES-A (≤ 5 kgCO₂eq/m²/yr) maps to 1, GES-G (> 80) maps
+   * to 7. {@code null} when no GES rows exist for the commune.
+   */
+  pollutionScore: number | null;
 }
 
 export interface CitySummary {

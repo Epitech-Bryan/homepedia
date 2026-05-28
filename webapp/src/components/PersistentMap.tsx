@@ -196,7 +196,8 @@ type MapMetric =
   | "gdpPerCapita"
   | "averagePrice"
   | "averagePricePerSqm"
-  | "transactionCount";
+  | "transactionCount"
+  | "pollution";
 
 const METRIC_LABELS: Record<MapMetric, string> = {
   population: "Population",
@@ -205,6 +206,9 @@ const METRIC_LABELS: Record<MapMetric, string> = {
   averagePrice: "Avg. price (€)",
   averagePricePerSqm: "Avg. €/m²",
   transactionCount: "Transactions",
+  // 1 = cleanest (mostly GES-A buildings), 7 = most polluting (GES-G).
+  // Sourced from the ADEME DPE feed; only the commune layer has it baked in.
+  pollution: "Pollution (GES 1-7)",
 };
 
 // Human label per MapStyle. The Select.Value render function reads from
@@ -240,6 +244,11 @@ function extractValue(
       return s.averagePricePerSqm ?? null;
     case "transactionCount":
       return s.transactionCount ?? null;
+    case "pollution":
+      // Only CityStats carries pollutionScore today (commune-level GES from
+      // ADEME). Region/department stats don't aggregate it yet → null falls
+      // through to the gray "no data" fill on the choropleth.
+      return "pollutionScore" in s ? ((s as CityStats).pollutionScore ?? null) : null;
   }
 }
 
@@ -608,6 +617,12 @@ export function PersistentMap() {
             return gdp / pop;
           }
           return null;
+        }
+        case "pollution": {
+          // Baked into the commune MVT layer by CityTileBuilder
+          // (weighted GES class). Higher = more polluting.
+          const v = props.pollutionScore;
+          return typeof v === "number" ? v : null;
         }
       }
     };

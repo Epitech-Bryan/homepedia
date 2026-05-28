@@ -5,6 +5,18 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.70.0] - 2026-05-28
+
+### Features
+
+- feat(dvf): import geo-dvf per-mutation coordinates for precise heatmap and markers
+
+### Bug Fixes
+
+- perf(heatpoints): finer 44m grid now that transactions are geocoded
+- fix(transactions): tolerate null property_type and date in marker rows
+- fix(map): guard FitBounds against non-finite bounds and make heat kernel zoom-aware
+
 ## [3.69.0] - 2026-05-28
 
 ### Features

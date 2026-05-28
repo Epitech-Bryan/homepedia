@@ -13,7 +13,7 @@ public final class DvfAggregateJob {
 	private DvfAggregateJob() {
 	}
 
-	private record Config(String inputPath, String jdbcUrl, String jdbcUser, String jdbcPassword) {
+	private record Config(String inputPath, String jdbcUrl, String jdbcUser, String jdbcPassword, String outputTable) {
 		boolean readsFromJdbc() {
 			return inputPath == null || inputPath.isBlank();
 		}
@@ -57,7 +57,7 @@ public final class DvfAggregateJob {
 			// is ~100 rows (one per dept), opening one connection is enough
 			// and the previous 200-partition fan-out triggered N connection
 			// open/close cycles for almost no payload each.
-			aggregated.coalesce(1).write().mode(SaveMode.Overwrite).jdbc(cfg.jdbcUrl(), "dept_dvf_stats", jdbcProps);
+			aggregated.coalesce(1).write().mode(SaveMode.Overwrite).jdbc(cfg.jdbcUrl(), cfg.outputTable(), jdbcProps);
 		}
 	}
 
@@ -120,6 +120,7 @@ public final class DvfAggregateJob {
 		String jdbcUrl = null;
 		String jdbcUser = "homepedia";
 		String jdbcPassword = "homepedia";
+		String outputTable = "dept_dvf_stats";
 
 		for (int i = 0; i < args.length - 1; i++) {
 			switch (args[i]) {
@@ -127,6 +128,7 @@ public final class DvfAggregateJob {
 				case "--jdbc-url" -> jdbcUrl = args[++i];
 				case "--jdbc-user" -> jdbcUser = args[++i];
 				case "--jdbc-password" -> jdbcPassword = args[++i];
+				case "--output-table" -> outputTable = args[++i];
 				default -> {
 				}
 			}
@@ -135,6 +137,6 @@ public final class DvfAggregateJob {
 			throw new IllegalArgumentException(
 					"Required: --jdbc-url (--input-path optional; omit to read the transactions table)");
 		}
-		return new Config(inputPath, jdbcUrl, jdbcUser, jdbcPassword);
+		return new Config(inputPath, jdbcUrl, jdbcUser, jdbcPassword, outputTable);
 	}
 }

@@ -1,5 +1,11 @@
 # app
 
+## [0.66.0] - 2026-05-28
+
+### Features
+
+- feat(admin): surface live import phase in job status cards
+
 ## [0.65.0] - 2026-05-28
 
 ### Features

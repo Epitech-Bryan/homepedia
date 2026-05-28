@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.69.0] - 2026-05-28
+
+### Features
+
+- feat(admin): surface live import phase in job status cards
+
 ## [3.68.0] - 2026-05-28
 
 ### Features

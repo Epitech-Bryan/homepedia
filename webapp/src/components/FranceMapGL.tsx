@@ -22,6 +22,17 @@ interface FranceMapGLProps {
   activeFeatureCode?: string;
   basemap?: "voyager" | "satellite";
   mapStyle?: MapStyle;
+  precisionHeatPoints?: Array<{ latitude: number; longitude: number; value: number }>;
+  transactionMarkers?: Array<{
+    id: number;
+    latitude: number;
+    longitude: number;
+    propertyValue: number;
+    propertyType: string;
+    builtSurface: number | null;
+    roomCount: number | null;
+    mutationDate: string;
+  }>;
   height?: string;
   onZoomChange?: (zoom: number) => void;
   onCenterChange?: (lat: number, lng: number) => void;
@@ -41,7 +52,7 @@ const NO_DATA_FILL = "#e5e7eb";
 const HOVER_LINE = "#1f2937";
 
 const LAYER_DEFS = [
-  { id: "w-admin1-fill", source: "world", sourceLayer: "admin1", minzoom: 0, maxzoom: 22 },
+  { id: "w-admin1-fill", source: "world", sourceLayer: "admin1", minzoom: 0, maxzoom: 8 },
   { id: "c-cities-fill", source: "cities", sourceLayer: "cities", minzoom: 8, maxzoom: 22 },
 ] as const;
 
@@ -145,6 +156,9 @@ export default function FranceMapGL({
   metricLabel,
   onFeatureClick,
   basemap = "voyager",
+  mapStyle = "choropleth",
+  precisionHeatPoints,
+  transactionMarkers,
   height = "100%",
   onZoomChange,
   onCenterChange,
@@ -153,6 +167,7 @@ export default function FranceMapGL({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  const txnPopupRef = useRef<maplibregl.Popup | null>(null);
   const hoveredRef = useRef<{ source: string; sourceLayer: string; id: string } | null>(null);
   const cbRef = useRef({
     onZoomChange,
@@ -238,6 +253,7 @@ export default function FranceMapGL({
       closeOnClick: false,
       className: "maplibre-hover-popup",
     });
+    txnPopupRef.current = new maplibregl.Popup({ closeButton: true, closeOnClick: true });
 
     map.on("style.load", () => {
       map.setSky({
@@ -320,6 +336,22 @@ export default function FranceMapGL({
       cbRef.current.onFeatureClick?.(code, name != null ? String(name) : undefined);
     });
 
+    map.on("click", "txns-layer", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p = f.properties ?? {};
+      const surface = p.surface ? `${p.surface} m²` : "n/a";
+      const rooms = p.rooms ? ` · ${p.rooms} p.` : "";
+      const html =
+        `<strong>${formatValue(Number(p.value))} €</strong><br/>` +
+        `${escapeHtml(String(p.type ?? ""))} · ${surface}${rooms}<br/>` +
+        `<span style="color:#6b7280">${escapeHtml(String(p.date ?? ""))}</span>`;
+      txnPopupRef.current
+        ?.setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number])
+        .setHTML(html)
+        .addTo(map);
+    });
+
     return () => {
       window.clearTimeout(kick);
       ro.disconnect();
@@ -335,6 +367,75 @@ export default function FranceMapGL({
     const src = map.getSource("basemap") as maplibregl.RasterTileSource | undefined;
     if (src) src.setTiles(RASTER_TILES[basemap]);
   }, [basemap]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const update = () => {
+      const src = map.getSource("heat") as maplibregl.GeoJSONSource | undefined;
+      if (!src) return;
+      const pts = precisionHeatPoints ?? [];
+      const maxV = pts.reduce((m, p) => Math.max(m, p.value), 0) || 1;
+      src.setData({
+        type: "FeatureCollection",
+        features: pts.map((p) => ({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [p.longitude, p.latitude] },
+          properties: { w: p.value / maxV },
+        })),
+      });
+    };
+    if (map.isStyleLoaded()) update();
+    else map.once("idle", update);
+  }, [precisionHeatPoints]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const update = () => {
+      const src = map.getSource("txns") as maplibregl.GeoJSONSource | undefined;
+      if (!src) return;
+      const rows = transactionMarkers ?? [];
+      src.setData({
+        type: "FeatureCollection",
+        features: rows.map((t) => ({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [t.longitude, t.latitude] },
+          properties: {
+            value: t.propertyValue,
+            ppsqm: t.builtSurface && t.builtSurface > 0 ? t.propertyValue / t.builtSurface : 0,
+            type: t.propertyType,
+            surface: t.builtSurface,
+            rooms: t.roomCount,
+            date: t.mutationDate,
+          },
+        })),
+      });
+    };
+    if (map.isStyleLoaded()) update();
+    else map.once("idle", update);
+  }, [transactionMarkers]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const showFills = mapStyle !== "heat" && mapStyle !== "bubbles";
+      const showHeat = mapStyle === "heat" || mapStyle === "all";
+      for (const d of LAYER_DEFS) {
+        for (const id of [d.id, `${d.id}-line`]) {
+          if (map.getLayer(id)) {
+            map.setLayoutProperty(id, "visibility", showFills ? "visible" : "none");
+          }
+        }
+      }
+      if (map.getLayer("heat-layer")) {
+        map.setLayoutProperty("heat-layer", "visibility", showHeat ? "visible" : "none");
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("idle", apply);
+  }, [mapStyle]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -385,6 +486,66 @@ export default function FranceMapGL({
           });
         }
       }
+
+      if (!map.getSource("heat")) {
+        map.addSource("heat", { type: "geojson", data: emptyFC() });
+        map.addLayer({
+          id: "heat-layer",
+          type: "heatmap",
+          source: "heat",
+          layout: { visibility: "none" },
+          paint: {
+            "heatmap-weight": ["interpolate", ["linear"], ["get", "w"], 0, 0, 1, 1],
+            "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 9, 1, 16, 2.4],
+            "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 6, 8, 11, 16, 16, 32],
+            "heatmap-opacity": 0.78,
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0,
+              "rgba(69,117,180,0)",
+              0.2,
+              "#74add1",
+              0.4,
+              "#fee090",
+              0.6,
+              "#fdae61",
+              0.8,
+              "#f46d43",
+              1,
+              "#d73027",
+            ],
+          },
+        });
+      }
+      if (!map.getSource("txns")) {
+        map.addSource("txns", { type: "geojson", data: emptyFC() });
+        map.addLayer({
+          id: "txns-layer",
+          type: "circle",
+          source: "txns",
+          paint: {
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 3, 16, 7],
+            "circle-stroke-width": 1,
+            "circle-stroke-color": "#ffffff",
+            "circle-color": [
+              "interpolate",
+              ["linear"],
+              ["get", "ppsqm"],
+              1000,
+              "#1a9850",
+              3000,
+              "#fee08b",
+              6000,
+              "#f46d43",
+              12000,
+              "#a50026",
+            ],
+          },
+        });
+      }
+
       recolor(map, metricKey);
     };
 
@@ -393,6 +554,10 @@ export default function FranceMapGL({
   }, [metricKey]);
 
   return <div ref={containerRef} style={{ width: "100%", height, background: "#abd0f0" }} />;
+}
+
+function emptyFC(): GeoJSON.FeatureCollection {
+  return { type: "FeatureCollection", features: [] };
 }
 
 function num(x: unknown): number | null {

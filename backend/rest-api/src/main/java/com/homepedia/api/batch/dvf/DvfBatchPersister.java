@@ -75,7 +75,7 @@ public class DvfBatchPersister {
 				COPY %s (
 				    mutation_id, mutation_date, mutation_nature, property_value, street_number, postal_code,
 				    city_insee_code, section, plan_number, lot_count, property_type,
-				    built_surface, room_count, land_surface, street_type
+				    built_surface, room_count, land_surface, street_type, latitude, longitude
 				) FROM STDIN
 				""".formatted(shadowName(year));
 		final Connection conn = DataSourceUtils.getConnection(dataSource);
@@ -208,6 +208,10 @@ public class DvfBatchPersister {
 		appendField(w, tx.getLandSurface());
 		w.write('\t');
 		appendField(w, tx.getStreetType());
+		w.write('\t');
+		appendField(w, tx.getLatitude());
+		w.write('\t');
+		appendField(w, tx.getLongitude());
 		w.write('\n');
 	}
 

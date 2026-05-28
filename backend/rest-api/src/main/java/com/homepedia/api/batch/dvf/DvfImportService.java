@@ -196,6 +196,14 @@ public class DvfImportService {
 					clean(fields[10]), section, noPlan, clean(fields[28]), clean(fields[30]), clean(fields[31]),
 					clean(fields[32]), clean(fields[37]), null);
 
+			// geo-dvf ships per-mutation coordinates in the last two columns
+			// (longitude=38, latitude=39). Capturing them at import time
+			// geolocates every transaction precisely — the heatmap and the
+			// per-address markers then render off real points instead of
+			// needing a separate BAN geocoding pass.
+			final var longitude = fields.length > 38 ? ParseUtils.parseDouble(clean(fields[38])) : null;
+			final var latitude = fields.length > 39 ? ParseUtils.parseDouble(clean(fields[39])) : null;
+
 			final var transaction = RealEstateTransaction.builder().mutationId(raw.idMutation())
 					.mutationDate(LocalDate.parse(raw.dateMutation(), DVF_DATE_FORMAT))
 					.mutationNature(raw.natureMutation()).propertyValue(raw.parsedValeurFonciere())
@@ -204,7 +212,8 @@ public class DvfImportService {
 					.builtSurface(ParseUtils.parseDouble(raw.surfaceReelleBati()))
 					.roomCount(ParseUtils.parseInteger(raw.nombrePiecesPrincipales()))
 					.landSurface(ParseUtils.parseDouble(raw.surfaceTerrain()))
-					.lotCount(ParseUtils.parseInteger(raw.nombreDeLots())).build();
+					.lotCount(ParseUtils.parseInteger(raw.nombreDeLots())).latitude(latitude).longitude(longitude)
+					.build();
 
 			final var inseeCode = raw.fullInseeCode();
 			if (StringUtils.isNotBlank(inseeCode)) {

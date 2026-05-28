@@ -5,6 +5,18 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.68.0] - 2026-05-28
+
+### Features
+
+- feat(map): add pollution choropleth metric (GES 1-7)
+- feat(indicators): persist GES class from DPE feed and expose city pollution score
+
+### Bug Fixes
+
+- fix(stats): move GES lateral comments out of native query string
+- fix(indicators): use DpeRawRecord#dpeLabelGes accessor for GES aggregation
+
 ## [3.67.1] - 2026-05-24
 
 ### Bug Fixes

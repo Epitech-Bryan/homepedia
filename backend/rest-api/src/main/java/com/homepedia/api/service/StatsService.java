@@ -54,7 +54,7 @@ public class StatsService {
 		final var bounded = codes.stream().distinct().limit(MAX_CITY_CODES).toList();
 		return statsRepository.aggregateCityStats(bounded).stream()
 				.map(p -> new CityStats(p.getCode(), p.getName(), p.getDepartmentCode(), p.getPopulation(), p.getArea(),
-						p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm()))
+						p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm(), p.getPollutionScore()))
 				.toList();
 	}
 

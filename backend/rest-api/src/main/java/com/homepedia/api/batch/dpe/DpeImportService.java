@@ -30,6 +30,9 @@ public class DpeImportService {
 
 	private static final int BATCH_SIZE = 1000;
 	private static final String[] DPE_LABELS = {"A", "B", "C", "D", "E", "F", "G"};
+	// Same A..G alphabet for the GES (greenhouse-gas) class shipped on the
+	// ADEME row right next to the DPE energy class.
+	private static final String[] GES_LABELS = {"A", "B", "C", "D", "E", "F", "G"};
 	private static final Pattern LINK_NEXT_PATTERN = Pattern.compile("<([^>]+)>;\\s*rel=\"?next\"?");
 
 	private final JdbcTemplate jdbcTemplate;
@@ -42,8 +45,10 @@ public class DpeImportService {
 	public int importFromCsv(Path csvPath) throws IOException {
 		log.info("Starting DPE import from {}", csvPath);
 
-		final var aggregation = new HashMap<String, Map<String, Integer>>();
-		final var totalPerCommune = new HashMap<String, Integer>();
+		final var dpeAgg = new HashMap<String, Map<String, Integer>>();
+		final var dpeTotal = new HashMap<String, Integer>();
+		final var gesAgg = new HashMap<String, Map<String, Integer>>();
+		final var gesTotal = new HashMap<String, Integer>();
 
 		try (final var reader = new BufferedReader(Files.newBufferedReader(csvPath, StandardCharsets.UTF_8))) {
 			final var headerLine = reader.readLine();
@@ -55,19 +60,25 @@ public class DpeImportService {
 			String line;
 			while ((line = reader.readLine()) != null) {
 				final var record = parseCsvLine(line);
-				if (record == null || StringUtils.isBlank(record.inseeCode())
-						|| StringUtils.isBlank(record.dpeLabelEnergy())) {
+				if (record == null || StringUtils.isBlank(record.inseeCode())) {
 					continue;
 				}
-
-				aggregation.computeIfAbsent(record.inseeCode(), k -> new HashMap<>()).merge(record.dpeLabelEnergy(), 1,
-						Integer::sum);
-				totalPerCommune.merge(record.inseeCode(), 1, Integer::sum);
+				accumulate(dpeAgg, dpeTotal, record.inseeCode(), record.dpeLabelEnergy());
+				accumulate(gesAgg, gesTotal, record.inseeCode(), record.gesLabel());
 			}
 		}
 
-		log.info("Parsed DPE data for {} communes", aggregation.size());
-		return saveIndicators(aggregation, totalPerCommune);
+		log.info("Parsed DPE data for {} communes ({} with GES)", dpeAgg.size(), gesAgg.size());
+		return saveIndicators(dpeAgg, dpeTotal) + saveGesIndicators(gesAgg, gesTotal);
+	}
+
+	private static void accumulate(Map<String, Map<String, Integer>> agg, Map<String, Integer> total, String inseeCode,
+			String label) {
+		if (StringUtils.isBlank(label)) {
+			return;
+		}
+		agg.computeIfAbsent(inseeCode, k -> new HashMap<>()).merge(label, 1, Integer::sum);
+		total.merge(inseeCode, 1, Integer::sum);
 	}
 
 	// Same reasoning as importFromCsv: pagination over the ADEME API can run
@@ -76,8 +87,10 @@ public class DpeImportService {
 	public int importFromApi(String baseUrl, RestClient restClient) {
 		log.info("Starting DPE import from API: {}", baseUrl);
 
-		final var aggregation = new HashMap<String, Map<String, Integer>>();
-		final var totalPerCommune = new HashMap<String, Integer>();
+		final var dpeAgg = new HashMap<String, Map<String, Integer>>();
+		final var dpeTotal = new HashMap<String, Integer>();
+		final var gesAgg = new HashMap<String, Map<String, Integer>>();
+		final var gesTotal = new HashMap<String, Integer>();
 
 		var currentUrl = baseUrl;
 		var pageCount = 0;
@@ -105,14 +118,11 @@ public class DpeImportService {
 					lineIndex++;
 
 					final var record = parseCsvLine(line);
-					if (record == null || StringUtils.isBlank(record.inseeCode())
-							|| StringUtils.isBlank(record.dpeLabelEnergy())) {
+					if (record == null || StringUtils.isBlank(record.inseeCode())) {
 						continue;
 					}
-
-					aggregation.computeIfAbsent(record.inseeCode(), k -> new HashMap<>()).merge(record.dpeLabelEnergy(),
-							1, Integer::sum);
-					totalPerCommune.merge(record.inseeCode(), 1, Integer::sum);
+					accumulate(dpeAgg, dpeTotal, record.inseeCode(), record.dpeLabelEnergy());
+					accumulate(gesAgg, gesTotal, record.inseeCode(), record.gesLabel());
 					rowCount++;
 				}
 			} catch (IOException e) {
@@ -128,8 +138,9 @@ public class DpeImportService {
 			currentUrl = result.nextUrl();
 		}
 
-		log.info("Parsed DPE API data: {} pages, {} rows, {} communes", pageCount, rowCount, aggregation.size());
-		return saveIndicators(aggregation, totalPerCommune);
+		log.info("Parsed DPE API data: {} pages, {} rows, {} DPE communes, {} GES communes", pageCount, rowCount,
+				dpeAgg.size(), gesAgg.size());
+		return saveIndicators(dpeAgg, dpeTotal) + saveGesIndicators(gesAgg, gesTotal);
 	}
 
 	private static String parseNextUrl(String linkHeader) {
@@ -223,6 +234,45 @@ public class DpeImportService {
 		}
 
 		log.info("DPE import complete: {} indicators saved", count);
+		return count;
+	}
+
+	/**
+	 * Same shape as {@link #saveIndicators} but stores the GES (greenhouse gas)
+	 * class A..G under {@code IndicatorCategory.ENVIRONMENT} as
+	 * {@code "GES label X"} with the % of dwellings in that class. Drives the
+	 * pollution choropleth: GES A is the cleanest band (≤ 5 kgCO₂eq/m²/yr) and GES
+	 * G the dirtiest (> 80 kgCO₂eq/m²/yr).
+	 */
+	private int saveGesIndicators(Map<String, Map<String, Integer>> aggregation, Map<String, Integer> totalPerCommune) {
+		final var insertSql = """
+				INSERT INTO indicators (geographic_level, geographic_code, category, label, indicator_value, unit)
+				VALUES (?, ?, ?, ?, ?, ?)
+				""";
+		final var rows = new ArrayList<Object[]>(BATCH_SIZE);
+		final var level = GeographicLevel.CITY.name();
+		final var category = IndicatorCategory.ENVIRONMENT.name();
+		var count = 0;
+
+		for (final var communeEntry : aggregation.entrySet()) {
+			final var inseeCode = communeEntry.getKey();
+			final var total = totalPerCommune.getOrDefault(inseeCode, 0);
+			if (total == 0) {
+				continue;
+			}
+			for (final var gesLabel : GES_LABELS) {
+				final var labelCount = communeEntry.getValue().getOrDefault(gesLabel, 0);
+				final var percentage = (labelCount * 100.0) / total;
+				rows.add(new Object[]{level, inseeCode, category, "GES label " + gesLabel, percentage, "%"});
+				if (rows.size() >= BATCH_SIZE) {
+					count += flushRows(insertSql, rows);
+				}
+			}
+		}
+		if (!rows.isEmpty()) {
+			count += flushRows(insertSql, rows);
+		}
+		log.info("GES import complete: {} indicators saved", count);
 		return count;
 	}
 

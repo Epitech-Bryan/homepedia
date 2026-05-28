@@ -1,6 +1,8 @@
 package com.homepedia.spark;
 
 import java.util.Properties;
+import org.apache.spark.ml.feature.BucketedRandomProjectionLSH;
+import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -45,7 +47,7 @@ public final class ComparableSalesAggregateJob {
 	private ComparableSalesAggregateJob() {
 	}
 
-	private record Config(String jdbcUrl, String jdbcUser, String jdbcPassword) {
+	private record Config(String jdbcUrl, String jdbcUser, String jdbcPassword, String matcher) {
 	}
 
 	public static void main(String[] args) {
@@ -85,15 +87,30 @@ public final class ComparableSalesAggregateJob {
 			final var jdbcProps = jdbcProps(cfg);
 			final var transactions = loadGeocodedTransactions(spark, cfg.jdbcUrl(), jdbcProps);
 			final var withBuckets = withClusteringBuckets(transactions);
-			// Re-partition by the join keys before the self-join so each
-			// bucket lives on one executor — turns what would have been a
-			// shuffle-hash-join across 400 partitions into a co-located
-			// join per bucket. Cached because pickTopNeighbours reads it
-			// twice (l + r aliases).
-			final var partitioned = withBuckets
-					.repartition(functions.col("property_type"), functions.col("year_bucket"),
-							functions.col("surface_bucket"), functions.col("lat_bucket"), functions.col("lon_bucket"))
-					.cache();
+
+			// Two matchers, selected by --matcher:
+			// grid (default): the proven bucketed self-join — exact within a
+			// geohash cell, but a sale just across a cell border is
+			// invisible.
+			// lsh: BucketedRandomProjectionLSH approximate-nearest-neighbour
+			// on (lat, lon) — finds the genuinely closest sales with no
+			// hard grid cutoff and scales better on dense urban areas
+			// where the self-join fans out. Kept opt-in until it has been
+			// validated on a real cluster against the grid output.
+			final Dataset<Row> ranked;
+			if ("lsh".equalsIgnoreCase(cfg.matcher())) {
+				ranked = pickTopNeighboursLsh(withBuckets, 10);
+			} else {
+				// Re-partition by the join keys before the self-join so each
+				// bucket lives on one executor — turns what would have been a
+				// shuffle-hash-join across 400 partitions into a co-located
+				// join per bucket. Cached because pickTopNeighbours reads it
+				// twice (l + r aliases).
+				final var partitioned = withBuckets.repartition(functions.col("property_type"),
+						functions.col("year_bucket"), functions.col("surface_bucket"), functions.col("lat_bucket"),
+						functions.col("lon_bucket")).cache();
+				ranked = pickTopNeighbours(partitioned, 10);
+			}
 			// Sort by PK before the write so COPY appends rows in physical
 			// order: Postgres avoids the random page churn that would
 			// otherwise dirty most of the heap, and the bottom-up B-tree
@@ -101,8 +118,7 @@ public final class ComparableSalesAggregateJob {
 			// runs ~25% faster on pre-sorted input. The shuffle that the
 			// sort adds is ~1 min for ~50 M rows, recouped many times over
 			// downstream.
-			final var comparables = pickTopNeighbours(partitioned, 10).orderBy(functions.col("transaction_id"),
-					functions.col("similarity_rank"));
+			final var comparables = ranked.orderBy(functions.col("transaction_id"), functions.col("similarity_rank"));
 
 			// Native COPY FROM STDIN instead of the default JDBC batch insert
 			// — ~10× faster on this ~50 M row write because Postgres bypasses
@@ -202,6 +218,65 @@ public final class ComparableSalesAggregateJob {
 				functions.current_timestamp().alias("updated_at"));
 	}
 
+	/**
+	 * Approximate-nearest-neighbour matcher via
+	 * {@link BucketedRandomProjectionLSH}. Builds an isotropic feature vector
+	 * {@code [lat, lon * LON_SCALE]} (one degree of longitude is ~0.7 of a degree
+	 * of latitude at metropolitan-France latitudes), hashes it, then
+	 * {@code approxSimilarityJoin}s the dataset against itself within a ~2 km
+	 * Euclidean radius. Property-type / surface / year stay as exact post-filters
+	 * so a flat is never matched to a house, but the neighbourhood constraint is
+	 * continuous instead of the grid cell the self-join is stuck with — a sale 50 m
+	 * away across a geohash border is now reachable.
+	 */
+	private static Dataset<Row> pickTopNeighboursLsh(Dataset<Row> bucketed, int topN) {
+		final double lonScale = 0.7;
+		// ~2 km in the scaled degree space; bucketLength tracks the radius so a
+		// single hash bucket roughly covers the search window.
+		final double radius = 0.02;
+
+		final var feat = bucketed.withColumn("lon_scaled", functions.col("longitude").multiply(lonScale));
+		final var assembler = new VectorAssembler().setInputCols(new String[]{"latitude", "lon_scaled"})
+				.setOutputCol("features");
+		final var vectors = assembler.transform(feat).cache();
+
+		final var lsh = new BucketedRandomProjectionLSH().setBucketLength(radius).setNumHashTables(3)
+				.setInputCol("features").setOutputCol("hashes");
+		final var model = lsh.fit(vectors);
+
+		final var pairs = model.approxSimilarityJoin(vectors, vectors, radius, "euclid")
+				.select(functions.col("datasetA.id").alias("l_id"), functions.col("datasetA.latitude").alias("l_lat"),
+						functions.col("datasetA.longitude").alias("l_lon"),
+						functions.col("datasetA.property_value").alias("l_val"),
+						functions.col("datasetA.property_type").alias("l_type"),
+						functions.col("datasetA.surface_bucket").alias("l_sb"),
+						functions.col("datasetA.year_bucket").alias("l_yb"), functions.col("datasetB.id").alias("r_id"),
+						functions.col("datasetB.latitude").alias("r_lat"),
+						functions.col("datasetB.longitude").alias("r_lon"),
+						functions.col("datasetB.property_value").alias("r_val"),
+						functions.col("datasetB.property_type").alias("r_type"),
+						functions.col("datasetB.surface_bucket").alias("r_sb"),
+						functions.col("datasetB.year_bucket").alias("r_yb"))
+				.filter(functions.col("l_id").notEqual(functions.col("r_id"))
+						.and(functions.col("l_type").equalTo(functions.col("r_type")))
+						.and(functions.col("l_sb").equalTo(functions.col("r_sb")))
+						.and(functions.col("l_yb").equalTo(functions.col("r_yb"))));
+
+		final var withMetrics = pairs.withColumn("distance_m", haversineMeters("l_lat", "l_lon", "r_lat", "r_lon"))
+				.withColumn("price_delta_pct", functions.col("r_val").minus(functions.col("l_val"))
+						.divide(functions.col("l_val")).multiply(100));
+
+		final var ranked = withMetrics.withColumn("similarity_rank", functions.row_number()
+				.over(Window.partitionBy(functions.col("l_id")).orderBy(functions.col("distance_m"))));
+
+		return ranked.filter(functions.col("similarity_rank").leq(topN)).select(
+				functions.col("l_id").alias("transaction_id"), functions.col("similarity_rank"),
+				functions.col("r_id").alias("comparable_id"),
+				functions.col("distance_m").cast(DataTypes.IntegerType).alias("distance_m"),
+				functions.col("price_delta_pct").cast(DataTypes.createDecimalType(6, 3)).alias("price_delta_pct"),
+				functions.current_timestamp().alias("updated_at"));
+	}
+
 	private static org.apache.spark.sql.Column haversineMeters(String lat1, String lon1, String lat2, String lon2) {
 		final double earthRadiusM = 6_371_000.0;
 		final var dLat = functions.radians(functions.col(lat2).minus(functions.col(lat1)));
@@ -218,17 +293,19 @@ public final class ComparableSalesAggregateJob {
 		String jdbcUrl = null;
 		String jdbcUser = null;
 		String jdbcPassword = null;
+		String matcher = "grid";
 		for (int i = 0; i < args.length; i++) {
 			switch (args[i]) {
 				case "--jdbc-url" -> jdbcUrl = args[++i];
 				case "--jdbc-user" -> jdbcUser = args[++i];
 				case "--jdbc-password" -> jdbcPassword = args[++i];
+				case "--matcher" -> matcher = args[++i];
 				default -> throw new IllegalArgumentException("Unknown argument: " + args[i]);
 			}
 		}
 		if (jdbcUrl == null || jdbcUser == null || jdbcPassword == null) {
 			throw new IllegalArgumentException("Missing required arguments: --jdbc-url, --jdbc-user, --jdbc-password");
 		}
-		return new Config(jdbcUrl, jdbcUser, jdbcPassword);
+		return new Config(jdbcUrl, jdbcUser, jdbcPassword, matcher);
 	}
 }

@@ -32,6 +32,15 @@
             <version>${spark.version}</version>
             <scope>provided</scope>
         </dependency>
+        <!-- MLlib (LSH approximate-nearest-neighbour for comparables, hedonic
+             regression). Provided: the Spark distribution ships these jars on
+             the cluster classpath, so they stay out of the shaded job jar. -->
+        <dependency>
+            <groupId>org.apache.spark</groupId>
+            <artifactId>spark-mllib_${scala.version}</artifactId>
+            <version>${spark.version}</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>

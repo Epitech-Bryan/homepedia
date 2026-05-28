@@ -28,13 +28,17 @@ public class HealthDataImportService {
 			VALUES (?, ?, ?, ?, ?, ?, ?)
 			""";
 
+	private static final String JOB_NAME = "healthImportJob";
+
 	private final JdbcTemplate jdbcTemplate;
+	private final com.homepedia.api.batch.config.BatchPhaseTracker phaseTracker;
 
 	// No @Transactional: aggregation runs in memory; saves use Spring Data's
 	// per-saveAll implicit transaction. Avoids holding the indicators table
 	// idle-in-transaction during CSV parsing.
 	public int importFromCsv(Path csvPath) throws IOException {
 		log.info("Starting health data import from {}", csvPath);
+		phaseTracker.set(JOB_NAME, "Parsing CSV santé…");
 
 		final var aggregation = new HashMap<AggregationKey, PrevalenceAccumulator>();
 
@@ -75,6 +79,7 @@ public class HealthDataImportService {
 	}
 
 	private int saveIndicators(Map<AggregationKey, PrevalenceAccumulator> aggregation) {
+		phaseTracker.set(JOB_NAME, "Écriture des indicateurs santé…");
 		final var rows = new ArrayList<Object[]>(BATCH_SIZE);
 		final var level = GeographicLevel.DEPARTMENT.name();
 		final var category = IndicatorCategory.HEALTH.name();

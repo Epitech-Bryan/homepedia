@@ -50,10 +50,13 @@ public class DvfImportService {
 	 */
 	private static final int BATCH_SIZE = 50_000;
 
+	private static final String JOB_NAME = "dvfImportJob";
+
 	private final DvfBatchPersister persister;
 	private final CityCacheLoader cityCacheLoader;
 	private final CityDvfStatsAggregator statsAggregator;
 	private final CityQuarterlyPriceAggregator quarterlyAggregator;
+	private final com.homepedia.api.batch.config.BatchPhaseTracker phaseTracker;
 
 	public int importFromZip(int year, Path zipPath) throws IOException {
 		log.info("Starting DVF import for year {} from {}", year, zipPath);
@@ -106,6 +109,7 @@ public class DvfImportService {
 	}
 
 	private void finalizeImport(int year, int totalImported) {
+		phaseTracker.set(JOB_NAME, "Agrégation des stats…");
 		persister.swapPartition(year);
 		persister.analyzePartition(year);
 		statsAggregator.refreshYear(year);
@@ -141,6 +145,7 @@ public class DvfImportService {
 		var count = 0;
 		String[] row;
 
+		phaseTracker.set(JOB_NAME, "Import des transactions…");
 		try {
 			while ((row = parser.parseNext()) != null) {
 				parseRow(row, citiesByInsee).filter(t -> matchesYear(t, year)).ifPresent(batch::add);
@@ -151,6 +156,7 @@ public class DvfImportService {
 					batch.clear();
 					if (count % 100_000 == 0) {
 						log.info("Imported {} transactions for year {}...", count, year);
+						phaseTracker.set(JOB_NAME, "Import des transactions… (" + (count / 1000) + "k)");
 					}
 				}
 			}

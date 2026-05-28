@@ -20,7 +20,7 @@
       "name": "rest-api",
       "path": "backend/rest-api",
       "changelog": "backend/rest-api/CHANGELOG.md",
-      "sharedPaths": ["backend/common", "backend/pom.xml"],
+      "sharedPaths": ["backend/common", "backend/pom.xml", "backend/spark-jobs"],
       "versionedFiles": [
         { "path": "backend/pom.xml", "format": "xml" },
         { "path": "backend/common/pom.xml", "format": "xml" },

@@ -11,6 +11,7 @@ on:
         options:
           - rest-api
           - webapp
+          - spark-jobs
       version:
         description: 'Version to tag (e.g. 3.31.0)'
         required: true
@@ -71,6 +72,50 @@ jobs:
             ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/rest-api:latest
           cache-from: type=gha,scope=rest-api
           cache-to: type=gha,scope=rest-api,mode=max
+          provenance: false
+
+  spark-jobs:
+    name: Build & push spark-jobs
+    if: |
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'rest-api-v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.package == 'spark-jobs')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version
+        id: ver
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#rest-api-v}"
+          fi
+          MAJOR_MINOR=$(echo "${VERSION}" | cut -d. -f1-2)
+          NS="${IMAGE_NAMESPACE,,}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "major_minor=${MAJOR_MINOR}" >> $GITHUB_OUTPUT
+          echo "namespace=${NS}" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/spark-jobs/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/spark-jobs:${{ steps.ver.outputs.version }}
+            ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/spark-jobs:${{ steps.ver.outputs.major_minor }}
+            ${{ env.REGISTRY }}/${{ steps.ver.outputs.namespace }}/homepedia/spark-jobs:latest
+          cache-from: type=gha,scope=spark-jobs
+          cache-to: type=gha,scope=spark-jobs,mode=max
           provenance: false
 
   webapp:

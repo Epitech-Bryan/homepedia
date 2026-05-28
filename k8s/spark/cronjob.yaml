@@ -25,7 +25,7 @@ spec:
           restartPolicy: Never
           containers:
             - name: spark-dvf-aggregate
-              image: ghcr.io/epitech-bryan/homepedia-spark-jobs:latest
+              image: ghcr.io/epitech-bryan/homepedia/spark-jobs:latest
               env:
                 - name: JDBC_URL
                   valueFrom:

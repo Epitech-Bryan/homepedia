@@ -1,5 +1,11 @@
 # app
 
+## [0.70.0] - 2026-05-28
+
+### Features
+
+- feat(map): port heatmap and transaction pins to the globe and cap world tiles for perf
+
 ## [0.69.0] - 2026-05-28
 
 ### Features

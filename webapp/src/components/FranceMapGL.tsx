@@ -1,7 +1,27 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { MapStyle } from "./FranceMap";
+import { fetchOsmPois, roundBbox, type OsmPoiType } from "@/api/osm";
+
+const POI_COLOR: Record<OsmPoiType, string> = {
+  museum: "#a855f7",
+  station: "#0ea5e9",
+  school: "#f59e0b",
+  hospital: "#ef4444",
+  park: "#10b981",
+  attraction: "#ec4899",
+};
+const POI_LABEL: Record<OsmPoiType, string> = {
+  museum: "Musée",
+  station: "Gare",
+  school: "École",
+  hospital: "Hôpital",
+  park: "Parc",
+  attraction: "Attraction",
+};
+const POI_MIN_ZOOM = 12;
 
 type MapMetricKey =
   | "population"
@@ -166,6 +186,11 @@ export default function FranceMapGL({
 }: FranceMapGLProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const [viewState, setViewState] = useState<{
+    zoom: number;
+    bounds: { south: number; west: number; north: number; east: number };
+  } | null>(null);
+  const [address, setAddress] = useState<string | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const txnPopupRef = useRef<maplibregl.Popup | null>(null);
   const hoveredRef = useRef<{ source: string; sourceLayer: string; id: string } | null>(null);
@@ -273,9 +298,42 @@ export default function FranceMapGL({
       cbRef.current.onZoomChange?.(z);
       cbRef.current.onCenterChange?.(c.lat, c.lng);
       cbRef.current.onBoundsChange?.(b.getSouth(), b.getWest(), b.getNorth(), b.getEast());
+      setViewState({
+        zoom: z,
+        bounds: { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() },
+      });
     };
     map.on("moveend", emit);
     map.on("load", emit);
+
+    let addrTimer: number | null = null;
+    let addrAbort: AbortController | null = null;
+    map.on("mousemove", (e) => {
+      if (map.getZoom() < POI_MIN_ZOOM) return;
+      if (addrTimer !== null) window.clearTimeout(addrTimer);
+      const { lat, lng } = e.lngLat;
+      addrTimer = window.setTimeout(() => {
+        addrAbort?.abort();
+        addrAbort = new AbortController();
+        fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+          { signal: addrAbort.signal, headers: { Accept: "application/json" } },
+        )
+          .then((r) => (r.ok ? r.json() : null))
+          .then((json: { display_name?: string } | null) => {
+            if (!json?.display_name) return;
+            setAddress(
+              json.display_name
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .slice(0, 3)
+                .join(" · "),
+            );
+          })
+          .catch(() => {});
+      }, 800);
+    });
     map.on("idle", () => recolor(map, cbRef.current.metricKey));
 
     const FILL_LAYERS = ["c-cities-fill", "w-admin1-fill"];
@@ -352,8 +410,29 @@ export default function FranceMapGL({
         .addTo(map);
     });
 
+    map.on("mouseenter", "poi-layer", (e) => {
+      const f = e.features?.[0];
+      if (!f) return;
+      const p = f.properties ?? {};
+      const t = String(p.type ?? "") as OsmPoiType;
+      const label = POI_LABEL[t] ?? "";
+      map.getCanvas().style.cursor = "pointer";
+      popupRef.current
+        ?.setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number])
+        .setHTML(
+          `<strong>${escapeHtml(String(p.name ?? ""))}</strong><br/><span style="color:#6b7280">${label}</span>`,
+        )
+        .addTo(map);
+    });
+    map.on("mouseleave", "poi-layer", () => {
+      map.getCanvas().style.cursor = "";
+      popupRef.current?.remove();
+    });
+
     return () => {
       window.clearTimeout(kick);
+      if (addrTimer !== null) window.clearTimeout(addrTimer);
+      addrAbort?.abort();
       ro.disconnect();
       map.remove();
       mapRef.current = null;
@@ -420,7 +499,7 @@ export default function FranceMapGL({
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
-      const showFills = mapStyle !== "heat" && mapStyle !== "bubbles";
+      const showFills = mapStyle !== "heat";
       const showHeat = mapStyle === "heat" || mapStyle === "all";
       for (const d of LAYER_DEFS) {
         for (const id of [d.id, `${d.id}-line`]) {
@@ -519,6 +598,38 @@ export default function FranceMapGL({
           },
         });
       }
+      if (!map.getSource("poi")) {
+        map.addSource("poi", { type: "geojson", data: emptyFC() });
+        map.addLayer({
+          id: "poi-layer",
+          type: "circle",
+          source: "poi",
+          minzoom: POI_MIN_ZOOM,
+          paint: {
+            "circle-radius": 5,
+            "circle-stroke-width": 1.5,
+            "circle-stroke-color": "#ffffff",
+            "circle-color": [
+              "match",
+              ["get", "type"],
+              "museum",
+              POI_COLOR.museum,
+              "station",
+              POI_COLOR.station,
+              "school",
+              POI_COLOR.school,
+              "hospital",
+              POI_COLOR.hospital,
+              "park",
+              POI_COLOR.park,
+              "attraction",
+              POI_COLOR.attraction,
+              "#888888",
+            ],
+            "circle-opacity": 0.85,
+          },
+        });
+      }
       if (!map.getSource("txns")) {
         map.addSource("txns", { type: "geojson", data: emptyFC() });
         map.addLayer({
@@ -553,7 +664,49 @@ export default function FranceMapGL({
     else map.once("style.load", apply);
   }, [metricKey]);
 
-  return <div ref={containerRef} style={{ width: "100%", height, background: "#abd0f0" }} />;
+  const poiBbox = viewState && viewState.zoom >= POI_MIN_ZOOM ? roundBbox(viewState.bounds) : null;
+  const { data: poiData } = useQuery({
+    queryKey: ["osm", "pois", poiBbox],
+    queryFn: () => (poiBbox ? fetchOsmPois(poiBbox) : Promise.resolve([])),
+    enabled: !!poiBbox,
+    staleTime: Infinity,
+    gcTime: 30 * 60_000,
+  });
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const src = map.getSource("poi") as maplibregl.GeoJSONSource | undefined;
+      if (!src) return;
+      const rows = poiData ?? [];
+      src.setData({
+        type: "FeatureCollection",
+        features: rows.map((p) => ({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+          properties: { name: p.name, type: p.type },
+        })),
+      });
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("idle", apply);
+  }, [poiData]);
+
+  const showAddress = !!viewState && viewState.zoom >= POI_MIN_ZOOM && address;
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: "relative", width: "100%", height, background: "#abd0f0" }}
+    >
+      {showAddress ? (
+        <div className="absolute bottom-2 left-2 z-[500] max-w-[60%] truncate rounded bg-background/90 px-2 py-1 text-xs text-foreground shadow-sm backdrop-blur pointer-events-none">
+          {address}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function emptyFC(): GeoJSON.FeatureCollection {

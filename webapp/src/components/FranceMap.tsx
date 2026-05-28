@@ -668,15 +668,40 @@ function HeatLayer({ points }: { points: L.HeatLatLngTuple[] }) {
   const map = useMap();
   useEffect(() => {
     if (!points || points.length === 0) return;
-    const layer = L.heatLayer(points, {
-      radius: 24,
-      blur: 20,
-      maxZoom: 12,
-      minOpacity: 0.3,
-      gradient: { 0.2: "#fef0d9", 0.5: "#fdbb84", 0.7: "#ef6548", 0.9: "#990000" },
-    });
-    layer.addTo(map);
+    // Radius/blur are screen pixels and don't auto-scale with zoom, so a
+    // value tuned for region zoom turns every per-address sale into a fat
+    // blob once you zoom into a street. Tighten the kernel as zoom climbs:
+    // wide and soft when dezoomed (points stand for whole areas), small and
+    // crisp past z=14 where the geo-dvf coordinates are precise enough to
+    // read individual hot spots.
+    const radiusFor = (z: number): number => {
+      if (z <= 11) return 24;
+      if (z >= 16) return 10;
+      return 24 - (z - 11) * 2.8;
+    };
+    const build = () => {
+      const r = radiusFor(map.getZoom());
+      return L.heatLayer(points, {
+        radius: r,
+        blur: Math.max(6, r - 5),
+        // Calibrate intensity up to street zoom so deep-zoom views keep a
+        // meaningful gradient instead of saturating to a single colour.
+        maxZoom: 17,
+        minOpacity: 0.3,
+        gradient: { 0.2: "#fef0d9", 0.5: "#fdbb84", 0.7: "#ef6548", 0.9: "#990000" },
+      });
+    };
+    let layer = build().addTo(map);
+    // Rebuild on zoom so the kernel size tracks the new scale. leaflet.heat
+    // has no public "set radius + redraw", so swap the layer — cheap at the
+    // few-thousand-point ceiling the backend enforces.
+    const onZoom = () => {
+      layer.remove();
+      layer = build().addTo(map);
+    };
+    map.on("zoomend", onZoom);
     return () => {
+      map.off("zoomend", onZoom);
       layer.remove();
     };
   }, [map, points]);
@@ -713,9 +738,24 @@ function FitBounds({
     const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features };
     const layer = L.geoJSON(fc);
     const bounds = layer.getBounds();
-    if (bounds.isValid()) {
+    // `bounds.isValid()` only checks the two corners exist — it returns true
+    // even when a feature carries NaN/Infinity coordinates (a malformed
+    // commune geometry, a non-FR admin polygon with a bad ring…). Feeding
+    // those to flyToBounds throws "Invalid LatLng object: (NaN, NaN)" deep in
+    // Leaflet's projection, which bubbles up and unmounts the whole map via
+    // the router error boundary — i.e. a blank map. Require all four corners
+    // to be finite, and still wrap the call so a surprise can never take the
+    // map down.
+    if (!bounds.isValid()) return;
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    const finite = [sw.lat, sw.lng, ne.lat, ne.lng].every((n) => Number.isFinite(n));
+    if (!finite) return;
+    try {
       map.flyToBounds(bounds, { padding: [32, 32], duration: 0.7 });
       lastFitRef.current = key;
+    } catch {
+      // Defensive: never let a fit-bounds failure crash the map.
     }
   }, [geojson, activeFeatureCode, map]);
   return null;

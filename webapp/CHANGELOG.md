@@ -1,5 +1,18 @@
 # app
 
+## [0.68.0] - 2026-05-28
+
+### Features
+
+- feat(map): allow dezooming to the full planet view (minZoom 2 to 1)
+- feat(spark): make the dvf aggregate output table configurable via --output-table
+- feat(spark): run dvf aggregation as a kubernetes job reading the transactions table
+- feat(spark): optional LSH nearest-neighbour matcher for comparable sales
+
+### Bug Fixes
+
+- perf(spark): stage geo-dvf to partitioned parquet and read it columnar in dvf aggregate
+
 ## [0.67.0] - 2026-05-28
 
 ### Features

@@ -45,6 +45,13 @@ RUN addgroup -S app && adduser -S app -G app
 # the process dies). Keep this RUN before the COPY so the binary's deps
 # are guaranteed present.
 RUN apk add --no-cache libstdc++ sqlite-libs
+# kubectl: SparkJobLauncherService shells out to it to launch the
+# spark-dvf-aggregate Job from its CronJob template (see k8s/spark/). The pod
+# must run under the homepedia-spark-launcher ServiceAccount for the RBAC to
+# permit the create/watch.
+RUN ARCH="$(uname -m)"; case "$ARCH" in x86_64) KARCH=amd64 ;; aarch64) KARCH=arm64 ;; *) KARCH=amd64 ;; esac; \
+    wget -q -O /usr/local/bin/kubectl "https://dl.k8s.io/release/v1.30.5/bin/linux/${KARCH}/kubectl" \
+    && chmod +x /usr/local/bin/kubectl
 COPY --from=tippecanoe /src/tippecanoe /src/tile-join /usr/local/bin/
 COPY --from=build /app/rest-api/target/*.jar app.jar
 USER app

@@ -14,6 +14,9 @@ public final class DvfAggregateJob {
 	}
 
 	private record Config(String inputPath, String jdbcUrl, String jdbcUser, String jdbcPassword) {
+		boolean readsFromJdbc() {
+			return inputPath == null || inputPath.isBlank();
+		}
 	}
 
 	public static void main(String[] args) {
@@ -38,7 +41,9 @@ public final class DvfAggregateJob {
 			jdbcProps.put("password", cfg.jdbcPassword());
 			jdbcProps.put("driver", "org.postgresql.Driver");
 
-			final var dvf = loadDvf(spark, cfg.inputPath());
+			final var dvf = cfg.readsFromJdbc()
+					? loadDvfFromJdbc(spark, cfg.jdbcUrl(), jdbcProps)
+					: loadDvf(spark, cfg.inputPath());
 			// Broadcast the tiny cities dimension (~35 k rows × 2 ints =
 			// ~350 KB) so the join becomes a hash-broadcast instead of a
 			// shuffle join — easily the biggest gain on the previous
@@ -77,6 +82,20 @@ public final class DvfAggregateJob {
 		return raw.filter(functions.col("price").isNotNull().and(functions.col("price").gt(0)));
 	}
 
+	private static Dataset<Row> loadDvfFromJdbc(SparkSession spark, String jdbcUrl, Properties jdbcProps) {
+		final var query = """
+				(SELECT city_insee_code AS insee_code, property_value AS price,
+				        built_surface AS surface, mutation_date AS date, id
+				 FROM transactions
+				 WHERE property_value IS NOT NULL AND property_value > 0
+				   AND city_insee_code IS NOT NULL) t
+				""";
+		return spark.read().option("partitionColumn", "id").option("lowerBound", "1").option("upperBound", "1000000000")
+				.option("numPartitions", "16").option("fetchsize", "10000").jdbc(jdbcUrl, query, jdbcProps)
+				.select(functions.col("insee_code"), functions.col("price"), functions.col("surface"),
+						functions.col("date"));
+	}
+
 	private static Dataset<Row> loadCitiesMapping(SparkSession spark, String jdbcUrl, Properties jdbcProps) {
 		return spark.read().jdbc(jdbcUrl, "(SELECT insee_code, department_code FROM cities) c", jdbcProps);
 	}
@@ -112,8 +131,9 @@ public final class DvfAggregateJob {
 				}
 			}
 		}
-		if (inputPath == null || jdbcUrl == null) {
-			throw new IllegalArgumentException("Required: --input-path, --jdbc-url");
+		if (jdbcUrl == null) {
+			throw new IllegalArgumentException(
+					"Required: --jdbc-url (--input-path optional; omit to read the transactions table)");
 		}
 		return new Config(inputPath, jdbcUrl, jdbcUser, jdbcPassword);
 	}

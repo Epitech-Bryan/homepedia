@@ -299,6 +299,7 @@ public class CityTileBuilder {
 		ranges.put("transactionCount", rangeOf(rows, p -> nullableDouble(p.getTransactionCount())));
 		ranges.put("averagePrice", rangeOf(rows, CityTileStatsProjection::getAveragePrice));
 		ranges.put("averagePricePerSqm", rangeOf(rows, CityTileStatsProjection::getAveragePricePerSqm));
+		ranges.put("pollutionScore", rangeOf(rows, CityTileStatsProjection::getPollutionScore));
 		// Density isn't a stored field — it's population / area. Compute on
 		// the fly so the frontend reads it through the same channel.
 		ranges.put("density", rangeOf(rows, p -> {
@@ -420,6 +421,7 @@ public class CityTileBuilder {
 		properties.put("transactionCount", stats.getTransactionCount());
 		putIfNonNull(properties, "averagePrice", stats.getAveragePrice());
 		putIfNonNull(properties, "averagePricePerSqm", stats.getAveragePricePerSqm());
+		putIfNonNull(properties, "pollutionScore", stats.getPollutionScore());
 	}
 
 	private static void putIfNonNull(Map<String, Object> map, String key, Object value) {

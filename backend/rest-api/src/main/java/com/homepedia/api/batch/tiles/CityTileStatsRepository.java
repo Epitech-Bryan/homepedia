@@ -31,10 +31,28 @@ public interface CityTileStatsRepository extends JpaRepository<City, String> {
 			       ELSE NULL END                                                          AS averagePrice,
 			  CASE WHEN COALESCE(SUM(s.total_residential_surface), 0) > 0
 			       THEN (SUM(s.total_price) / SUM(s.total_residential_surface))::double precision
-			       ELSE NULL END                                                          AS averagePricePerSqm
+			       ELSE NULL END                                                          AS averagePricePerSqm,
+			  ges.pollution                                                               AS pollutionScore
 			FROM cities c
 			LEFT JOIN city_dvf_yearly_stats s ON s.insee_code = c.insee_code
-			GROUP BY c.insee_code, c.population, c.area
+			LEFT JOIN LATERAL (
+			  -- Weighted average of the GES (greenhouse-gas) class distribution
+			  -- per commune. ADEME's DPE feed ships one GES letter A..G per
+			  -- dwelling; we stored the % of dwellings per class in `indicators`
+			  -- as "GES label X". Map letters to weights via the ASCII trick
+			  -- (A=65 → 1, G=71 → 7) so a city full of GES-A buildings scores
+			  -- ~1 (clean), a city full of GES-G ~7 (very polluting). NULL when
+			  -- no GES rows exist for the commune so the choropleth skips it
+			  -- instead of painting it the cleanest colour.
+			  SELECT SUM(i.indicator_value * (ASCII(SUBSTRING(i.label, 11, 1)) - 64))::double precision
+			         / NULLIF(SUM(i.indicator_value), 0) AS pollution
+			  FROM indicators i
+			  WHERE i.geographic_code = c.insee_code
+			    AND i.geographic_level = 'CITY'
+			    AND i.category = 'ENVIRONMENT'
+			    AND i.label LIKE 'GES label _'
+			) ges ON TRUE
+			GROUP BY c.insee_code, c.population, c.area, ges.pollution
 			ORDER BY c.insee_code
 			""", nativeQuery = true)
 	List<CityTileStatsProjection> findAllForTiles();
@@ -51,5 +69,7 @@ public interface CityTileStatsRepository extends JpaRepository<City, String> {
 		Double getAveragePrice();
 
 		Double getAveragePricePerSqm();
+
+		Double getPollutionScore();
 	}
 }

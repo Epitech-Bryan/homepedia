@@ -1,5 +1,11 @@
 # app
 
+## [0.69.0] - 2026-05-28
+
+### Features
+
+- feat(map): add opt-in MapLibre globe view with choropleth alongside the 2D map
+
 ## [0.68.0] - 2026-05-28
 
 ### Features

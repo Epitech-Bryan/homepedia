@@ -886,6 +886,8 @@ export function PersistentMap() {
           activeFeatureCode={activeFeatureCode}
           basemap={basemap}
           mapStyle={style}
+          precisionHeatPoints={heatEnabled ? precisionHeatPoints : undefined}
+          transactionMarkers={markersEnabled ? transactionMarkers : undefined}
           height="100%"
           onZoomChange={setZoom}
           onCenterChange={onCenterChange}

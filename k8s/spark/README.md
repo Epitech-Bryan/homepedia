@@ -49,6 +49,8 @@ the whole command with `HOMEPEDIA_SPARK_SUBMIT_COMMAND` if needed.
 
 - `homepedia-db` Secret exists with `jdbc-url` / `username` / `password`
   (or edit the `secretKeyRef`s to match the existing datasource Secret).
-- The image `ghcr.io/epitech-bryan/homepedia-spark-jobs` is built and pushed
-  (multi-stage `backend/spark-jobs/Dockerfile`, build context `backend/`).
+- The image `ghcr.io/epitech-bryan/homepedia/spark-jobs` is built and pushed.
+  The Docker workflow builds it on every `rest-api-v*` release (same version
+  as rest-api, since ferrflow versions them in lockstep) and on
+  `workflow_dispatch` with `package=spark-jobs`.
 - The rest-api Deployment runs under `homepedia-spark-launcher`.

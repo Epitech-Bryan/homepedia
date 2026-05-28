@@ -64,7 +64,7 @@ public class DpeImportService {
 					continue;
 				}
 				accumulate(dpeAgg, dpeTotal, record.inseeCode(), record.dpeLabelEnergy());
-				accumulate(gesAgg, gesTotal, record.inseeCode(), record.gesLabel());
+				accumulate(gesAgg, gesTotal, record.inseeCode(), record.dpeLabelGes());
 			}
 		}
 
@@ -122,7 +122,7 @@ public class DpeImportService {
 						continue;
 					}
 					accumulate(dpeAgg, dpeTotal, record.inseeCode(), record.dpeLabelEnergy());
-					accumulate(gesAgg, gesTotal, record.inseeCode(), record.gesLabel());
+					accumulate(gesAgg, gesTotal, record.inseeCode(), record.dpeLabelGes());
 					rowCount++;
 				}
 			} catch (IOException e) {

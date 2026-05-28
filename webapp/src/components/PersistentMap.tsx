@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import { FranceMap, type MapMarker, type MapStyle } from "@/components/FranceMap";
+import FranceMapGL from "@/components/FranceMapGL";
 import {
   useArrondissementsForCities,
   useCitiesForDepartment,
@@ -258,6 +259,9 @@ export function PersistentMap() {
   const [metric, setMetric] = useState<MapMetric>("population");
   const [style, setStyle] = useState<MapStyle>("choropleth");
   const [basemap, setBasemap] = useState<MapBasemap>("voyager");
+  const [view, setView] = useState<"2d" | "globe">(
+    import.meta.env.VITE_USE_MAPLIBRE === "true" ? "globe" : "2d",
+  );
   // Initial state matches FranceMap's INITIAL_CENTER/INITIAL_ZOOM: world
   // view with no upfront bias toward any country. The 4-tier zoom logic
   // takes over as soon as the user zooms in past 5.
@@ -871,34 +875,60 @@ export function PersistentMap() {
 
   return (
     <div className="relative h-full w-full">
-      <FranceMap
-        geojson={geojson}
-        // Country outlines as a backdrop at every zoom EXCEPT world view
-        // (where countries are already the foreground — rendering them
-        // twice would just double-draw). Keeps the user oriented when
-        // zoomed on a French region or commune.
-        baseGeojson={!showWorld ? backdropCountries : null}
-        onFeatureClick={onFeatureClick}
-        markers={markers}
-        onMarkerClick={onMarkerClick}
-        activeFeatureCode={activeFeatureCode}
-        metricByCode={metricByCode}
-        metricFromFeature={metricFromFeature}
-        choroplethRange={tileChoroplethRange}
-        metricLabel={METRIC_LABELS[metric]}
-        precisionHeatPoints={heatEnabled ? precisionHeatPoints : undefined}
-        transactionMarkers={markersEnabled ? transactionMarkers : undefined}
-        useVectorTilesForCities={useVectorTiles}
-        useVectorTilesForWorld={useWorldVectorTiles}
-        basemap={basemap}
-        mapStyle={style}
-        height="100%"
-        onZoomChange={setZoom}
-        onCenterChange={onCenterChange}
-        onBoundsChange={onBoundsChange}
-        bleed
-      />
+      {view === "globe" ? (
+        <FranceMapGL
+          metricKey={metric}
+          metricByCode={metricByCode}
+          metricFromFeature={metricFromFeature}
+          choroplethRange={tileChoroplethRange}
+          metricLabel={METRIC_LABELS[metric]}
+          onFeatureClick={onFeatureClick}
+          activeFeatureCode={activeFeatureCode}
+          basemap={basemap}
+          mapStyle={style}
+          height="100%"
+          onZoomChange={setZoom}
+          onCenterChange={onCenterChange}
+          onBoundsChange={onBoundsChange}
+        />
+      ) : (
+        <FranceMap
+          geojson={geojson}
+          // Country outlines as a backdrop at every zoom EXCEPT world view
+          // (where countries are already the foreground — rendering them
+          // twice would just double-draw). Keeps the user oriented when
+          // zoomed on a French region or commune.
+          baseGeojson={!showWorld ? backdropCountries : null}
+          onFeatureClick={onFeatureClick}
+          markers={markers}
+          onMarkerClick={onMarkerClick}
+          activeFeatureCode={activeFeatureCode}
+          metricByCode={metricByCode}
+          metricFromFeature={metricFromFeature}
+          choroplethRange={tileChoroplethRange}
+          metricLabel={METRIC_LABELS[metric]}
+          precisionHeatPoints={heatEnabled ? precisionHeatPoints : undefined}
+          transactionMarkers={markersEnabled ? transactionMarkers : undefined}
+          useVectorTilesForCities={useVectorTiles}
+          useVectorTilesForWorld={useWorldVectorTiles}
+          basemap={basemap}
+          mapStyle={style}
+          height="100%"
+          onZoomChange={setZoom}
+          onCenterChange={onCenterChange}
+          onBoundsChange={onBoundsChange}
+          bleed
+        />
+      )}
       <div className="absolute top-3 right-3 z-[1000] flex items-center gap-2 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => setView((v) => (v === "globe" ? "2d" : "globe"))}
+          className="h-8 px-3 rounded-md text-xs font-medium bg-background/90 backdrop-blur shadow-sm border hover:bg-background"
+          title={view === "globe" ? "Repasser en carte 2D" : "Voir la Terre en 3D (globe)"}
+        >
+          {view === "globe" ? "🗺️ 2D" : "🌍 Globe"}
+        </button>
         <Select value={metric} onValueChange={(v) => setMetric(v as MapMetric)}>
           <SelectTrigger className="w-44 h-8 text-xs bg-background/90 backdrop-blur shadow-sm">
             <SelectValue>{(v: string) => METRIC_LABELS[v as MapMetric] ?? v}</SelectValue>

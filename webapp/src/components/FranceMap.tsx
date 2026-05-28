@@ -1064,7 +1064,7 @@ function FranceMapComponent({
               <MapContainer
                 center={INITIAL_CENTER}
                 zoom={INITIAL_ZOOM}
-                minZoom={2}
+                minZoom={1}
                 scrollWheelZoom={true}
                 zoomControl={false}
                 // worldCopyJump teleports the camera back across the

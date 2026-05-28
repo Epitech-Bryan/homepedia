@@ -17,6 +17,19 @@ import org.springframework.data.jpa.repository.Query;
  * {@code StatsRepository.aggregateCityStats}); communes with no DVF rows
  * surface as COUNT 0 / NULL averages so the tile feature still ships their
  * population and area.
+ *
+ * <p>
+ * {@code pollutionScore} is the GES (greenhouse-gas) class averaged per
+ * commune: the ADEME DPE feed ships a GES letter A..G per dwelling, stored as
+ * {@code "GES label X"} percentages in {@code indicators}. The lateral maps
+ * each letter to a weight via the ASCII offset (A=65 maps to 1, G=71 to 7) so a
+ * commune of GES-A buildings scores about 1 (clean) and one of GES-G about 7
+ * (very polluting). NULL when no GES rows exist.
+ *
+ * <p>
+ * Comments are kept out of the {@code @Query} string itself: Spring Data scans
+ * the native query for quotes / SpEL and an apostrophe inside a SQL comment
+ * opens a quoted range it never closes, which blows up bean creation.
  */
 public interface CityTileStatsRepository extends JpaRepository<City, String> {
 
@@ -36,14 +49,6 @@ public interface CityTileStatsRepository extends JpaRepository<City, String> {
 			FROM cities c
 			LEFT JOIN city_dvf_yearly_stats s ON s.insee_code = c.insee_code
 			LEFT JOIN LATERAL (
-			  -- Weighted average of the GES (greenhouse-gas) class distribution
-			  -- per commune. ADEME's DPE feed ships one GES letter A..G per
-			  -- dwelling; we stored the % of dwellings per class in `indicators`
-			  -- as "GES label X". Map letters to weights via the ASCII trick
-			  -- (A=65 → 1, G=71 → 7) so a city full of GES-A buildings scores
-			  -- ~1 (clean), a city full of GES-G ~7 (very polluting). NULL when
-			  -- no GES rows exist for the commune so the choropleth skips it
-			  -- instead of painting it the cleanest colour.
 			  SELECT SUM(i.indicator_value * (ASCII(SUBSTRING(i.label, 11, 1)) - 64))::double precision
 			         / NULLIF(SUM(i.indicator_value), 0) AS pollution
 			  FROM indicators i

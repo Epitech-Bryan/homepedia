@@ -92,9 +92,6 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 			FROM cities c
 			LEFT JOIN city_dvf_yearly_stats s ON s.insee_code = c.insee_code
 			LEFT JOIN LATERAL (
-			  -- Weighted GES (greenhouse-gas) class — same shape as
-			  -- CityTileStatsRepository's lateral; see that file for the
-			  -- ASCII-trick rationale and the GES letter → weight mapping.
 			  SELECT SUM(i.indicator_value * (ASCII(SUBSTRING(i.label, 11, 1)) - 64))::double precision
 			         / NULLIF(SUM(i.indicator_value), 0) AS pollution
 			  FROM indicators i

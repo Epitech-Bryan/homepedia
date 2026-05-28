@@ -5,6 +5,17 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.71.0] - 2026-05-28
+
+### Features
+
+- feat(spark): run dvf aggregation as a kubernetes job reading the transactions table
+- feat(spark): optional LSH nearest-neighbour matcher for comparable sales
+
+### Bug Fixes
+
+- perf(spark): stage geo-dvf to partitioned parquet and read it columnar in dvf aggregate
+
 ## [3.70.0] - 2026-05-28
 
 ### Features

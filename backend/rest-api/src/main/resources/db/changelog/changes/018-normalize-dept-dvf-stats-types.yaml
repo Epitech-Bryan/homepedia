@@ -1,0 +1,44 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-normalize-dept-dvf-stats-types
+      author: homepedia
+      runAlways: true
+      comment: >
+        Guard against dept_dvf_stats column-type drift. The Spark
+        DvfAggregateJob writes this table with SaveMode.Overwrite; before
+        truncate=true was set it recreated the table with Spark's inferred
+        NUMERIC types instead of the changeset-003 DOUBLE PRECISION, and the
+        rest-api's Hibernate ddl-auto=validate then crash-looped on
+        "wrong column type encountered in column [avg_price] ... found
+        [numeric], but expecting [float(53)]".
+
+        runAlways re-checks on every startup (Liquibase runs before Hibernate
+        validation), and the guarded DO block only rewrites a column when its
+        type has actually drifted away from double precision — a no-op on a
+        healthy table, a self-heal on a corrupted one.
+      changes:
+        - sql:
+            splitStatements: false
+            stripComments: false
+            sql: |
+              DO $$
+              DECLARE
+                c text;
+              BEGIN
+                IF to_regclass('public.dept_dvf_stats') IS NULL THEN
+                  RETURN;
+                END IF;
+                FOR c IN
+                  SELECT column_name
+                  FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND table_name = 'dept_dvf_stats'
+                    AND column_name IN ('avg_price', 'avg_price_per_sqm', 'median_price')
+                    AND data_type <> 'double precision'
+                LOOP
+                  EXECUTE format(
+                    'ALTER TABLE dept_dvf_stats ALTER COLUMN %I TYPE double precision USING %I::double precision',
+                    c, c
+                  );
+                END LOOP;
+              END$$;

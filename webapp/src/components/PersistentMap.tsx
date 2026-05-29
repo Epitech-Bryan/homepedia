@@ -929,7 +929,7 @@ export function PersistentMap() {
           className="h-8 px-3 rounded-md text-xs font-medium bg-background/90 backdrop-blur shadow-sm border hover:bg-background"
           title={view === "globe" ? "Repasser en carte 2D" : "Voir la Terre en 3D (globe)"}
         >
-          {view === "globe" ? "🗺️ 2D" : "🌍 Globe"}
+          {view === "globe" ? "2D" : "Globe"}
         </button>
         <Select value={metric} onValueChange={(v) => setMetric(v as MapMetric)}>
           <SelectTrigger className="w-44 h-8 text-xs bg-background/90 backdrop-blur shadow-sm">

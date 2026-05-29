@@ -1,5 +1,11 @@
 # app
 
+## [0.73.0] - 2026-05-29
+
+### Features
+
+- feat(map): mirror 2D zoom bands on the globe (regions to departments to communes)
+
 ## [0.72.0] - 2026-05-28
 
 ### Features

@@ -63,6 +63,18 @@ public class CountryIndicatorImportService {
 				new IndicatorSpec("Population urbaine", "%", IndicatorCategory.POPULATION));
 		WORLD_BANK_INDICATORS.put("EN.POP.DNST",
 				new IndicatorSpec("Densité de population", "hab/km²", IndicatorCategory.POPULATION));
+		WORLD_BANK_INDICATORS.put("SP.POP.GROW",
+				new IndicatorSpec("Croissance démographique", "%", IndicatorCategory.POPULATION));
+		WORLD_BANK_INDICATORS.put("IT.NET.USER.ZS",
+				new IndicatorSpec("Internautes", "% population", IndicatorCategory.INFRASTRUCTURE));
+		WORLD_BANK_INDICATORS.put("EN.GHG.CO2.PC.CE.AR5",
+				new IndicatorSpec("CO2 par habitant", "tonnes", IndicatorCategory.ENVIRONMENT));
+		WORLD_BANK_INDICATORS.put("SH.XPD.CHEX.GD.ZS",
+				new IndicatorSpec("Dépenses de santé", "% PIB", IndicatorCategory.HEALTH));
+		WORLD_BANK_INDICATORS.put("SE.XPD.TOTL.GD.ZS",
+				new IndicatorSpec("Dépenses d'éducation", "% PIB", IndicatorCategory.EDUCATION));
+		WORLD_BANK_INDICATORS.put("SI.POV.GINI",
+				new IndicatorSpec("Indice de Gini", "0-100", IndicatorCategory.ECONOMY));
 	}
 
 	// Eurostat House Price Index (annual, total dwellings, index 2015=100). The

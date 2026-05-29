@@ -481,6 +481,13 @@ public class CountryGeoService {
 				// choropleth at world zoom without another payload.
 				if (!gdp.isMissingNode() && !gdp.isNull()) {
 					props.set("gdp", gdp);
+					// GDP_MD is in millions USD; convert to absolute and divide by
+					// head count so the world view can drive a GDP-per-capita
+					// choropleth for every country, matching the admin-1 layer's
+					// gdpPerCapita semantics (absolute USD per inhabitant).
+					if (!pop.isMissingNode() && !pop.isNull() && pop.asDouble() > 0) {
+						props.put("gdpPerCapita", (gdp.asDouble() * 1_000_000.0) / pop.asDouble());
+					}
 				}
 
 				// Compute a spherical-area km² for every feature so the world

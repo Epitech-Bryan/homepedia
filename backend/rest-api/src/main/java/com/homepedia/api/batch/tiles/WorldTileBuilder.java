@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.homepedia.api.service.CountryGeoService;
 import com.homepedia.api.service.WorldVectorTileService;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -69,6 +70,8 @@ public class WorldTileBuilder {
 
 	private final WorldVectorTileService worldTileService;
 
+	private final CountryGeoService countryGeoService;
+
 	private final ObjectMapper objectMapper;
 
 	private final AtomicBoolean running = new AtomicBoolean(false);
@@ -116,7 +119,13 @@ public class WorldTileBuilder {
 			final var admin3Src = target.resolveSibling("world-admin3.src.geojson");
 			final var mbtilesTmp = target.resolveSibling("world.mbtiles.tmp");
 			try {
-				materialise("data/countries.geojson", countriesSrc);
+				// Bake the same trimmed + enriched country payload the API serves
+				// (code/name/population/gdp/gdpPerCapita/area) rather than the raw
+				// Natural Earth file, so the countries MVT layer carries the
+				// choropleth fields under the conventional names — without this
+				// the layer shipped POP_EST/GDP_MD/ISO_A3 and the world choropleth
+				// read nothing.
+				Files.writeString(countriesSrc, countryGeoService.getCountriesGeoJson());
 				// admin-1 gets its metrics baked in here so the MVT features
 				// carry population/area/gdpNominal directly — the frontend
 				// choropleth then reads them out of the tile properties

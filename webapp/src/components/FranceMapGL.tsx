@@ -72,9 +72,11 @@ const NO_DATA_FILL = "#e5e7eb";
 const HOVER_LINE = "#1f2937";
 
 const LAYER_DEFS = [
-  { id: "w-admin1-fill", source: "world", sourceLayer: "admin1", minzoom: 0, maxzoom: 9 },
-  { id: "w-admin2-fill", source: "world", sourceLayer: "admin2", minzoom: 7, maxzoom: 11 },
-  { id: "c-regions-fill", source: "cities", sourceLayer: "regions", minzoom: 0, maxzoom: 7 },
+  { id: "w-countries-fill", source: "world", sourceLayer: "countries", minzoom: 0, maxzoom: 5 },
+  { id: "w-admin1-fill", source: "world", sourceLayer: "admin1", minzoom: 5, maxzoom: 8 },
+  { id: "w-admin2-fill", source: "world", sourceLayer: "admin2", minzoom: 8, maxzoom: 11 },
+  { id: "w-admin3-fill", source: "world", sourceLayer: "admin3", minzoom: 11, maxzoom: 13 },
+  { id: "c-regions-fill", source: "cities", sourceLayer: "regions", minzoom: 4, maxzoom: 7 },
   {
     id: "c-departments-fill",
     source: "cities",

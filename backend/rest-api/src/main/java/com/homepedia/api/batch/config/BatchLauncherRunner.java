@@ -33,6 +33,7 @@ public class BatchLauncherRunner implements CommandLineRunner {
 	private final Job educationImportJob;
 	private final Job environmentImportJob;
 	private final Job infrastructureImportJob;
+	private final Job countryImportJob;
 
 	@Value("${homepedia.insee.import-enabled:false}")
 	private boolean inseeEnabled;
@@ -60,6 +61,9 @@ public class BatchLauncherRunner implements CommandLineRunner {
 
 	@Value("${homepedia.infrastructure.import-enabled:false}")
 	private boolean infrastructureEnabled;
+
+	@Value("${homepedia.country.import-enabled:false}")
+	private boolean countryEnabled;
 
 	@Value("${homepedia.dvf.import-enabled:false}")
 	private boolean dvfEnabled;
@@ -97,6 +101,9 @@ public class BatchLauncherRunner implements CommandLineRunner {
 		}
 		if (infrastructureEnabled) {
 			jobsToRun.add(infrastructureImportJob);
+		}
+		if (countryEnabled) {
+			jobsToRun.add(countryImportJob);
 		}
 
 		if (jobsToRun.isEmpty()) {

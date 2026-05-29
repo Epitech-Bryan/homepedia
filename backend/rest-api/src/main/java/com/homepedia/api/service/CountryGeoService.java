@@ -5,10 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.homepedia.api.config.CacheConfig;
+import com.homepedia.common.indicator.GeographicLevel;
+import com.homepedia.common.indicator.IndicatorRepository;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -45,7 +49,67 @@ public class CountryGeoService {
 
 	private final ObjectMapper objectMapper;
 
+	private final IndicatorRepository indicatorRepository;
+
 	private String trimmedGeoJsonCache;
+
+	private record CountryMetrics(Double population, Double gdpMillions, Double gdpPerCapita) {
+	}
+
+	/**
+	 * Overlay of current World-Bank-sourced country metrics keyed by ISO-3, loaded
+	 * from the {@code indicators} table ({@code geographic_level=COUNTRY},
+	 * populated by
+	 * {@link com.homepedia.api.batch.indicator.CountryIndicatorImportService}).
+	 * Empty until the country import has run, in which case Natural Earth's static
+	 * 2019 values stand in.
+	 */
+	private Map<String, CountryMetrics> loadCountryOverlay() {
+		final var overlay = new HashMap<String, CountryMetrics>();
+		try {
+			final var rows = indicatorRepository.findByGeographicLevel(GeographicLevel.COUNTRY);
+			final var pop = new HashMap<String, Double>();
+			final var gdp = new HashMap<String, Double>();
+			final var gdpPc = new HashMap<String, Double>();
+			for (final var i : rows) {
+				if (i.getValue() == null || i.getGeographicCode() == null) {
+					continue;
+				}
+				final var label = i.getLabel();
+				if ("Population".equals(label)) {
+					pop.put(i.getGeographicCode(), i.getValue());
+				} else if ("PIB".equals(label)) {
+					gdp.put(i.getGeographicCode(), i.getValue() / 1_000_000.0);
+				} else if ("PIB par habitant".equals(label)) {
+					gdpPc.put(i.getGeographicCode(), i.getValue());
+				}
+			}
+			final var codes = new java.util.HashSet<String>();
+			codes.addAll(pop.keySet());
+			codes.addAll(gdp.keySet());
+			codes.addAll(gdpPc.keySet());
+			for (final var code : codes) {
+				overlay.put(code, new CountryMetrics(pop.get(code), gdp.get(code), gdpPc.get(code)));
+			}
+		} catch (Exception e) {
+			log.warn("Country indicator overlay unavailable, using Natural Earth values: {}", e.getMessage());
+		}
+		return overlay;
+	}
+
+	/**
+	 * Clears the trimmed cache and rebuilds it — called after the country import
+	 * job lands fresh indicators so the next serve reflects them.
+	 */
+	public synchronized void refresh() {
+		trimmedGeoJsonCache = null;
+		try {
+			loadAndTrim();
+			log.info("Country GeoJSON refreshed with latest indicators");
+		} catch (IOException e) {
+			log.error("Country GeoJSON refresh failed", e);
+		}
+	}
 
 	@PostConstruct
 	public void warmUp() {
@@ -420,6 +484,7 @@ public class CountryGeoService {
 		if (trimmedGeoJsonCache != null) {
 			return;
 		}
+		final var overlay = loadCountryOverlay();
 		final var resource = new ClassPathResource("data/countries.geojson");
 		try (var in = resource.getInputStream()) {
 			final var root = (ObjectNode) objectMapper.readTree(in);
@@ -497,6 +562,23 @@ public class CountryGeoService {
 				final var areaKm2 = computeFeatureAreaKm2(f.get("geometry"));
 				if (areaKm2 > 0) {
 					props.put("area", areaKm2);
+				}
+
+				// Overlay current World Bank metrics over the static Natural Earth
+				// 2019 snapshot when the country import has populated them. Keeps
+				// gdpPerCapita in absolute USD/inhabitant (same as the admin-1
+				// layer) and gdp in millions USD (the Natural Earth convention).
+				final var m = code != null ? overlay.get(code) : null;
+				if (m != null) {
+					if (m.population() != null) {
+						props.put("population", m.population());
+					}
+					if (m.gdpMillions() != null) {
+						props.put("gdp", m.gdpMillions());
+					}
+					if (m.gdpPerCapita() != null) {
+						props.put("gdpPerCapita", m.gdpPerCapita());
+					}
 				}
 			}
 			trimmedGeoJsonCache = objectMapper.writeValueAsString(root);

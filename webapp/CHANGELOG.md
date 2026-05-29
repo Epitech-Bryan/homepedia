@@ -1,5 +1,18 @@
 # app
 
+## [0.75.0] - 2026-05-29
+
+### Features
+
+- feat(country): import Eurostat house price index and expose it as a map metric
+- feat(country): expand World Bank import with growth, inflation, unemployment, life expectancy, urban and density
+- feat(country): import current World Bank metrics for all countries and overlay onto geo data
+
+### Bug Fixes
+
+- fix(db): self-heal dept_dvf_stats column types on startup before schema validation
+- fix(spark): truncate dept_dvf_stats on overwrite to preserve column types
+
 ## [0.74.0] - 2026-05-29
 
 ### Features

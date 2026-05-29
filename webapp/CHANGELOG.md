@@ -1,5 +1,11 @@
 # app
 
+## [0.73.1] - 2026-05-29
+
+### Bug Fixes
+
+- fix(map): align globe zone layers to the tippecanoe zoom bands and add countries/admin3
+
 ## [0.73.0] - 2026-05-29
 
 ### Features

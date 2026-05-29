@@ -57,7 +57,13 @@ public final class DvfAggregateJob {
 			// is ~100 rows (one per dept), opening one connection is enough
 			// and the previous 200-partition fan-out triggered N connection
 			// open/close cycles for almost no payload each.
-			aggregated.coalesce(1).write().mode(SaveMode.Overwrite).jdbc(cfg.jdbcUrl(), cfg.outputTable(), jdbcProps);
+			// truncate=true makes Overwrite TRUNCATE the existing table instead of
+			// DROP+CREATE, so the Liquibase-defined column types (double precision)
+			// are preserved. Without it Spark recreates the table with its own
+			// inferred types (numeric) and the rest-api's Hibernate schema
+			// validation then crash-loops on the type mismatch.
+			aggregated.coalesce(1).write().option("truncate", "true").mode(SaveMode.Overwrite).jdbc(cfg.jdbcUrl(),
+					cfg.outputTable(), jdbcProps);
 		}
 	}
 

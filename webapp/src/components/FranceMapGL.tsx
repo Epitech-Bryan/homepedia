@@ -71,8 +71,9 @@ const CHOROPLETH_SCALE = [
 const NO_DATA_FILL = "#e5e7eb";
 const HOVER_LINE = "#1f2937";
 
+const COUNTRIES_LAYER = "w-countries-fill";
+
 const LAYER_DEFS = [
-  { id: "w-countries-fill", source: "world", sourceLayer: "countries", minzoom: 0, maxzoom: 5 },
   { id: "w-admin1-fill", source: "world", sourceLayer: "admin1", minzoom: 5, maxzoom: 8 },
   { id: "w-admin2-fill", source: "world", sourceLayer: "admin2", minzoom: 8, maxzoom: 11 },
   { id: "w-admin3-fill", source: "world", sourceLayer: "admin3", minzoom: 11, maxzoom: 13 },
@@ -183,6 +184,7 @@ function colorExpr(
 
 export default function FranceMapGL({
   metricKey = "population",
+  metricByCode,
   metricFromFeature,
   metricLabel,
   onFeatureClick,
@@ -352,7 +354,7 @@ export default function FranceMapGL({
       if (cbRef.current.mapStyle === "bubbles") recomputeBubbles(map, cbRef.current.metricKey);
     });
 
-    const FILL_LAYERS = [...LAYER_DEFS].reverse().map((d) => d.id);
+    const FILL_LAYERS = [...[...LAYER_DEFS].reverse().map((d) => d.id), COUNTRIES_LAYER];
 
     const clearHover = () => {
       if (hoveredRef.current) {
@@ -540,14 +542,36 @@ export default function FranceMapGL({
     const map = mapRef.current;
     if (!map) return;
     const apply = () => {
+      const entries = Object.entries(metricByCode ?? {}).filter(
+        (e): e is [string, number] => typeof e[1] === "number" && Number.isFinite(e[1]),
+      );
+      const range = deriveRange(entries.map((e) => e[1]));
+      for (const [code, value] of entries) {
+        map.setFeatureState(
+          { source: "world", sourceLayer: "countries", id: code },
+          { color: colorForValue(value, range) },
+        );
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("idle", apply);
+  }, [metricByCode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
       const showFills = mapStyle !== "heat" && mapStyle !== "bubbles";
       const showHeat = mapStyle === "heat" || mapStyle === "all";
       const showBubbles = mapStyle === "bubbles";
-      for (const d of LAYER_DEFS) {
-        for (const id of [d.id, `${d.id}-line`]) {
-          if (map.getLayer(id)) {
-            map.setLayoutProperty(id, "visibility", showFills ? "visible" : "none");
-          }
+      const fillLayerIds = [
+        ...LAYER_DEFS.flatMap((d) => [d.id, `${d.id}-line`]),
+        COUNTRIES_LAYER,
+        `${COUNTRIES_LAYER}-line`,
+      ];
+      for (const id of fillLayerIds) {
+        if (map.getLayer(id)) {
+          map.setLayoutProperty(id, "visibility", showFills ? "visible" : "none");
         }
       }
       if (map.getLayer("heat-layer")) {
@@ -567,6 +591,52 @@ export default function FranceMapGL({
     if (!map) return;
 
     const apply = () => {
+      if (!map.getLayer(COUNTRIES_LAYER)) {
+        map.addLayer({
+          id: COUNTRIES_LAYER,
+          type: "fill",
+          source: "world",
+          "source-layer": "countries",
+          minzoom: 0,
+          maxzoom: 5,
+          paint: {
+            "fill-color": [
+              "coalesce",
+              ["feature-state", "color"],
+              NO_DATA_FILL,
+            ] as maplibregl.ExpressionSpecification,
+            "fill-opacity": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              0.9,
+              0.62,
+            ] as maplibregl.ExpressionSpecification,
+          },
+        });
+        map.addLayer({
+          id: `${COUNTRIES_LAYER}-line`,
+          type: "line",
+          source: "world",
+          "source-layer": "countries",
+          minzoom: 0,
+          maxzoom: 5,
+          paint: {
+            "line-color": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              HOVER_LINE,
+              "#7c2d12",
+            ] as maplibregl.ExpressionSpecification,
+            "line-width": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              2,
+              0.5,
+            ] as maplibregl.ExpressionSpecification,
+            "line-opacity": 0.7,
+          },
+        });
+      }
       for (const d of LAYER_DEFS) {
         if (!map.getLayer(d.id)) {
           map.addLayer({
@@ -776,6 +846,23 @@ function emptyFC(): GeoJSON.FeatureCollection {
   return { type: "FeatureCollection", features: [] };
 }
 
+function colorForValue(
+  value: number,
+  range: { min: number; max: number; breaks?: number[] } | null,
+): string {
+  if (!range || range.max <= range.min) return NO_DATA_FILL;
+  const breaks = range.breaks ?? [];
+  if (breaks.length > 0) {
+    let i = 0;
+    while (i < breaks.length && value >= breaks[i]) i++;
+    return CHOROPLETH_SCALE[Math.min(i, CHOROPLETH_SCALE.length - 1)];
+  }
+  const ratio = Math.max(0, Math.min(1, (value - range.min) / (range.max - range.min)));
+  return CHOROPLETH_SCALE[
+    Math.min(CHOROPLETH_SCALE.length - 1, Math.floor(ratio * CHOROPLETH_SCALE.length))
+  ];
+}
+
 function num(x: unknown): number | null {
   const n = Number(x);
   return Number.isFinite(n) ? n : null;
@@ -803,8 +890,10 @@ function jsMetricValue(props: Record<string, unknown>, metric: MapMetricKey): nu
 }
 
 function recolor(map: maplibregl.Map, metricKey: MapMetricKey) {
+  const z = map.getZoom();
   for (const d of LAYER_DEFS) {
     if (!map.getLayer(d.id)) continue;
+    if (z < d.minzoom || z >= d.maxzoom) continue;
     const feats = map.queryRenderedFeatures({ layers: [d.id] });
     const values = feats.map((f) =>
       jsMetricValue(f.properties as Record<string, unknown>, metricKey),

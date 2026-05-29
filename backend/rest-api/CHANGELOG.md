@@ -5,6 +5,23 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.73.0] - 2026-05-29
+
+### Features
+
+- feat(map): bake complete country metrics (population, gdp, gdpPerCapita, area) into world tiles
+- feat(map): mirror 2D zoom bands on the globe (regions to departments to communes)
+- feat(map): render real centroid bubbles on the globe in bubbles mode
+- feat(map): add OSM POI layer, hover-address and bubbles fallback to the globe
+- feat(map): port heatmap and transaction pins to the globe and cap world tiles for perf
+- feat(map): add opt-in MapLibre globe view with choropleth alongside the 2D map
+- feat(map): allow dezooming to the full planet view (minZoom 2 to 1)
+
+### Bug Fixes
+
+- fix(map): use lightweight countries layer at planet zoom and color it via metricByCode
+- fix(map): align globe zone layers to the tippecanoe zoom bands and add countries/admin3
+
 ## [3.72.0] - 2026-05-28
 
 ### Features

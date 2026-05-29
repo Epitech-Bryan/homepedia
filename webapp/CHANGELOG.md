@@ -1,5 +1,11 @@
 # app
 
+## [0.74.0] - 2026-05-29
+
+### Features
+
+- feat(map): bake complete country metrics (population, gdp, gdpPerCapita, area) into world tiles
+
 ## [0.73.2] - 2026-05-29
 
 ### Bug Fixes

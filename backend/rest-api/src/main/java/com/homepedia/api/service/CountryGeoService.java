@@ -53,7 +53,7 @@ public class CountryGeoService {
 
 	private String trimmedGeoJsonCache;
 
-	private record CountryMetrics(Double population, Double gdpMillions, Double gdpPerCapita) {
+	private record CountryMetrics(Double population, Double gdpMillions, Double gdpPerCapita, Double housePriceIndex) {
 	}
 
 	/**
@@ -71,6 +71,7 @@ public class CountryGeoService {
 			final var pop = new HashMap<String, Double>();
 			final var gdp = new HashMap<String, Double>();
 			final var gdpPc = new HashMap<String, Double>();
+			final var hpi = new HashMap<String, Double>();
 			for (final var i : rows) {
 				if (i.getValue() == null || i.getGeographicCode() == null) {
 					continue;
@@ -82,14 +83,17 @@ public class CountryGeoService {
 					gdp.put(i.getGeographicCode(), i.getValue() / 1_000_000.0);
 				} else if ("PIB par habitant".equals(label)) {
 					gdpPc.put(i.getGeographicCode(), i.getValue());
+				} else if ("Indice prix logement".equals(label)) {
+					hpi.put(i.getGeographicCode(), i.getValue());
 				}
 			}
 			final var codes = new java.util.HashSet<String>();
 			codes.addAll(pop.keySet());
 			codes.addAll(gdp.keySet());
 			codes.addAll(gdpPc.keySet());
+			codes.addAll(hpi.keySet());
 			for (final var code : codes) {
-				overlay.put(code, new CountryMetrics(pop.get(code), gdp.get(code), gdpPc.get(code)));
+				overlay.put(code, new CountryMetrics(pop.get(code), gdp.get(code), gdpPc.get(code), hpi.get(code)));
 			}
 		} catch (Exception e) {
 			log.warn("Country indicator overlay unavailable, using Natural Earth values: {}", e.getMessage());
@@ -578,6 +582,9 @@ public class CountryGeoService {
 					}
 					if (m.gdpPerCapita() != null) {
 						props.put("gdpPerCapita", m.gdpPerCapita());
+					}
+					if (m.housePriceIndex() != null) {
+						props.put("housePriceIndex", m.housePriceIndex());
 					}
 				}
 			}

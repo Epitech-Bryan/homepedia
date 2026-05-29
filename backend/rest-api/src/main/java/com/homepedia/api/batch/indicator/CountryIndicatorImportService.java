@@ -65,6 +65,26 @@ public class CountryIndicatorImportService {
 				new IndicatorSpec("Densité de population", "hab/km²", IndicatorCategory.POPULATION));
 	}
 
+	// Eurostat House Price Index (annual, total dwellings, index 2015=100). The
+	// only keyless source of real residential-price data beyond France's DVF —
+	// covers EU + EFTA + UK + Turkey. Geo codes are ISO-2 (with Eurostat's EL/UK
+	// quirks), mapped to the ISO-3 the country layer keys off.
+	private static final String EUROSTAT_HPI_URL = "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/prc_hpi_a?format=TSV";
+	private static final String EUROSTAT_HPI_ROW_PREFIX = "A,TOTAL,I15_A_AVG,";
+
+	private static final Map<String, String> ISO2_TO_ISO3 = Map.ofEntries(Map.entry("AT", "AUT"),
+			Map.entry("BE", "BEL"), Map.entry("BG", "BGR"), Map.entry("CH", "CHE"), Map.entry("CY", "CYP"),
+			Map.entry("CZ", "CZE"), Map.entry("DE", "DEU"), Map.entry("DK", "DNK"), Map.entry("EE", "EST"),
+			Map.entry("EL", "GRC"), Map.entry("ES", "ESP"), Map.entry("FI", "FIN"), Map.entry("FR", "FRA"),
+			Map.entry("HR", "HRV"), Map.entry("HU", "HUN"), Map.entry("IE", "IRL"), Map.entry("IS", "ISL"),
+			Map.entry("IT", "ITA"), Map.entry("LT", "LTU"), Map.entry("LU", "LUX"), Map.entry("LV", "LVA"),
+			Map.entry("MT", "MLT"), Map.entry("NL", "NLD"), Map.entry("NO", "NOR"), Map.entry("PL", "POL"),
+			Map.entry("PT", "PRT"), Map.entry("RO", "ROU"), Map.entry("SE", "SWE"), Map.entry("SI", "SVN"),
+			Map.entry("SK", "SVK"), Map.entry("TR", "TUR"), Map.entry("UK", "GBR"));
+
+	private static final IndicatorSpec HPI_SPEC = new IndicatorSpec("Indice prix logement", "base 2015=100",
+			IndicatorCategory.ECONOMY);
+
 	private static final String DELETE_SQL = "DELETE FROM indicators WHERE geographic_level = 'COUNTRY'";
 	private static final String INSERT_SQL = """
 			INSERT INTO indicators (geographic_level, geographic_code, category, label, indicator_value, unit, year)
@@ -85,9 +105,83 @@ public class CountryIndicatorImportService {
 				log.warn("World Bank indicator {} failed, skipping: {}", entry.getKey(), e.getMessage());
 			}
 		}
-		log.info("Country indicator import finished: {} rows across {} indicators", total,
+		try {
+			total += importEurostatHousePriceIndex();
+		} catch (Exception e) {
+			log.warn("Eurostat house price index failed, skipping: {}", e.getMessage());
+		}
+		log.info("Country indicator import finished: {} rows across {} World Bank indicators + Eurostat HPI", total,
 				WORLD_BANK_INDICATORS.size());
 		return total;
+	}
+
+	private int importEurostatHousePriceIndex() throws IOException, InterruptedException {
+		final var request = HttpRequest.newBuilder(URI.create(EUROSTAT_HPI_URL)).timeout(HTTP_TIMEOUT)
+				.header("Accept", "text/tab-separated-values").GET().build();
+		final var response = http.send(request, HttpResponse.BodyHandlers.ofString());
+		if (response.statusCode() != 200) {
+			throw new IOException("Eurostat HPI HTTP " + response.statusCode());
+		}
+		final var lines = response.body().split("\n");
+		if (lines.length < 2) {
+			return 0;
+		}
+		final var years = parseTsvYearColumns(lines[0]);
+		final List<Object[]> rows = new ArrayList<>(BATCH_SIZE);
+		var inserted = 0;
+		for (int li = 1; li < lines.length; li++) {
+			final var line = lines[li];
+			if (!line.startsWith(EUROSTAT_HPI_ROW_PREFIX)) {
+				continue;
+			}
+			final var fields = line.split("\t");
+			final var dims = fields[0].split(",");
+			final var iso3 = ISO2_TO_ISO3.get(dims[dims.length - 1].trim());
+			if (iso3 == null) {
+				continue;
+			}
+			Double latestValue = null;
+			Integer latestYear = null;
+			for (int i = 0; i < years.size() && i + 1 < fields.length; i++) {
+				final var year = years.get(i);
+				final var value = parseTsvValue(fields[i + 1]);
+				if (year != null && value != null) {
+					latestValue = value;
+					latestYear = year;
+				}
+			}
+			if (latestValue != null) {
+				rows.add(new Object[]{iso3, HPI_SPEC.category().name(), HPI_SPEC.label(), latestValue, HPI_SPEC.unit(),
+						latestYear});
+			}
+		}
+		inserted += flush(rows);
+		log.info("Eurostat house price index imported: {} countries", inserted);
+		return inserted;
+	}
+
+	private static List<Integer> parseTsvYearColumns(final String headerLine) {
+		final var fields = headerLine.split("\t");
+		final var years = new ArrayList<Integer>();
+		for (int i = 1; i < fields.length; i++) {
+			years.add(parseYear(fields[i]));
+		}
+		return years;
+	}
+
+	private static Double parseTsvValue(final String raw) {
+		if (raw == null || raw.isBlank()) {
+			return null;
+		}
+		final var cleaned = raw.replaceAll("[^0-9.\\-]", "").trim();
+		if (cleaned.isEmpty()) {
+			return null;
+		}
+		try {
+			return Double.parseDouble(cleaned);
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 	private int importIndicator(final String indicatorCode, final IndicatorSpec spec)

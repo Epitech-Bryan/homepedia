@@ -27,6 +27,7 @@ type MapMetricKey =
   | "population"
   | "density"
   | "gdpPerCapita"
+  | "housePriceIndex"
   | "averagePrice"
   | "averagePricePerSqm"
   | "transactionCount"

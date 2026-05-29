@@ -195,6 +195,7 @@ type MapMetric =
   | "population"
   | "density"
   | "gdpPerCapita"
+  | "housePriceIndex"
   | "averagePrice"
   | "averagePricePerSqm"
   | "transactionCount"
@@ -204,6 +205,7 @@ const METRIC_LABELS: Record<MapMetric, string> = {
   population: "Population",
   density: "Density (hab/km²)",
   gdpPerCapita: "GDP per capita (USD)",
+  housePriceIndex: "House price index (2015=100)",
   averagePrice: "Avg. price (€)",
   averagePricePerSqm: "Avg. €/m²",
   transactionCount: "Transactions",
@@ -238,6 +240,9 @@ function extractValue(
       return s.population && s.area ? s.population / s.area : null;
     case "gdpPerCapita":
       // Backend stats don't carry GDP. Only meaningful at world zoom.
+      return null;
+    case "housePriceIndex":
+      // Country-level Eurostat HPI only; FR region/dept/city stats don't carry it.
       return null;
     case "averagePrice":
       return s.averagePrice ?? null;
@@ -621,6 +626,13 @@ export function PersistentMap() {
             return gdp / pop;
           }
           return null;
+        }
+        case "housePriceIndex": {
+          // Eurostat House Price Index (2015=100), overlaid onto country
+          // features by CountryGeoService for ~32 EU/EFTA countries. Other
+          // countries have no open source and fall through to "no data".
+          const v = props.housePriceIndex;
+          return typeof v === "number" ? v : null;
         }
         case "pollution": {
           // Baked into the commune MVT layer by CityTileBuilder

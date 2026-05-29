@@ -100,6 +100,8 @@ homepedia:
     import-enabled: true
   geo:
     import-enabled: true
+  country:
+    import-enabled: ${HOMEPEDIA_COUNTRY_ENABLED:true}
   dvf:
     import-enabled: ${HOMEPEDIA_DVF_ENABLED:true}
     zip-path: ${HOMEPEDIA_DVF_ZIP_PATH:}

@@ -72,8 +72,17 @@ const NO_DATA_FILL = "#e5e7eb";
 const HOVER_LINE = "#1f2937";
 
 const LAYER_DEFS = [
-  { id: "w-admin1-fill", source: "world", sourceLayer: "admin1", minzoom: 0, maxzoom: 8 },
-  { id: "c-cities-fill", source: "cities", sourceLayer: "cities", minzoom: 8, maxzoom: 22 },
+  { id: "w-admin1-fill", source: "world", sourceLayer: "admin1", minzoom: 0, maxzoom: 9 },
+  { id: "w-admin2-fill", source: "world", sourceLayer: "admin2", minzoom: 7, maxzoom: 11 },
+  { id: "c-regions-fill", source: "cities", sourceLayer: "regions", minzoom: 0, maxzoom: 7 },
+  {
+    id: "c-departments-fill",
+    source: "cities",
+    sourceLayer: "departments",
+    minzoom: 7,
+    maxzoom: 9,
+  },
+  { id: "c-cities-fill", source: "cities", sourceLayer: "cities", minzoom: 9, maxzoom: 22 },
 ] as const;
 
 const RASTER_TILES: Record<string, string[]> = {
@@ -341,7 +350,7 @@ export default function FranceMapGL({
       if (cbRef.current.mapStyle === "bubbles") recomputeBubbles(map, cbRef.current.metricKey);
     });
 
-    const FILL_LAYERS = ["c-cities-fill", "w-admin1-fill"];
+    const FILL_LAYERS = [...LAYER_DEFS].reverse().map((d) => d.id);
 
     const clearHover = () => {
       if (hoveredRef.current) {

@@ -1,5 +1,11 @@
 # app
 
+## [0.73.2] - 2026-05-29
+
+### Bug Fixes
+
+- fix(map): use lightweight countries layer at planet zoom and color it via metricByCode
+
 ## [0.73.1] - 2026-05-29
 
 ### Bug Fixes

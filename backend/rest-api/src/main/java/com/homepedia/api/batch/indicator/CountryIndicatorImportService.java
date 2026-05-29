@@ -106,6 +106,11 @@ public class CountryIndicatorImportService {
 			}
 		}
 		try {
+			total += importOecdHousePriceIndex();
+		} catch (Exception e) {
+			log.warn("OECD house price index failed, skipping: {}", e.getMessage());
+		}
+		try {
 			total += importEurostatHousePriceIndex();
 		} catch (Exception e) {
 			log.warn("Eurostat house price index failed, skipping: {}", e.getMessage());
@@ -113,6 +118,85 @@ public class CountryIndicatorImportService {
 		log.info("Country indicator import finished: {} rows across {} World Bank indicators + Eurostat HPI", total,
 				WORLD_BANK_INDICATORS.size());
 		return total;
+	}
+
+	// OECD real house price index (2015=100), SDMX-JSON. Covers the major
+	// non-EU economies Eurostat doesn't (US, Japan, Canada, Korea, Australia,
+	// Mexico, Brazil, China, India, ...). REF_AREA codes are already ISO-3.
+	private static final String OECD_HPI_URL = "https://sdmx.oecd.org/public/rest/data/"
+			+ "OECD.ECO.MPD,DSD_AN_HOUSE_PRICES@DF_HOUSE_PRICES,1.0/..RHP.....?startPeriod=2015&dimensionAtObservation=AllDimensions";
+
+	private int importOecdHousePriceIndex() throws IOException, InterruptedException {
+		final var request = HttpRequest.newBuilder(URI.create(OECD_HPI_URL)).timeout(HTTP_TIMEOUT)
+				.header("Accept", "application/vnd.sdmx.data+json").GET().build();
+		final var response = http.send(request, HttpResponse.BodyHandlers.ofString());
+		if (response.statusCode() != 200) {
+			throw new IOException("OECD HPI HTTP " + response.statusCode());
+		}
+		final var root = objectMapper.readTree(response.body());
+		final var dims = root.path("data").path("structures").path(0).path("dimensions").path("observation");
+		if (!dims.isArray()) {
+			log.warn("OECD HPI response shape unexpected");
+			return 0;
+		}
+		var refDimPos = -1;
+		var timeDimPos = -1;
+		final List<String> refCodes = new ArrayList<>();
+		final List<String> timeCodes = new ArrayList<>();
+		for (int d = 0; d < dims.size(); d++) {
+			final var id = dims.get(d).path("id").asText("");
+			if ("REF_AREA".equals(id)) {
+				refDimPos = d;
+				dims.get(d).path("values").forEach(v -> refCodes.add(v.path("id").asText("")));
+			} else if ("TIME_PERIOD".equals(id)) {
+				timeDimPos = d;
+				dims.get(d).path("values").forEach(v -> timeCodes.add(v.path("id").asText("")));
+			}
+		}
+		if (refDimPos < 0 || timeDimPos < 0) {
+			return 0;
+		}
+
+		final var euCovered = new java.util.HashSet<>(ISO2_TO_ISO3.values());
+		final var latestYear = new java.util.HashMap<String, Integer>();
+		final var latestValue = new java.util.HashMap<String, Double>();
+		final var observations = root.path("data").path("dataSets").path(0).path("observations");
+		final var fields = observations.fieldNames();
+		while (fields.hasNext()) {
+			final var key = fields.next();
+			final var parts = key.split(":");
+			if (parts.length <= Math.max(refDimPos, timeDimPos)) {
+				continue;
+			}
+			final var refIdx = Integer.parseInt(parts[refDimPos]);
+			final var timeIdx = Integer.parseInt(parts[timeDimPos]);
+			if (refIdx >= refCodes.size() || timeIdx >= timeCodes.size()) {
+				continue;
+			}
+			final var iso3 = refCodes.get(refIdx);
+			if (iso3.length() != 3 || euCovered.contains(iso3)) {
+				continue;
+			}
+			final var year = parseYear(timeCodes.get(timeIdx));
+			final var valNode = observations.path(key).path(0);
+			if (year == null || valNode.isMissingNode() || valNode.isNull()) {
+				continue;
+			}
+			final var prev = latestYear.get(iso3);
+			if (prev == null || year > prev) {
+				latestYear.put(iso3, year);
+				latestValue.put(iso3, valNode.asDouble());
+			}
+		}
+
+		final List<Object[]> rows = new ArrayList<>(BATCH_SIZE);
+		for (final var iso3 : latestValue.keySet()) {
+			rows.add(new Object[]{iso3, HPI_SPEC.category().name(), HPI_SPEC.label(), latestValue.get(iso3),
+					HPI_SPEC.unit(), latestYear.get(iso3)});
+		}
+		final var inserted = flush(rows);
+		log.info("OECD house price index imported: {} countries", inserted);
+		return inserted;
 	}
 
 	private int importEurostatHousePriceIndex() throws IOException, InterruptedException {

@@ -72,6 +72,8 @@ public class WorldTileBuilder {
 
 	private final CountryGeoService countryGeoService;
 
+	private final TileBuildLock tileBuildLock;
+
 	private final ObjectMapper objectMapper;
 
 	private final AtomicBoolean running = new AtomicBoolean(false);
@@ -108,6 +110,10 @@ public class WorldTileBuilder {
 			log.info("world tile rebuild already running, skipping");
 			return;
 		}
+		// Serialise against the city tile build so the two don't peak disk
+		// together — acquired before any scratch is written, released in the
+		// outer finally.
+		tileBuildLock.acquire();
 		final var start = System.currentTimeMillis();
 		try {
 			final var target = Path.of(worldMbtilesPath);
@@ -148,6 +154,7 @@ public class WorldTileBuilder {
 				Files.deleteIfExists(mbtilesTmp);
 			}
 		} finally {
+			tileBuildLock.release();
 			running.set(false);
 		}
 	}

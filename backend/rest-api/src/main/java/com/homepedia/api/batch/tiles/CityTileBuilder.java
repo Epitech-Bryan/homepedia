@@ -128,6 +128,8 @@ public class CityTileBuilder {
 
 	private final JdbcTemplate jdbcTemplate;
 
+	private final TileBuildLock tileBuildLock;
+
 	private final AtomicBoolean running = new AtomicBoolean(false);
 
 	// Per-metric min/max across all communes, recomputed during enrichment.
@@ -249,6 +251,9 @@ public class CityTileBuilder {
 			log.info("city tile rebuild already running, skipping");
 			return;
 		}
+		// Serialise against the world tile build so the two don't peak disk
+		// together (see TileBuildLock).
+		tileBuildLock.acquire();
 		final var start = System.currentTimeMillis();
 		try {
 			final var communesSrc = Path.of(sourceGeojsonPath);
@@ -284,6 +289,7 @@ public class CityTileBuilder {
 				Files.deleteIfExists(mbtilesTmp);
 			}
 		} finally {
+			tileBuildLock.release();
 			running.set(false);
 		}
 	}

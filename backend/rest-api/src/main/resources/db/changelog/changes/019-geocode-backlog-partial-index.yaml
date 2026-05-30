@@ -1,0 +1,24 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-geocode-backlog-partial-index
+      author: homepedia
+      comment: >
+        Partial index for the geocoding backlog count. TransactionGeocoder.backlogSize()
+        runs "SELECT COUNT(*) FROM transactions WHERE latitude IS NULL AND geocoded_at
+        IS NULL" on every geocoding scheduler tick. Without a matching index it is a
+        sequential scan over the multi-million-row partitioned table, holds the pooled
+        connection past HikariCP's 30s leak-detection-threshold, and floods the logs
+        with "Apparent connection leak detected".
+
+        A partial index on the predicate keeps only the not-yet-geocoded rows, so the
+        set shrinks as geocoding progresses and the COUNT becomes a fast index-only
+        scan. Postgres propagates the index to every partition of `transactions`.
+      changes:
+        - sql:
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_transactions_geocode_backlog
+                ON transactions (id)
+                WHERE latitude IS NULL AND geocoded_at IS NULL;
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_transactions_geocode_backlog;

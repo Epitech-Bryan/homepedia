@@ -1,5 +1,18 @@
 # app
 
+## [0.76.0] - 2026-05-31
+
+### Features
+
+- feat(country): add population growth, internet, CO2, health/education spend and Gini indicators
+- feat(country): add OECD house price index for major non-EU economies
+
+### Bug Fixes
+
+- fix(map): start globe region layer at z5 so it no longer stacks on the country fill
+- fix(tiles): serialize city and world tile builds to halve peak disk usage
+- perf(db): partial index for geocode backlog count to stop connection-leak warnings
+
 ## [0.75.0] - 2026-05-29
 
 ### Features

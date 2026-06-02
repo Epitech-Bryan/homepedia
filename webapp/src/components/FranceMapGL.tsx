@@ -20,7 +20,7 @@ import {
   buildTransactionFeatures,
   useGeoJsonSource,
 } from "./mapgl/sources";
-import { POI_MIN_ZOOM, installLayers } from "./mapgl/layers";
+import { POI_MIN_ZOOM, applyLayerVisibility, installLayers } from "./mapgl/layers";
 import { RASTER_TILES, createGlobeMap } from "./mapgl/basemap";
 
 const POI_LABEL: Record<OsmPoiType, string> = {
@@ -347,24 +347,7 @@ export default function FranceMapGL({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const apply = () => {
-      const showFills = mapStyle !== "heat" && mapStyle !== "bubbles";
-      const showHeat = mapStyle === "heat" || mapStyle === "all";
-      const showBubbles = mapStyle === "bubbles";
-      const fillLayerIds = LAYER_DEFS.flatMap((d) => [d.id, `${d.id}-line`]);
-      for (const id of fillLayerIds) {
-        if (map.getLayer(id)) {
-          map.setLayoutProperty(id, "visibility", showFills ? "visible" : "none");
-        }
-      }
-      if (map.getLayer("heat-layer")) {
-        map.setLayoutProperty("heat-layer", "visibility", showHeat ? "visible" : "none");
-      }
-      if (map.getLayer("bubbles-layer")) {
-        map.setLayoutProperty("bubbles-layer", "visibility", showBubbles ? "visible" : "none");
-      }
-      if (showBubbles) recomputeBubbles(map, metricKey);
-    };
+    const apply = () => applyLayerVisibility(map, mapStyle, metricKey);
     if (map.isStyleLoaded()) apply();
     else map.once("idle", apply);
   }, [mapStyle, metricKey]);

@@ -14,6 +14,28 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
   return response.json() as Promise<T>;
 }
 
+// Heatpoints come back as a packed little-endian Float32 buffer of (lat, lon,
+// value) triples — ~4x smaller than the JSON array and skips JSON.parse, which
+// matters at city zoom where a dense viewport returns thousands of points.
+async function fetchHeatPoints(params: Record<string, string>): Promise<TransactionHeatPoint[]> {
+  const url = new URL(`${BASE_URL}/transactions/heatpoints/binary`, window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) url.searchParams.set(key, value);
+  });
+  const response = await fetch(url.toString());
+  // Fall back to the JSON endpoint when the binary one isn't available (older
+  // backend), so the frontend and backend can deploy in any order.
+  if (!response.ok) {
+    return fetchJson<TransactionHeatPoint[]>("/transactions/heatpoints", params);
+  }
+  const floats = new Float32Array(await response.arrayBuffer());
+  const points: TransactionHeatPoint[] = [];
+  for (let i = 0; i + 2 < floats.length; i += 3) {
+    points.push({ latitude: floats[i], longitude: floats[i + 1], value: floats[i + 2] });
+  }
+  return points;
+}
+
 export const api = {
   regions: {
     list: () => fetchJson<RegionSummary[]>("/regions"),
@@ -46,7 +68,7 @@ export const api = {
       east: number;
       metric?: "averagePrice" | "averagePricePerSqm" | "transactionCount";
     }) =>
-      fetchJson<TransactionHeatPoint[]>("/transactions/heatpoints", {
+      fetchHeatPoints({
         south: String(params.south),
         west: String(params.west),
         north: String(params.north),

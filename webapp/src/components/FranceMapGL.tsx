@@ -156,6 +156,21 @@ function deriveRange(values: Array<number | null | undefined>): {
   return { min, max, breaks };
 }
 
+type Range = { min: number; max: number; breaks?: number[] } | null;
+
+// A choropleth range available synchronously from props — the backend
+// quantile range for the France layers, else one derived from the country
+// metricByCode the parent already holds. Lets the fill expression be set the
+// moment a layer is created, so features colour as their tiles paint instead
+// of flashing grey until the first idle-driven recolor.
+function propRange(
+  choroplethRange: Range | undefined,
+  metricByCode: Record<string, number | null | undefined> | undefined,
+): Range {
+  if (choroplethRange && choroplethRange.max > choroplethRange.min) return choroplethRange;
+  return deriveRange(Object.values(metricByCode ?? {}));
+}
+
 function colorExpr(
   metric: MapMetricKey,
   range: { min: number; max: number; breaks?: number[] } | null,
@@ -184,7 +199,9 @@ function colorExpr(
 
 export default function FranceMapGL({
   metricKey = "population",
+  metricByCode,
   metricFromFeature,
+  choroplethRange,
   metricLabel,
   onFeatureClick,
   basemap = "voyager",
@@ -215,6 +232,8 @@ export default function FranceMapGL({
     metricLabel,
     metricKey,
     mapStyle,
+    metricByCode,
+    choroplethRange,
   });
   useEffect(() => {
     cbRef.current = {
@@ -226,6 +245,8 @@ export default function FranceMapGL({
       metricLabel,
       metricKey,
       mapStyle,
+      metricByCode,
+      choroplethRange,
     };
   });
 
@@ -348,9 +369,20 @@ export default function FranceMapGL({
           .catch(() => {});
       }, 800);
     });
-    map.on("idle", () => {
-      recolor(map, cbRef.current.metricKey);
-      if (cbRef.current.mapStyle === "bubbles") recomputeBubbles(map, cbRef.current.metricKey);
+    const runRecolor = () => {
+      const c = cbRef.current;
+      recolor(map, c.metricKey, propRange(c.choroplethRange, c.metricByCode));
+      if (c.mapStyle === "bubbles") recomputeBubbles(map, c.metricKey);
+    };
+    map.on("idle", runRecolor);
+    // Refine as soon as a vector tile for a data source finishes loading,
+    // rather than waiting for the map to go fully idle (which on the globe can
+    // lag behind by a second or more under the heavy world tiles).
+    let recolorTimer: number | null = null;
+    map.on("sourcedata", (e) => {
+      if ((e.sourceId !== "world" && e.sourceId !== "cities") || !e.isSourceLoaded) return;
+      if (recolorTimer !== null) window.clearTimeout(recolorTimer);
+      recolorTimer = window.setTimeout(runRecolor, 120);
     });
 
     const FILL_LAYERS = [...LAYER_DEFS].reverse().map((d) => d.id);
@@ -474,6 +506,7 @@ export default function FranceMapGL({
     return () => {
       window.clearTimeout(kick);
       if (addrTimer !== null) window.clearTimeout(addrTimer);
+      if (recolorTimer !== null) window.clearTimeout(recolorTimer);
       addrAbort?.abort();
       ro.disconnect();
       map.remove();
@@ -488,6 +521,15 @@ export default function FranceMapGL({
     const src = map.getSource("basemap") as maplibregl.RasterTileSource | undefined;
     if (src) src.setTiles(RASTER_TILES[basemap]);
   }, [basemap]);
+
+  // When the parent's choropleth range / metric values arrive or change,
+  // recolour immediately rather than waiting for the next idle/sourcedata —
+  // keeps the first paint instant when data lands just after mount.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    recolor(map, metricKey, propRange(choroplethRange, metricByCode));
+  }, [metricKey, choroplethRange, metricByCode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -567,6 +609,8 @@ export default function FranceMapGL({
     if (!map) return;
 
     const apply = () => {
+      const initial = propRange(cbRef.current.choroplethRange, cbRef.current.metricByCode);
+      const initialColor = colorExpr(metricKey, initial) as maplibregl.ExpressionSpecification;
       for (const d of LAYER_DEFS) {
         if (!map.getLayer(d.id)) {
           map.addLayer({
@@ -577,7 +621,7 @@ export default function FranceMapGL({
             minzoom: d.minzoom,
             maxzoom: d.maxzoom,
             paint: {
-              "fill-color": NO_DATA_FILL,
+              "fill-color": initialColor,
               "fill-opacity": [
                 "case",
                 ["boolean", ["feature-state", "hover"], false],
@@ -720,7 +764,7 @@ export default function FranceMapGL({
         });
       }
 
-      recolor(map, metricKey);
+      recolor(map, metricKey, initial);
     };
 
     if (map.isStyleLoaded()) apply();
@@ -802,7 +846,7 @@ function jsMetricValue(props: Record<string, unknown>, metric: MapMetricKey): nu
   }
 }
 
-function recolor(map: maplibregl.Map, metricKey: MapMetricKey) {
+function recolor(map: maplibregl.Map, metricKey: MapMetricKey, fallback: Range) {
   const z = map.getZoom();
   for (const d of LAYER_DEFS) {
     if (!map.getLayer(d.id)) continue;
@@ -811,7 +855,9 @@ function recolor(map: maplibregl.Map, metricKey: MapMetricKey) {
     const values = feats.map((f) =>
       jsMetricValue(f.properties as Record<string, unknown>, metricKey),
     );
-    const range = deriveRange(values);
+    // Adaptive per-zoom range when tiles are already rendered; otherwise the
+    // prop-derived range so the layer never sits grey waiting for tiles.
+    const range = deriveRange(values) ?? fallback;
     map.setPaintProperty(
       d.id,
       "fill-color",

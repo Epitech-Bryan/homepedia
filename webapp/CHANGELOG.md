@@ -1,5 +1,11 @@
 # app
 
+## [0.76.7] - 2026-06-02
+
+### Bug Fixes
+
+- perf(map): fetch heatpoints as a packed Float32 buffer with JSON fallback
+
 ## [0.76.6] - 2026-06-02
 
 ## [0.76.5] - 2026-06-02

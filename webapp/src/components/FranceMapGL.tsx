@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -13,6 +13,15 @@ import {
   recolor,
   recomputeBubbles,
 } from "./mapgl/choropleth";
+import {
+  type HeatPoint,
+  type TransactionMarker,
+  buildHeatFeatures,
+  buildPoiFeatures,
+  buildTransactionFeatures,
+  emptyFeatureCollection,
+  useGeoJsonSource,
+} from "./mapgl/sources";
 
 const POI_COLOR: Record<OsmPoiType, string> = {
   museum: "#a855f7",
@@ -42,17 +51,8 @@ interface FranceMapGLProps {
   activeFeatureCode?: string;
   basemap?: "voyager" | "satellite";
   mapStyle?: MapStyle;
-  precisionHeatPoints?: Array<{ latitude: number; longitude: number; value: number }>;
-  transactionMarkers?: Array<{
-    id: number;
-    latitude: number;
-    longitude: number;
-    propertyValue: number;
-    propertyType: string;
-    builtSurface: number | null;
-    roomCount: number | null;
-    mutationDate: string;
-  }>;
+  precisionHeatPoints?: HeatPoint[];
+  transactionMarkers?: TransactionMarker[];
   height?: string;
   onZoomChange?: (zoom: number) => void;
   onCenterChange?: (lat: number, lng: number) => void;
@@ -405,53 +405,17 @@ export default function FranceMapGL({
     recolor(map, metricKey, propRange(choroplethRange, metricByCode));
   }, [metricKey, choroplethRange, metricByCode]);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const update = () => {
-      const src = map.getSource("heat") as maplibregl.GeoJSONSource | undefined;
-      if (!src) return;
-      const pts = precisionHeatPoints ?? [];
-      const maxV = pts.reduce((m, p) => Math.max(m, p.value), 0) || 1;
-      src.setData({
-        type: "FeatureCollection",
-        features: pts.map((p) => ({
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [p.longitude, p.latitude] },
-          properties: { w: p.value / maxV },
-        })),
-      });
-    };
-    if (map.isStyleLoaded()) update();
-    else map.once("idle", update);
-  }, [precisionHeatPoints]);
+  const heatFeatures = useMemo(
+    () => buildHeatFeatures(precisionHeatPoints ?? []),
+    [precisionHeatPoints],
+  );
+  useGeoJsonSource(mapRef, "heat", heatFeatures);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const update = () => {
-      const src = map.getSource("txns") as maplibregl.GeoJSONSource | undefined;
-      if (!src) return;
-      const rows = transactionMarkers ?? [];
-      src.setData({
-        type: "FeatureCollection",
-        features: rows.map((t) => ({
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [t.longitude, t.latitude] },
-          properties: {
-            value: t.propertyValue,
-            ppsqm: t.builtSurface && t.builtSurface > 0 ? t.propertyValue / t.builtSurface : 0,
-            type: t.propertyType,
-            surface: t.builtSurface,
-            rooms: t.roomCount,
-            date: t.mutationDate,
-          },
-        })),
-      });
-    };
-    if (map.isStyleLoaded()) update();
-    else map.once("idle", update);
-  }, [transactionMarkers]);
+  const transactionFeatures = useMemo(
+    () => buildTransactionFeatures(transactionMarkers ?? []),
+    [transactionMarkers],
+  );
+  useGeoJsonSource(mapRef, "txns", transactionFeatures);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -531,7 +495,7 @@ export default function FranceMapGL({
       }
 
       if (!map.getSource("heat")) {
-        map.addSource("heat", { type: "geojson", data: emptyFC() });
+        map.addSource("heat", { type: "geojson", data: emptyFeatureCollection() });
         map.addLayer({
           id: "heat-layer",
           type: "heatmap",
@@ -563,7 +527,7 @@ export default function FranceMapGL({
         });
       }
       if (!map.getSource("poi")) {
-        map.addSource("poi", { type: "geojson", data: emptyFC() });
+        map.addSource("poi", { type: "geojson", data: emptyFeatureCollection() });
         map.addLayer({
           id: "poi-layer",
           type: "circle",
@@ -595,7 +559,7 @@ export default function FranceMapGL({
         });
       }
       if (!map.getSource("txns")) {
-        map.addSource("txns", { type: "geojson", data: emptyFC() });
+        map.addSource("txns", { type: "geojson", data: emptyFeatureCollection() });
         map.addLayer({
           id: "txns-layer",
           type: "circle",
@@ -622,7 +586,7 @@ export default function FranceMapGL({
       }
 
       if (!map.getSource("bubbles")) {
-        map.addSource("bubbles", { type: "geojson", data: emptyFC() });
+        map.addSource("bubbles", { type: "geojson", data: emptyFeatureCollection() });
         map.addLayer({
           id: "bubbles-layer",
           type: "circle",
@@ -654,25 +618,8 @@ export default function FranceMapGL({
     gcTime: 30 * 60_000,
   });
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    const apply = () => {
-      const src = map.getSource("poi") as maplibregl.GeoJSONSource | undefined;
-      if (!src) return;
-      const rows = poiData ?? [];
-      src.setData({
-        type: "FeatureCollection",
-        features: rows.map((p) => ({
-          type: "Feature",
-          geometry: { type: "Point", coordinates: [p.lon, p.lat] },
-          properties: { name: p.name, type: p.type },
-        })),
-      });
-    };
-    if (map.isStyleLoaded()) apply();
-    else map.once("idle", apply);
-  }, [poiData]);
+  const poiFeatures = useMemo(() => buildPoiFeatures(poiData ?? []), [poiData]);
+  useGeoJsonSource(mapRef, "poi", poiFeatures);
 
   const showAddress = !!viewState && viewState.zoom >= POI_MIN_ZOOM && address;
 
@@ -688,10 +635,6 @@ export default function FranceMapGL({
       ) : null}
     </div>
   );
-}
-
-function emptyFC(): GeoJSON.FeatureCollection {
-  return { type: "FeatureCollection", features: [] };
 }
 
 function formatValue(value: number): string {

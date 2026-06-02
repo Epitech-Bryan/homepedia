@@ -1,6 +1,7 @@
 import maplibregl from "maplibre-gl";
 import type { OsmPoiType } from "@/api/osm";
-import { HOVER_LINE, LAYER_DEFS } from "./choropleth";
+import type { MapStyle } from "../FranceMap";
+import { type MapMetricKey, HOVER_LINE, LAYER_DEFS, recomputeBubbles } from "./choropleth";
 import { emptyFeatureCollection } from "./sources";
 
 export const POI_MIN_ZOOM = 12;
@@ -165,4 +166,29 @@ export function installLayers(
       },
     });
   }
+}
+
+// Toggles which overlay is visible for the selected map style: choropleth fills
+// + outlines, the heatmap, or the bubble layer (recomputed on demand since its
+// centroids depend on whatever fills are currently rendered).
+export function applyLayerVisibility(
+  map: maplibregl.Map,
+  mapStyle: MapStyle,
+  metricKey: MapMetricKey,
+): void {
+  const showFills = mapStyle !== "heat" && mapStyle !== "bubbles";
+  const showHeat = mapStyle === "heat" || mapStyle === "all";
+  const showBubbles = mapStyle === "bubbles";
+  for (const id of LAYER_DEFS.flatMap((d) => [d.id, `${d.id}-line`])) {
+    if (map.getLayer(id)) {
+      map.setLayoutProperty(id, "visibility", showFills ? "visible" : "none");
+    }
+  }
+  if (map.getLayer("heat-layer")) {
+    map.setLayoutProperty("heat-layer", "visibility", showHeat ? "visible" : "none");
+  }
+  if (map.getLayer("bubbles-layer")) {
+    map.setLayoutProperty("bubbles-layer", "visibility", showBubbles ? "visible" : "none");
+  }
+  if (showBubbles) recomputeBubbles(map, metricKey);
 }

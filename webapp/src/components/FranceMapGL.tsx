@@ -21,6 +21,7 @@ import {
   useGeoJsonSource,
 } from "./mapgl/sources";
 import { POI_MIN_ZOOM, installLayers } from "./mapgl/layers";
+import { RASTER_TILES, createGlobeMap } from "./mapgl/basemap";
 
 const POI_LABEL: Record<OsmPoiType, string> = {
   museum: "Musée",
@@ -48,18 +49,6 @@ interface FranceMapGLProps {
   onCenterChange?: (lat: number, lng: number) => void;
   onBoundsChange?: (south: number, west: number, north: number, east: number) => void;
 }
-
-const RASTER_TILES: Record<string, string[]> = {
-  voyager: [
-    "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-  ],
-  satellite: [
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  ],
-};
 
 export default function FranceMapGL({
   metricKey = "population",
@@ -116,49 +105,8 @@ export default function FranceMapGL({
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const map = new maplibregl.Map({
-      container: containerRef.current,
-      center: [10, 20],
-      zoom: 2,
-      minZoom: 0.5,
-      maxZoom: 19,
-      attributionControl: { compact: true },
-      style: {
-        version: 8,
-        projection: { type: "globe" },
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-        sources: {
-          basemap: {
-            type: "raster",
-            tiles: RASTER_TILES[basemap],
-            tileSize: 256,
-            attribution: "&copy; OSM &copy; CARTO / Esri",
-          },
-          world: {
-            type: "vector",
-            tiles: [`${location.origin}/api/tiles/world/{z}/{x}/{y}.pbf`],
-            minzoom: 0,
-            maxzoom: 12,
-            promoteId: "code",
-          },
-          cities: {
-            type: "vector",
-            tiles: [`${location.origin}/api/tiles/cities/{z}/{x}/{y}.pbf`],
-            minzoom: 4,
-            maxzoom: 14,
-            promoteId: "code",
-          },
-        },
-        layers: [{ id: "basemap", type: "raster", source: "basemap" }],
-      },
-    });
+    const map = createGlobeMap(containerRef.current, basemap);
     mapRef.current = map;
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }),
-      "bottom-right",
-    );
-    map.dragRotate.disable();
-    map.touchZoomRotate.disableRotation();
 
     const ro = new ResizeObserver(() => map.resize());
     ro.observe(containerRef.current);
@@ -178,17 +126,6 @@ export default function FranceMapGL({
       className: "maplibre-hover-popup",
     });
     txnPopupRef.current = new maplibregl.Popup({ closeButton: true, closeOnClick: true });
-
-    map.on("style.load", () => {
-      map.setSky({
-        "sky-color": "#9cc6ff",
-        "sky-horizon-blend": 0.5,
-        "horizon-color": "#ffffff",
-        "horizon-fog-blend": 0.5,
-        "fog-color": "#dfe9f5",
-        "fog-ground-blend": 0.6,
-      });
-    });
 
     const emit = () => {
       const z = map.getZoom();

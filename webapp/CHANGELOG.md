@@ -1,5 +1,11 @@
 # app
 
+## [0.76.1] - 2026-06-02
+
+### Bug Fixes
+
+- perf(map): color globe layers from a prop-derived range on tile load instead of waiting for idle
+
 ## [0.76.0] - 2026-05-31
 
 ### Features

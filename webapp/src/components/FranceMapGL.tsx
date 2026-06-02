@@ -6,7 +6,6 @@ import type { MapStyle } from "./FranceMap";
 import { fetchOsmPois, roundBbox, type OsmPoiType } from "@/api/osm";
 import {
   type MapMetricKey,
-  HOVER_LINE,
   LAYER_DEFS,
   colorExpr,
   propRange,
@@ -19,18 +18,10 @@ import {
   buildHeatFeatures,
   buildPoiFeatures,
   buildTransactionFeatures,
-  emptyFeatureCollection,
   useGeoJsonSource,
 } from "./mapgl/sources";
+import { POI_MIN_ZOOM, installLayers } from "./mapgl/layers";
 
-const POI_COLOR: Record<OsmPoiType, string> = {
-  museum: "#a855f7",
-  station: "#0ea5e9",
-  school: "#f59e0b",
-  hospital: "#ef4444",
-  park: "#10b981",
-  attraction: "#ec4899",
-};
 const POI_LABEL: Record<OsmPoiType, string> = {
   museum: "Musée",
   station: "Gare",
@@ -39,7 +30,6 @@ const POI_LABEL: Record<OsmPoiType, string> = {
   park: "Parc",
   attraction: "Attraction",
 };
-const POI_MIN_ZOOM = 12;
 
 interface FranceMapGLProps {
   metricKey?: MapMetricKey;
@@ -449,159 +439,7 @@ export default function FranceMapGL({
     const apply = () => {
       const initial = propRange(cbRef.current.choroplethRange, cbRef.current.metricByCode);
       const initialColor = colorExpr(metricKey, initial) as maplibregl.ExpressionSpecification;
-      for (const d of LAYER_DEFS) {
-        if (!map.getLayer(d.id)) {
-          map.addLayer({
-            id: d.id,
-            type: "fill",
-            source: d.source,
-            "source-layer": d.sourceLayer,
-            minzoom: d.minzoom,
-            maxzoom: d.maxzoom,
-            paint: {
-              "fill-color": initialColor,
-              "fill-opacity": [
-                "case",
-                ["boolean", ["feature-state", "hover"], false],
-                0.9,
-                0.62,
-              ] as maplibregl.ExpressionSpecification,
-            },
-          });
-          map.addLayer({
-            id: `${d.id}-line`,
-            type: "line",
-            source: d.source,
-            "source-layer": d.sourceLayer,
-            minzoom: d.minzoom,
-            maxzoom: d.maxzoom,
-            paint: {
-              "line-color": [
-                "case",
-                ["boolean", ["feature-state", "hover"], false],
-                HOVER_LINE,
-                "#7c2d12",
-              ] as maplibregl.ExpressionSpecification,
-              "line-width": [
-                "case",
-                ["boolean", ["feature-state", "hover"], false],
-                2,
-                0.5,
-              ] as maplibregl.ExpressionSpecification,
-              "line-opacity": 0.7,
-            },
-          });
-        }
-      }
-
-      if (!map.getSource("heat")) {
-        map.addSource("heat", { type: "geojson", data: emptyFeatureCollection() });
-        map.addLayer({
-          id: "heat-layer",
-          type: "heatmap",
-          source: "heat",
-          layout: { visibility: "none" },
-          paint: {
-            "heatmap-weight": ["interpolate", ["linear"], ["get", "w"], 0, 0, 1, 1],
-            "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 9, 1, 16, 2.4],
-            "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 6, 8, 11, 16, 16, 32],
-            "heatmap-opacity": 0.78,
-            "heatmap-color": [
-              "interpolate",
-              ["linear"],
-              ["heatmap-density"],
-              0,
-              "rgba(69,117,180,0)",
-              0.2,
-              "#74add1",
-              0.4,
-              "#fee090",
-              0.6,
-              "#fdae61",
-              0.8,
-              "#f46d43",
-              1,
-              "#d73027",
-            ],
-          },
-        });
-      }
-      if (!map.getSource("poi")) {
-        map.addSource("poi", { type: "geojson", data: emptyFeatureCollection() });
-        map.addLayer({
-          id: "poi-layer",
-          type: "circle",
-          source: "poi",
-          minzoom: POI_MIN_ZOOM,
-          paint: {
-            "circle-radius": 5,
-            "circle-stroke-width": 1.5,
-            "circle-stroke-color": "#ffffff",
-            "circle-color": [
-              "match",
-              ["get", "type"],
-              "museum",
-              POI_COLOR.museum,
-              "station",
-              POI_COLOR.station,
-              "school",
-              POI_COLOR.school,
-              "hospital",
-              POI_COLOR.hospital,
-              "park",
-              POI_COLOR.park,
-              "attraction",
-              POI_COLOR.attraction,
-              "#888888",
-            ],
-            "circle-opacity": 0.85,
-          },
-        });
-      }
-      if (!map.getSource("txns")) {
-        map.addSource("txns", { type: "geojson", data: emptyFeatureCollection() });
-        map.addLayer({
-          id: "txns-layer",
-          type: "circle",
-          source: "txns",
-          paint: {
-            "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 3, 16, 7],
-            "circle-stroke-width": 1,
-            "circle-stroke-color": "#ffffff",
-            "circle-color": [
-              "interpolate",
-              ["linear"],
-              ["get", "ppsqm"],
-              1000,
-              "#1a9850",
-              3000,
-              "#fee08b",
-              6000,
-              "#f46d43",
-              12000,
-              "#a50026",
-            ],
-          },
-        });
-      }
-
-      if (!map.getSource("bubbles")) {
-        map.addSource("bubbles", { type: "geojson", data: emptyFeatureCollection() });
-        map.addLayer({
-          id: "bubbles-layer",
-          type: "circle",
-          source: "bubbles",
-          layout: { visibility: "none" },
-          paint: {
-            "circle-radius": ["get", "r"],
-            "circle-color": "#fc8d59",
-            "circle-opacity": 0.6,
-            "circle-stroke-color": "#b3502c",
-            "circle-stroke-width": 1.5,
-          },
-        });
-      }
-
+      installLayers(map, initialColor);
       recolor(map, metricKey, initial);
     };
 

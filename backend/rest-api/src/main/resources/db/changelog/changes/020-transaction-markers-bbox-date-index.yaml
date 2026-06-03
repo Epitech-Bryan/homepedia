@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-transaction-markers-bbox-date-index
+      author: homepedia
+      comment: >
+        Covering index for TransactionMarkerService.markers(). That query filters
+        a small viewport bbox (latitude/longitude BETWEEN ...) and then
+        "ORDER BY mutation_date DESC LIMIT n". The existing
+        idx_transaction_geocoded_bbox (latitude, longitude) WHERE latitude IS NOT NULL
+        only serves the bbox filter, so Postgres still sorts every matched row by
+        mutation_date in memory — potentially tens of thousands of rows on a dense
+        urban bbox before the LIMIT clips them.
+
+        Adding mutation_date DESC as a trailing index column lets the planner read
+        the rows already ordered, turning the top-N into an index range scan + limit
+        with no sort step. The old index is intentionally left in place (it still
+        backs the heatpoint endpoint and other plain bbox lookups); we only add the
+        new one here. Partial on the same predicate so un-geocoded rows stay out, and
+        Postgres propagates it to every partition of `transactions`.
+      changes:
+        - sql:
+            comment: bbox + mutation_date covering index for the markers endpoint
+            sql: |
+              CREATE INDEX IF NOT EXISTS idx_transaction_markers_bbox_date
+                ON transactions (latitude, longitude, mutation_date DESC)
+                WHERE latitude IS NOT NULL;
+      rollback:
+        - sql:
+            sql: DROP INDEX IF EXISTS idx_transaction_markers_bbox_date;

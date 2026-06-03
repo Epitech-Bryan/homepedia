@@ -37,3 +37,5 @@ databaseChangeLog:
       file: db/changelog/changes/018-normalize-dept-dvf-stats-types.yaml
   - include:
       file: db/changelog/changes/019-geocode-backlog-partial-index.yaml
+  - include:
+      file: db/changelog/changes/020-transaction-markers-bbox-date-index.yaml

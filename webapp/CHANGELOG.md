@@ -1,5 +1,13 @@
 # app
 
+## [0.76.8] - 2026-06-03
+
+### Bug Fixes
+
+- perf(rest-api): add bbox+mutation_date covering index for transaction markers
+- perf(webapp): memoize merged geo FeatureCollections to avoid map source re-parse
+- fix(geocoder): avoid long-lived transaction and infinite re-geocoding of unresolved rows
+
 ## [0.76.7] - 2026-06-02
 
 ### Bug Fixes

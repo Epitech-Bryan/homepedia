@@ -44,7 +44,8 @@ public class HttpCacheConfig {
 	// Redis cache (60 s for heatpoints / markers). Short max-age means a
 	// pan-and-come-back replays from the browser cache, but a stat refresh
 	// after an import shows up on the next request anyway.
-	private static final String[] VIEWPORT_PATHS = {"/transactions/heatpoints", "/transactions/markers"};
+	private static final String[] VIEWPORT_PATHS = {"/transactions/heatpoints", "/transactions/heatpoints/binary",
+			"/transactions/markers"};
 
 	private static final String REFDATA_CACHE_CONTROL = "public, max-age=86400, stale-while-revalidate=600";
 	private static final String STATS_CACHE_CONTROL = "public, max-age=300, stale-while-revalidate=60";

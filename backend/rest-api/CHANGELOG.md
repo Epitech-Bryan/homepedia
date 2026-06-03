@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.78.5] - 2026-06-03
+
+### Bug Fixes
+
+- perf(api): serve heatpoints as a packed Float32 binary endpoint
+
 ## [3.78.4] - 2026-06-03
 
 ### Bug Fixes

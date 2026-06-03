@@ -5,6 +5,15 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.78.3] - 2026-06-03
+
+### Bug Fixes
+
+- fix(geocoder): avoid long-lived transaction and infinite re-geocoding of unresolved rows
+- perf(map): fetch heatpoints as a packed Float32 buffer with JSON fallback
+- perf(map): color globe layers from a prop-derived range on tile load instead of waiting for idle
+- fix(map): start globe region layer at z5 so it no longer stacks on the country fill
+
 ## [3.78.2] - 2026-05-30
 
 ### Bug Fixes

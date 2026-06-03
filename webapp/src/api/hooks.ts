@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 
@@ -413,12 +414,21 @@ export function useGeoCitiesForDepartments(
       staleTime: Infinity,
     })),
   });
-  const features: GeoJSON.Feature[] = [];
-  for (const q of queries) {
-    if (q.data?.features) features.push(...q.data.features);
-  }
-  if (features.length === 0) return null;
-  return { type: "FeatureCollection", features };
+  // Memoise on the underlying query data/updatedAt so the merged
+  // FeatureCollection keeps a stable identity across renders that don't change
+  // the data. Without this, useGeoJsonSource's effect would re-run setData()
+  // and re-parse thousands of features on every parent render.
+  const signature = queries.map((q) => q.dataUpdatedAt).join(",");
+  return useMemo(() => {
+    const features: GeoJSON.Feature[] = [];
+    for (const q of queries) {
+      if (q.data?.features) features.push(...q.data.features);
+    }
+    if (features.length === 0) return null;
+    return { type: "FeatureCollection", features };
+    // queries is read inside but `signature` captures the data identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature]);
 }
 
 export function useRegionStats() {
@@ -505,10 +515,17 @@ export function useArrondissementsForCities(
       staleTime: Infinity,
     })),
   });
-  const features: GeoJSON.Feature[] = [];
-  for (const q of queries) {
-    if (q.data?.features) features.push(...q.data.features);
-  }
-  if (features.length === 0) return null;
-  return { type: "FeatureCollection", features };
+  // See useGeoCitiesForDepartments: memoise so the merged collection keeps a
+  // stable identity and the MapLibre source isn't re-fed on every render.
+  const signature = queries.map((q) => q.dataUpdatedAt).join(",");
+  return useMemo(() => {
+    const features: GeoJSON.Feature[] = [];
+    for (const q of queries) {
+      if (q.data?.features) features.push(...q.data.features);
+    }
+    if (features.length === 0) return null;
+    return { type: "FeatureCollection", features };
+    // queries is read inside but `signature` captures the data identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signature]);
 }

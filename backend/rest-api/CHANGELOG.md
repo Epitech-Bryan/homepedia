@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.78.4] - 2026-06-03
+
+### Bug Fixes
+
+- perf(rest-api): add bbox+mutation_date covering index for transaction markers
+- perf(webapp): memoize merged geo FeatureCollections to avoid map source re-parse
+
 ## [3.78.3] - 2026-06-03
 
 ### Bug Fixes

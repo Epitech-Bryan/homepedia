@@ -85,12 +85,38 @@ public class TransactionController {
 			@Parameter(description = "Viewport north latitude") @RequestParam final double north,
 			@Parameter(description = "Viewport east longitude") @RequestParam final double east,
 			@Parameter(description = "Metric to aggregate (averagePrice, averagePricePerSqm, transactionCount)") @RequestParam(defaultValue = "averagePricePerSqm") final String metric) {
-		final TransactionHeatPointService.Metric m = switch (metric) {
+		return ResponseEntity.ok(heatPointService.heatPoints(south, west, north, east, parseMetric(metric)));
+	}
+
+	@Operation(summary = "Heatmap points as a packed Float32 buffer", description = "Same aggregation as /heatpoints but encoded as little-endian Float32 triples (lat, lon, value) — ~4x smaller than the JSON form and no parse cost, used by the map heat layer.")
+	@GetMapping(value = HEATPOINTS
+			+ "/binary", produces = org.springframework.http.MediaType.APPLICATION_OCTET_STREAM_VALUE)
+	public ResponseEntity<byte[]> heatPointsBinary(
+			@Parameter(description = "Viewport south latitude") @RequestParam final double south,
+			@Parameter(description = "Viewport west longitude") @RequestParam final double west,
+			@Parameter(description = "Viewport north latitude") @RequestParam final double north,
+			@Parameter(description = "Viewport east longitude") @RequestParam final double east,
+			@Parameter(description = "Metric to aggregate") @RequestParam(defaultValue = "averagePricePerSqm") final String metric) {
+		final var points = heatPointService.heatPoints(south, west, north, east, parseMetric(metric));
+		// Little-endian so a JS Float32Array reads it directly (native byte order
+		// on every platform we ship to). Three floats per point: lat, lon, value.
+		final var buffer = java.nio.ByteBuffer.allocate(points.size() * 3 * Float.BYTES)
+				.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+		for (final var p : points) {
+			buffer.putFloat((float) p.latitude());
+			buffer.putFloat((float) p.longitude());
+			buffer.putFloat((float) p.value());
+		}
+		return ResponseEntity.ok().contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+				.body(buffer.array());
+	}
+
+	private static TransactionHeatPointService.Metric parseMetric(final String metric) {
+		return switch (metric) {
 			case "averagePrice" -> TransactionHeatPointService.Metric.AVERAGE_PRICE;
 			case "transactionCount" -> TransactionHeatPointService.Metric.TRANSACTION_COUNT;
 			default -> TransactionHeatPointService.Metric.AVERAGE_PRICE_PER_SQM;
 		};
-		return ResponseEntity.ok(heatPointService.heatPoints(south, west, north, east, m));
 	}
 
 	@Operation(summary = "Transaction markers by viewport", description = "Returns individual geocoded transactions inside the viewport (id, lat/lon, price, surface, …) so the map can render clickable pins. Empty when the viewport is wider than 0.2°.")

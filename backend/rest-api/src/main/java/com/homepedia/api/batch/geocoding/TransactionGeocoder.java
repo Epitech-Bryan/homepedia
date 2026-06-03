@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Pulls un-geocoded transactions from the partitioned {@code transactions}
@@ -41,6 +40,7 @@ public class TransactionGeocoder {
 			  FROM transactions t
 			  LEFT JOIN cities c ON c.insee_code = t.city_insee_code
 			 WHERE t.latitude IS NULL
+			   AND t.geocoded_at IS NULL
 			   AND t.postal_code IS NOT NULL
 			   AND c.name IS NOT NULL
 			 ORDER BY t.id
@@ -84,8 +84,15 @@ public class TransactionGeocoder {
 	/**
 	 * Backfill as many rows as the per-run cap allows. Returns the count of rows
 	 * the BAN successfully resolved (lat/lng written).
+	 *
+	 * <p>
+	 * Deliberately NOT {@code @Transactional}: the loop spends most of its wall
+	 * time in {@link BanGeocodingService#geocode} network round-trips. Wrapping it
+	 * in a single transaction would hold a pooled connection open across every BAN
+	 * call, blow past HikariCP's leak-detection-threshold and exhaust the pool.
+	 * Each {@link #persist} call runs its own short {@code batchUpdate} transaction
+	 * instead.
 	 */
-	@Transactional
 	public int runOnce() {
 		int totalResolved = 0;
 		int totalProcessed = 0;

@@ -1,5 +1,13 @@
 # app
 
+## [0.76.9] - 2026-06-04
+
+### Bug Fixes
+
+- perf(map): skip the 26 MB world admin-2 GeoJSON when world tiles are on
+- perf(api): cache the binary heatpoints endpoint like its JSON sibling (60s + ETag)
+- perf(api): serve heatpoints as a packed Float32 binary endpoint
+
 ## [0.76.8] - 2026-06-03
 
 ### Bug Fixes

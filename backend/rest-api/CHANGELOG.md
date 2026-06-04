@@ -5,6 +5,18 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.79.0] - 2026-06-04
+
+### Features
+
+- feat(geo): fill admin-2 coverage for 27 countries from geoBoundaries (CC0)
+- feat(map): default to the 3D globe view (opt out with VITE_USE_MAPLIBRE=false)
+
+### Bug Fixes
+
+- fix(map): stop showing GADM 'NA' placeholder as world tile labels
+- perf(map): skip the 26 MB world admin-2 GeoJSON when world tiles are on
+
 ## [3.78.6] - 2026-06-03
 
 ### Bug Fixes

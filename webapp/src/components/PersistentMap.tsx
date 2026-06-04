@@ -265,7 +265,7 @@ export function PersistentMap() {
   const [style, setStyle] = useState<MapStyle>("choropleth");
   const [basemap, setBasemap] = useState<MapBasemap>("voyager");
   const [view, setView] = useState<"2d" | "globe">(
-    import.meta.env.VITE_USE_MAPLIBRE === "true" ? "globe" : "2d",
+    import.meta.env.VITE_USE_MAPLIBRE === "false" ? "2d" : "globe",
   );
   // Initial state matches FranceMap's INITIAL_CENTER/INITIAL_ZOOM: world
   // view with no upfront bias toward any country. The 4-tier zoom logic

@@ -1,5 +1,11 @@
 # app
 
+## [0.77.0] - 2026-06-04
+
+### Features
+
+- feat(map): default to the 3D globe view (opt out with VITE_USE_MAPLIBRE=false)
+
 ## [0.76.10] - 2026-06-04
 
 ### Bug Fixes

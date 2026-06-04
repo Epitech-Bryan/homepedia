@@ -25,6 +25,15 @@ function formatValue(value: number): string {
   return Math.round(value).toLocaleString("fr-FR");
 }
 
+function cleanLabel(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() && value !== "NA" ? value : undefined;
+}
+
+function featureLabel(props: Record<string, unknown> | undefined | null): string | undefined {
+  if (!props) return undefined;
+  return cleanLabel(props.name) ?? cleanLabel(props.type) ?? cleanLabel(props.code);
+}
+
 /**
  * MVT renderer for the world-level mbtiles (countries + admin-1 + admin-2).
  * Same architecture as {@link CityVectorGridLayer}: one VectorGrid layer,
@@ -184,12 +193,15 @@ export function WorldVectorGridLayer({
       getFeatureId: (f: { properties?: { code?: string } }) => f.properties?.code,
     });
 
-    layer.on("click", (e: { layer: { properties?: { code?: string; name?: string } } }) => {
-      const code = e.layer?.properties?.code;
-      if (code) {
-        onFeatureClickRef.current?.(code, e.layer.properties?.name);
-      }
-    });
+    layer.on(
+      "click",
+      (e: { layer: { properties?: Record<string, unknown> & { code?: string } } }) => {
+        const code = e.layer?.properties?.code;
+        if (code) {
+          onFeatureClickRef.current?.(code, featureLabel(e.layer.properties));
+        }
+      },
+    );
 
     const tooltip = L.tooltip({
       sticky: true,
@@ -204,7 +216,7 @@ export function WorldVectorGridLayer({
       name: string | undefined,
       props: Record<string, unknown>,
     ): string => {
-      const label = name ?? code;
+      const label = cleanLabel(name) ?? cleanLabel(props.type) ?? cleanLabel(props.code) ?? code;
       const value = metricFromFeatureRef.current?.(props);
       const ml = metricLabelRef.current;
       if (value != null && Number.isFinite(value)) {

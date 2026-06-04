@@ -1,5 +1,11 @@
 # app
 
+## [0.76.10] - 2026-06-04
+
+### Bug Fixes
+
+- fix(map): stop showing GADM 'NA' placeholder as world tile labels
+
 ## [0.76.9] - 2026-06-04
 
 ### Bug Fixes

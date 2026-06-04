@@ -354,9 +354,11 @@ export function PersistentMap() {
   const { data: geoDepartments } = useGeoDepartments(); // no filter = all 101
   // Admin-2 covers the level below admin-1 (DEU Kreise, GBR districts,
   // ITA province etc.) — only fetch past department zoom, where the
-  // detail becomes readable. ~3.7 MB on the wire so we avoid paying for
-  // it on world / region browse.
-  const { data: geoWorldAdmin2 } = useGeoWorldAdmin2(showDepartments);
+  // detail becomes readable. Skipped entirely when the world is drawn
+  // from vector tiles (the default): the MVT admin-2 band (z8-10) draws
+  // the same context borders, and admin-2 carries no choropleth metric
+  // so nothing colourful is lost by not loading the ~26 MB GeoJSON.
+  const { data: geoWorldAdmin2 } = useGeoWorldAdmin2(showDepartments && !useWorldVectorTiles);
   const { data: regionStats } = useRegionStats();
   const { data: allDepartmentStats } = useDepartmentStats(); // all
 

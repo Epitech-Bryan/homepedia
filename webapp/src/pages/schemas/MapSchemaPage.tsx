@@ -3,10 +3,12 @@ import "@xyflow/react/dist/style.css";
 import { nodeTypes } from "./diagram-nodes";
 
 /**
- * Carte — comment la map France/monde est construite : pipeline MVT
- * multi-layer, choroplèthe par quantiles, drilldown arrondissements,
- * stitching antiméridien pour la Russie. Tout ce qui sort de l'écran
- * passe par le pod rest-api ; aucun service externe de tiles.
+ * Carte — comment la map France/monde est construite. Deux pipelines MVT
+ * parallèles : CityTileBuilder pour la France (regions/depts/communes) et
+ * WorldTileBuilder pour le monde (countries/admin1/admin2/admin3). Choroplèthe
+ * par quantiles, drilldown arrondissements, stitching antiméridien pour la
+ * Russie. Tout ce qui sort de l'écran passe par le pod rest-api ; aucun
+ * service externe de tiles.
  */
 
 const MAP_NODES: Node[] = [
@@ -29,8 +31,8 @@ const MAP_NODES: Node[] = [
     data: {
       kind: "edge",
       title: "GADM 4.1",
-      subtitle: "admin-1 monde",
-      hint: "30+ pays, Wikidata P150 → population",
+      subtitle: "admin-1 · admin-2 · admin-3",
+      hint: "~110 pays admin-1 · ~66 admin-2 · communes EU admin-3 (best-effort)",
       ports: { right: true, top: true, bottom: true },
     },
   },
@@ -154,7 +156,56 @@ const MAP_NODES: Node[] = [
       kind: "service",
       title: "BackdropCountriesLayer",
       subtitle: "SVG · zoom-aware weight",
-      hint: "Natural Earth · stitchAntimeridian()",
+      hint: "Natural Earth · stitchAntimeridian() · porte le choroplèthe pays",
+      ports: { left: true, top: true },
+    },
+  },
+
+  {
+    id: "world-builder",
+    type: "schema",
+    position: { x: 340, y: 500 },
+    data: {
+      kind: "job",
+      title: "WorldTileBuilder",
+      subtitle: "@Async @EventListener(ApplicationReady)",
+      hint: "enrich admin-1 (pop/area/gdp) · TileBuildLock vs CityTileBuilder",
+      ports: { left: true, right: true },
+    },
+  },
+  {
+    id: "world-mbtiles",
+    type: "schema",
+    position: { x: 720, y: 500 },
+    data: {
+      kind: "data",
+      title: "world.mbtiles",
+      subtitle: "4 layers · z0-12",
+      hint: "countries z0-4 · admin1 z5-7 · admin2 z8-10 · admin3 z11-12",
+      ports: { left: true, right: true },
+    },
+  },
+  {
+    id: "world-tile-ctl",
+    type: "schema",
+    position: { x: 1060, y: 500 },
+    data: {
+      kind: "service",
+      title: "/api/tiles/world/{z}/{x}/{y}.pbf",
+      subtitle: "WorldVectorTileService",
+      hint: "reload() après chaque rebuild atomique · 204 si tile vide",
+      ports: { left: true, right: true },
+    },
+  },
+  {
+    id: "world-vg",
+    type: "schema",
+    position: { x: 1380, y: 500 },
+    data: {
+      kind: "service",
+      title: "WorldVectorGridLayer",
+      subtitle: "leaflet.vectorgrid · pane z410",
+      hint: "admin1 choroplèthe · admin2/3 contexte · gates par bande zoom",
       ports: { left: true, top: true },
     },
   },
@@ -236,6 +287,33 @@ const MAP_EDGES: Edge[] = [
     targetHandle: "left",
     label: "breaks",
   },
+  {
+    id: "w1",
+    source: "src-world",
+    target: "world-builder",
+    sourceHandle: "bottom",
+    targetHandle: "left",
+    label: "admin1/2/3 GeoJSON",
+    animated: true,
+  },
+  { id: "w2", source: "world-builder", target: "world-mbtiles", label: "tippecanoe 4L" },
+  {
+    id: "w3",
+    source: "world-mbtiles",
+    target: "world-tile-ctl",
+    sourceHandle: "right",
+    targetHandle: "left",
+    label: "lookup",
+  },
+  {
+    id: "w4",
+    source: "world-tile-ctl",
+    target: "world-vg",
+    sourceHandle: "right",
+    targetHandle: "left",
+    label: ".pbf",
+    animated: true,
+  },
 ];
 
 const LAYERS = [
@@ -265,6 +343,41 @@ const LAYERS = [
   },
 ];
 
+const WORLD_LAYERS = [
+  {
+    layer: "countries",
+    zoom: "0 → 4",
+    features: "~250",
+    src: "CountryGeoService (Natural Earth admin-0 enrichi)",
+    simplif: "14",
+    note: "MVT transparent — le choroplèthe pays est porté par le SVG BackdropCountriesLayer",
+  },
+  {
+    layer: "admin1",
+    zoom: "5 → 7",
+    features: "~110 pays",
+    src: "GADM admin-1 + world-admin1-metrics.json",
+    simplif: "10",
+    note: "Seule couche monde avec métriques bakées (population / area / gdpNominal / gdpPerCapita)",
+  },
+  {
+    layer: "admin2",
+    zoom: "8 → 10",
+    features: "~66 pays",
+    src: "data/world-admin2.geojson (GADM)",
+    simplif: "8",
+    note: "Pas de métrique — fill neutre, sert de contexte géo sous les communes FR",
+  },
+  {
+    layer: "admin3",
+    zoom: "11 → 12",
+    features: "communes / Gemeinden EU",
+    src: "data/world-admin3.geojson (best-effort)",
+    simplif: "6",
+    note: "Optionnel : absent → mbtiles 3 layers, max-zoom retombe à 10",
+  },
+];
+
 const STATS_BAKED = [
   {
     prop: "transactions",
@@ -289,6 +402,12 @@ const STATS_BAKED = [
     type: "int",
     src: "cities.population (INSEE)",
     note: "Pour les arrondissements : population de l'arr, pas de la commune mère",
+  },
+  {
+    prop: "pollutionScore",
+    type: "double 1..7",
+    src: "DPE ADEME · classe GES pondérée",
+    note: "Commune uniquement — régions/départements pas encore agrégés (fill gris)",
   },
   {
     prop: "metric_quantile",
@@ -362,6 +481,21 @@ const QUIRKS = [
     cause: "metricRanges = Map.of() reset en mémoire",
     fix: "Persist + reload + fallback recompute from DB si fichier manquant",
   },
+  {
+    quirk: "admin-1 monde recouvrant les communes FR",
+    cause: "--extend-zooms-if-still-dropping fait fuiter admin1 (choroplèthe plein) au-delà de z7",
+    fix: "Gates par bande dans WorldVectorGridLayer : admin1 z5-7, admin2 z8-10, admin3 z11+",
+  },
+  {
+    quirk: "Choroplèthe pays vide via MVT",
+    cause: "La couche countries MVT ship POP_EST/GDP_MD/ISO_A3, pas les clés du frontend",
+    fix: "countries rendu transparent/non-interactif · choroplèthe + hit-test sur le SVG backdrop",
+  },
+  {
+    quirk: "Hover admin-2 mort hors France",
+    cause: "Pane worldVectorTiles sous cityVectorTiles : la city VG captait l'event d'abord",
+    fix: "City tiles vides hors FR/BE (pas de fill) → events retombent sur la pane monde z410",
+  },
 ];
 
 const FRONT_LAYERS = [
@@ -376,9 +510,14 @@ const FRONT_LAYERS = [
     detail: "Une seule layer Leaflet, 3 styleFor (regions/departments/cities)",
   },
   {
+    component: "WorldVectorGridLayer",
+    role: "MVT monde (countries/admin1/admin2/admin3)",
+    detail: "pane worldVectorTiles z410 sous cityVectorTiles z420 · gates par bande zoom",
+  },
+  {
     component: "BackdropCountriesLayer",
-    role: "Pays du monde en SVG derrière",
-    detail: "weight zoom-aware (0.5 → 2.5) · décliné par hover",
+    role: "Choroplèthe pays en SVG (countries MVT transparent)",
+    detail: "weight zoom-aware (0.5 → 2.5) · hit-test pays · stitchAntimeridian()",
   },
   {
     component: "useGeoBelgiumMunicipalities",
@@ -401,9 +540,11 @@ export function MapSchemaPage() {
           Trois sources GeoJSON entrent dans <code>CityTileBuilder</code>, qui les join avec les
           stats Postgres, écrit les bornes de quantiles sur disque, puis spawn{" "}
           <code>tippecanoe</code> pour produire un seul <code>cities.mbtiles</code> à trois layers.
-          Le browser fait juste un lookup couleur — aucun calcul stats côté client.
+          Le browser fait juste un lookup couleur — aucun calcul stats côté client. En parallèle,{" "}
+          <code>WorldTileBuilder</code> bake les sources GADM (admin-1/2/3) dans un{" "}
+          <code>world.mbtiles</code> à quatre layers, servi sous <code>/api/tiles/world</code>.
         </p>
-        <div className="h-[560px] rounded-lg border bg-muted/20">
+        <div className="h-[640px] rounded-lg border bg-muted/20">
           <ReactFlow
             nodes={MAP_NODES}
             edges={MAP_EDGES}
@@ -444,6 +585,43 @@ export function MapSchemaPage() {
             </thead>
             <tbody>
               {LAYERS.map((l) => (
+                <tr key={l.layer} className="border-t">
+                  <td className="px-3 py-2 font-mono text-xs">{l.layer}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-right">{l.zoom}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-right">{l.features}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{l.src}</td>
+                  <td className="px-3 py-2 font-mono text-xs text-right">{l.simplif}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{l.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold mb-3">Layers MVT monde (world.mbtiles)</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          <code>WorldTileBuilder</code> produit un second mbtiles à bandes de zoom disjointes,
+          construit sur <code>ApplicationReadyEvent</code> et sérialisé contre le build France via{" "}
+          <code>TileBuildLock</code>. Seul <code>admin1</code> porte des métriques ; les autres
+          niveaux servent de contexte géographique. <code>admin3</code> est best-effort — sans le
+          fichier, le mbtiles retombe à trois layers et <code>max-zoom</code> passe de 12 à 10.
+        </p>
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 text-left">Layer MVT</th>
+                <th className="px-3 py-2 text-right">Zoom</th>
+                <th className="px-3 py-2 text-right">Features</th>
+                <th className="px-3 py-2 text-left">Source</th>
+                <th className="px-3 py-2 text-right">Simplif.</th>
+                <th className="px-3 py-2 text-left">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {WORLD_LAYERS.map((l) => (
                 <tr key={l.layer} className="border-t">
                   <td className="px-3 py-2 font-mono text-xs">{l.layer}</td>
                   <td className="px-3 py-2 font-mono text-xs text-right">{l.zoom}</td>
@@ -520,9 +698,11 @@ export function MapSchemaPage() {
       <section>
         <h2 className="text-lg font-semibold mb-3">Stack frontend</h2>
         <p className="text-sm text-muted-foreground mb-4">
-          Les composants côté webapp et leur responsabilité. Une seule layer Leaflet sert régions +
-          départements + communes ; les couches mondiales restent en SVG (volumes modestes, pas la
-          peine de baker en MVT).
+          Les composants côté webapp et leur responsabilité. Deux layers vectorgrid Leaflet —{" "}
+          <code>CityVectorGridLayer</code> pour la France, <code>WorldVectorGridLayer</code> pour le
+          monde, empilées par pane (city z420 au-dessus de world z410). Le choroplèthe pays reste
+          porté par le SVG <code>BackdropCountriesLayer</code> ; la couche countries du MVT n'est là
+          que pour la géométrie.
         </p>
         <div className="overflow-x-auto rounded-md border">
           <table className="w-full text-sm">

@@ -391,7 +391,11 @@ const INDEX_RATIONALE = [
 ];
 
 const REDIS_CACHES = [
-  { name: "geo", ttl: "24 h", note: "GeoJSON pays + admin-1" },
+  {
+    name: "geo",
+    ttl: "24 h",
+    note: "GeoJSON pays + admin-1/2/3 (servi aussi en MVT world.mbtiles)",
+  },
   { name: "refdata", ttl: "12 h", note: "Régions / départements / villes" },
   { name: "stats", ttl: "30 min", note: "Stats agrégées par viewport" },
   { name: "reviews", ttl: "15 min", note: "Sentiment + extraits" },

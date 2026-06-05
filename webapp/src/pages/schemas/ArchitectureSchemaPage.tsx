@@ -89,9 +89,9 @@ const NODES: Node[] = [
     position: { x: 380, y: 200 },
     data: {
       kind: "job",
-      title: "CityTileBuilder",
+      title: "City + World TileBuilder",
       subtitle: "@Async @EventListener",
-      hint: "Tippecanoe → cities.mbtiles on /data PVC",
+      hint: "Tippecanoe → cities.mbtiles + world.mbtiles on /data PVC",
       ports: { top: true, bottom: true, right: true },
     },
   },
@@ -217,7 +217,7 @@ const COMPONENTS = [
   {
     title: "Webapp (React 19 + Vite)",
     details: [
-      "Leaflet + VectorGrid pour la carte choroplèthe",
+      "Leaflet + VectorGrid : CityVectorGridLayer (FR) + WorldVectorGridLayer (monde)",
       "TanStack Query — cache + revalidation",
       "Tailwind 4 + shadcn/ui + base-ui",
       "Routing : react-router-dom v7",
@@ -265,9 +265,10 @@ const COMPONENTS = [
     title: "Vector Tiles",
     details: [
       "Tippecanoe 2.62.0 bundled dans l'image",
-      "polygons geo.api.gouv.fr → mbtiles avec stats baked",
-      "/api/tiles/cities/{z}/{x}/{y}.pbf",
-      "Hot-reload du VectorTileService après rebuild",
+      "FR : geo.api.gouv.fr → cities.mbtiles avec stats baked",
+      "Monde : GADM → world.mbtiles 4 layers (countries/admin1/2/3)",
+      "/api/tiles/cities + /api/tiles/world/{z}/{x}/{y}.pbf",
+      "TileBuildLock sérialise les deux builds · hot-reload après rebuild",
     ],
   },
 ];

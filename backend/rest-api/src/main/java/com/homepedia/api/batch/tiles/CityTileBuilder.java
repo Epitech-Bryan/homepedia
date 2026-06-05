@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homepedia.api.batch.tiles.CityTileStatsRepository.CityTileStatsProjection;
 import com.homepedia.api.service.VectorTileService;
+import com.homepedia.common.stats.StatsRepository;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -123,6 +125,8 @@ public class CityTileBuilder {
 	private boolean rebuildOnStartup;
 
 	private final CityTileStatsRepository statsRepository;
+
+	private final StatsRepository adminStatsRepository;
 
 	private final VectorTileService vectorTileService;
 
@@ -273,6 +277,8 @@ public class CityTileBuilder {
 			Files.createDirectories(target.getParent());
 
 			final var enrichedTmp = target.resolveSibling("communes-enriched.geojson.tmp");
+			final var regionsEnrichedTmp = target.resolveSibling("regions-enriched.geojson.tmp");
+			final var departmentsEnrichedTmp = target.resolveSibling("departments-enriched.geojson.tmp");
 			final var mbtilesTmp = target.resolveSibling("cities.mbtiles.tmp");
 
 			try {
@@ -280,12 +286,17 @@ public class CityTileBuilder {
 				metricRanges = computeRanges(stats.values());
 				persistRanges();
 				enrich(communesSrc, enrichedTmp, stats);
-				runTippecanoe(regionsSrc, departmentsSrc, enrichedTmp, irisAvailable ? irisSrc : null, mbtilesTmp);
+				enrichAdmin(regionsSrc, regionsEnrichedTmp, loadRegionStats());
+				enrichAdmin(departmentsSrc, departmentsEnrichedTmp, loadDepartmentStats());
+				runTippecanoe(regionsEnrichedTmp, departmentsEnrichedTmp, enrichedTmp, irisAvailable ? irisSrc : null,
+						mbtilesTmp);
 				Files.move(mbtilesTmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 				vectorTileService.reload();
 				log.info("city tiles rebuilt at {} in {} ms", target, System.currentTimeMillis() - start);
 			} finally {
 				Files.deleteIfExists(enrichedTmp);
+				Files.deleteIfExists(regionsEnrichedTmp);
+				Files.deleteIfExists(departmentsEnrichedTmp);
 				Files.deleteIfExists(mbtilesTmp);
 			}
 		} finally {
@@ -359,13 +370,13 @@ public class CityTileBuilder {
 	}
 
 	/**
-	 * Stream-rewrites the FeatureCollection so we never hold all 35 k features in
-	 * memory at once (the file is ~50 MB; the in-memory Jackson tree would be 3-4×
-	 * that). For each feature we read the existing properties, merge in the matched
-	 * stats row, and emit. Order is preserved so tippecanoe sees the same feature
-	 * ordering as before.
+	 * Stream-rewrites the FeatureCollection so we never hold every feature in
+	 * memory at once (the commune file is ~50 MB; the in-memory Jackson tree would
+	 * be 3-4× that). For each feature we read the existing properties, apply the
+	 * supplied merge, and emit. Order is preserved so tippecanoe sees the same
+	 * feature ordering as before.
 	 */
-	private void enrich(Path source, Path destination, Map<String, CityTileStatsProjection> statsByCode)
+	private void rewriteFeatures(Path source, Path destination, Consumer<Map<String, Object>> merge)
 			throws IOException {
 		try (var in = Files.newInputStream(source);
 				var parser = JSON_FACTORY.createParser(in);
@@ -387,12 +398,12 @@ public class CityTileBuilder {
 					while (parser.nextToken() != JsonToken.END_ARRAY) {
 						final var feature = MAPPER.<Map<String, Object>>readValue(parser,
 								MAPPER.getTypeFactory().constructMapType(Map.class, String.class, Object.class));
-						mergeStats(feature, statsByCode);
+						merge.accept(feature);
 						MAPPER.writeValue(generator, feature);
 						enriched++;
 					}
 					generator.writeEndArray();
-					log.info("enriched {} commune features", enriched);
+					log.info("enriched {} features into {}", enriched, destination.getFileName());
 				} else {
 					// Pass through `type`, `crs`, etc. untouched.
 					generator.writeFieldName(field);
@@ -401,6 +412,15 @@ public class CityTileBuilder {
 			}
 			generator.writeEndObject();
 		}
+	}
+
+	private void enrich(Path source, Path destination, Map<String, CityTileStatsProjection> statsByCode)
+			throws IOException {
+		rewriteFeatures(source, destination, feature -> mergeStats(feature, statsByCode));
+	}
+
+	private void enrichAdmin(Path source, Path destination, Map<String, AdminDvfStats> statsByCode) throws IOException {
+		rewriteFeatures(source, destination, feature -> mergeAdminStats(feature, statsByCode));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -434,6 +454,51 @@ public class CityTileBuilder {
 		if (value != null) {
 			map.put(key, value);
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void mergeAdminStats(Map<String, Object> feature, Map<String, AdminDvfStats> statsByCode) {
+		final var properties = (Map<String, Object>) feature.get("properties");
+		if (properties == null) {
+			return;
+		}
+		final var code = (String) properties.get("code");
+		if (code == null) {
+			return;
+		}
+		final var stats = statsByCode.get(code);
+		if (stats == null) {
+			return;
+		}
+		putIfNonNull(properties, "population", stats.population());
+		putIfNonNull(properties, "areaKm2", stats.area());
+		properties.put("transactionCount", stats.transactionCount());
+		putIfNonNull(properties, "averagePrice", stats.averagePrice());
+		putIfNonNull(properties, "averagePricePerSqm", stats.averagePricePerSqm());
+	}
+
+	private Map<String, AdminDvfStats> loadRegionStats() {
+		final var map = new HashMap<String, AdminDvfStats>();
+		for (final var r : adminStatsRepository.aggregateRegionStats()) {
+			map.put(r.getCode(), new AdminDvfStats(r.getPopulation(), r.getArea(), r.getTransactionCount(),
+					r.getAveragePrice(), r.getAveragePricePerSqm()));
+		}
+		log.info("loaded DVF aggregates for {} regions", map.size());
+		return map;
+	}
+
+	private Map<String, AdminDvfStats> loadDepartmentStats() {
+		final var map = new HashMap<String, AdminDvfStats>();
+		for (final var d : adminStatsRepository.aggregateDepartmentStats(null)) {
+			map.put(d.getCode(), new AdminDvfStats(d.getPopulation(), d.getArea(), d.getTransactionCount(),
+					d.getAveragePrice(), d.getAveragePricePerSqm()));
+		}
+		log.info("loaded DVF aggregates for {} departments", map.size());
+		return map;
+	}
+
+	private record AdminDvfStats(Long population, Double area, Long transactionCount, Double averagePrice,
+			Double averagePricePerSqm) {
 	}
 
 	private static void expect(JsonToken actual, JsonToken expected) throws IOException {

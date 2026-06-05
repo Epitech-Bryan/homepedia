@@ -16,8 +16,16 @@ public interface DepartmentRepository extends JpaRepository<Department, String> 
 	@Transactional
 	@Query(value = """
 			UPDATE departments SET
-			  population = (SELECT SUM(c.population) FROM cities c WHERE c.department_code = departments.code),
-			  area = (SELECT SUM(c.area) FROM cities c WHERE c.department_code = departments.code)
+			  population = (SELECT SUM(c.population) FROM cities c
+			               WHERE c.department_code = departments.code
+			                 AND c.insee_code NOT BETWEEN '75101' AND '75120'
+			                 AND c.insee_code NOT BETWEEN '13201' AND '13216'
+			                 AND c.insee_code NOT BETWEEN '69381' AND '69389'),
+			  area = (SELECT SUM(c.area) FROM cities c
+			          WHERE c.department_code = departments.code
+			            AND c.insee_code NOT BETWEEN '75101' AND '75120'
+			            AND c.insee_code NOT BETWEEN '13201' AND '13216'
+			            AND c.insee_code NOT BETWEEN '69381' AND '69389')
 			""", nativeQuery = true)
 	void recomputeAggregates();
 }

@@ -5,6 +5,16 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.80.0] - 2026-06-05
+
+### Features
+
+- feat(map): add Belgium provinces and communes to world GADM tiles
+
+### Bug Fixes
+
+- fix(map): bridge choropleth zoom bands to remove z9 transition flash
+
 ## [3.79.0] - 2026-06-04
 
 ### Features

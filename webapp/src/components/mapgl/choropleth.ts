@@ -31,13 +31,13 @@ export const LAYER_DEFS = [
   { id: "w-admin1-fill", source: "world", sourceLayer: "admin1", minzoom: 5, maxzoom: 8 },
   { id: "w-admin2-fill", source: "world", sourceLayer: "admin2", minzoom: 8, maxzoom: 11 },
   { id: "w-admin3-fill", source: "world", sourceLayer: "admin3", minzoom: 11, maxzoom: 13 },
-  { id: "c-regions-fill", source: "cities", sourceLayer: "regions", minzoom: 5, maxzoom: 7 },
+  { id: "c-regions-fill", source: "cities", sourceLayer: "regions", minzoom: 5, maxzoom: 8 },
   {
     id: "c-departments-fill",
     source: "cities",
     sourceLayer: "departments",
     minzoom: 7,
-    maxzoom: 9,
+    maxzoom: 10,
   },
   { id: "c-cities-fill", source: "cities", sourceLayer: "cities", minzoom: 9, maxzoom: 22 },
 ] as const;

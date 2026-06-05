@@ -46,6 +46,8 @@ public class InseeImportService {
 
 	private static final String JOB_NAME = "inseeImportJob";
 
+	private static final java.util.Set<String> ARRONDISSEMENT_DEPARTMENTS = java.util.Set.of("75", "13", "69");
+
 	private final InseeApiClient inseeApiClient;
 	private final RegionRepository regionRepository;
 	private final DepartmentRepository departmentRepository;
@@ -181,7 +183,15 @@ public class InseeImportService {
 	}
 
 	private List<City> fetchAndMapCommunesForDepartment(Department department, Map<String, City> existingCities) {
-		final var dtos = CollectionUtils.emptyIfNull(inseeApiClient.fetchCommunesForDepartment(department.getCode()));
+		final var dtos = new ArrayList<InseeCommuneDto>(
+				CollectionUtils.emptyIfNull(inseeApiClient.fetchCommunesForDepartment(department.getCode())));
+		if (ARRONDISSEMENT_DEPARTMENTS.contains(department.getCode())) {
+			final var arrondissements = CollectionUtils
+					.emptyIfNull(inseeApiClient.fetchArrondissementsForDepartment(department.getCode()));
+			log.info("Fetched {} municipal arrondissements for department {}", arrondissements.size(),
+					department.getCode());
+			dtos.addAll(arrondissements);
+		}
 		log.info("Fetched {} communes for department {}", dtos.size(), department.getCode());
 		final var result = new ArrayList<City>(dtos.size());
 		for (final var dto : dtos) {

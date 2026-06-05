@@ -58,4 +58,14 @@ public class InseeApiClient {
 				.retrieve().body(new ParameterizedTypeReference<>() {
 				});
 	}
+
+	@CircuitBreaker(name = "geo-api")
+	@Retry(name = "geo-api")
+	public List<InseeCommuneDto> fetchArrondissementsForDepartment(String departmentCode) {
+		log.debug("Fetching municipal arrondissements for department {}", departmentCode);
+		return restClient.get().uri(apiUrl + "/communes?codeDepartement=" + departmentCode
+				+ "&type=arrondissement-municipal&fields=nom,code,codesPostaux,codeDepartement,population,surface,centre")
+				.retrieve().body(new ParameterizedTypeReference<>() {
+				});
+	}
 }

@@ -1,5 +1,16 @@
 # app
 
+## [0.78.0] - 2026-06-05
+
+### Features
+
+- feat(geo): fill admin-2 coverage for 27 countries from geoBoundaries (CC0)
+- feat(map): add Belgium provinces and communes to world GADM tiles
+
+### Bug Fixes
+
+- fix(map): bridge choropleth zoom bands to remove z9 transition flash
+
 ## [0.77.0] - 2026-06-04
 
 ### Features

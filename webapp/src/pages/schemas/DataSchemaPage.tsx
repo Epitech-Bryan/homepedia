@@ -166,7 +166,44 @@ const PIPELINE_NODES: Node[] = [
       title: "REST API",
       subtitle: "/api/stats · /api/tiles · /api/cities",
       hint: "@Cacheable Redis · gzip · http/2",
-      ports: { top: true, right: true },
+      ports: { top: true, right: true, bottom: true },
+    },
+  },
+
+  {
+    id: "gadm",
+    type: "schema",
+    position: { x: 0, y: 560 },
+    data: {
+      kind: "edge",
+      title: "GADM 4.1 + Natural Earth",
+      subtitle: "admin-0/1/2/3 monde",
+      hint: "classpath data/world-*.geojson",
+      ports: { right: true },
+    },
+  },
+  {
+    id: "worldtiles",
+    type: "schema",
+    position: { x: 320, y: 560 },
+    data: {
+      kind: "job",
+      title: "WorldTileBuilder",
+      subtitle: "@EventListener(ApplicationReady)",
+      hint: "enrich admin-1 · TileBuildLock vs CityTileBuilder",
+      ports: { left: true, right: true },
+    },
+  },
+  {
+    id: "worldmbtiles",
+    type: "schema",
+    position: { x: 640, y: 560 },
+    data: {
+      kind: "data",
+      title: "world.mbtiles",
+      subtitle: "/data/tiles PVC",
+      hint: "4 layers z0-12 · WorldVectorTileService",
+      ports: { left: true, right: true, top: true },
     },
   },
 
@@ -266,6 +303,30 @@ const PIPELINE_EDGES: Edge[] = [
     label: "UPDATE lat/lon",
     style: { strokeDasharray: "4 4" },
   },
+  {
+    id: "d15",
+    source: "gadm",
+    target: "worldtiles",
+    sourceHandle: "right",
+    targetHandle: "left",
+    label: "admin GeoJSON",
+  },
+  {
+    id: "d16",
+    source: "worldtiles",
+    target: "worldmbtiles",
+    sourceHandle: "right",
+    targetHandle: "left",
+    label: "tippecanoe 4L",
+  },
+  {
+    id: "d17",
+    source: "worldmbtiles",
+    target: "api",
+    sourceHandle: "top",
+    targetHandle: "bottom",
+    label: "/api/tiles/world",
+  },
 ];
 
 const VOLUMES = [
@@ -343,6 +404,13 @@ const TIMINGS = [
     note: "SQLite mbtiles lookup, body déjà gzip",
   },
   {
+    endpoint: "GET /api/tiles/world/{z}/{x}/{y}.pbf",
+    cache: "30j immutable",
+    cold: "2-6 ms",
+    warm: "< 1 ms",
+    note: "Même lookup SQLite que cities · countries/admin1/admin2/admin3",
+  },
+  {
     endpoint: "GET /api/tiles/cities/metric-ranges",
     cache: "Mémoire process",
     cold: "< 1 ms",
@@ -402,6 +470,13 @@ const JOBS = [
     note: "Tippecanoe pipeline · stats baked dans MVT",
   },
   {
+    name: "WorldTileBuilder",
+    cadence: "Startup si absent · manuel",
+    duration: "non benchmarké",
+    rows: "~132k features",
+    note: "world.mbtiles 4 layers · sérialisé via TileBuildLock contre le build cities",
+  },
+  {
     name: "Geocoding",
     cadence: "Cron 15 min",
     duration: "~8 min / chunk 50k",
@@ -424,9 +499,12 @@ export function DataSchemaPage() {
         <h2 className="text-lg font-semibold mb-2">Parcours de la donnée</h2>
         <p className="text-sm text-muted-foreground mb-4">
           De data.gouv / INSEE / ADEME vers les pages produit. Chaque flèche représente un hop
-          matériel — le bus principal est l'application Spring Boot, pas un broker externe.
+          matériel — le bus principal est l'application Spring Boot, pas un broker externe. La bande
+          du bas est le pipeline monde (GADM → <code>WorldTileBuilder</code> →{" "}
+          <code>world.mbtiles</code>
+          ), parallèle au pipeline France et servi par la même API.
         </p>
-        <div className="h-[620px] rounded-lg border bg-muted/20">
+        <div className="h-[720px] rounded-lg border bg-muted/20">
           <ReactFlow
             nodes={PIPELINE_NODES}
             edges={PIPELINE_EDGES}

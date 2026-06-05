@@ -397,6 +397,16 @@ const PIPELINES = [
       "COPY bulk dans comparable_transactions",
     ],
   },
+  {
+    title: "World tiles (GADM)",
+    steps: [
+      "ApplicationReadyEvent → WorldTileBuilder si world.mbtiles absent",
+      "Enrich admin-1 avec world-admin1-metrics.json (pop / area / gdp)",
+      "Tippecanoe 4 layers : countries z0-4, admin1 z5-7, admin2 z8-10, admin3 z11-12",
+      "Move atomique → /data/tiles/world.mbtiles + WorldVectorTileService.reload()",
+      "TileBuildLock sérialise contre CityTileBuilder (pas de pic disque simultané)",
+    ],
+  },
 ];
 
 export function DevopsSchemaPage() {

@@ -5,6 +5,16 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.81.0] - 2026-06-05
+
+### Features
+
+- feat(tiles): bake region and department DVF aggregates into tiles
+
+### Bug Fixes
+
+- fix(data): import municipal arrondissements for Paris/Lyon/Marseille DVF
+
 ## [3.80.0] - 2026-06-05
 
 ### Features

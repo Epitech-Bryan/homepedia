@@ -280,7 +280,7 @@ public class WorldTileBuilder {
 		args.add("--maximum-zoom=" + (admin3Src != null ? "12" : "10"));
 		args.add("--drop-densest-as-needed");
 		args.add("--extend-zooms-if-still-dropping");
-		args.add("--no-tile-size-limit");
+		args.add("--maximum-tile-bytes=2000000");
 		args.add("-L");
 		args.add("{\"layer\":\"countries\",\"file\":\"" + countriesSrc
 				+ "\",\"minzoom\":0,\"maxzoom\":4,\"simplification\":14}");

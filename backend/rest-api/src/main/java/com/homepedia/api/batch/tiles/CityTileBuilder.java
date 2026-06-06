@@ -799,7 +799,7 @@ public class CityTileBuilder {
 		args.add("--maximum-zoom=14");
 		args.add("--drop-densest-as-needed");
 		args.add("--extend-zooms-if-still-dropping");
-		args.add("--no-tile-size-limit");
+		args.add("--maximum-tile-bytes=2000000");
 		args.add("-L");
 		args.add("{\"layer\":\"regions\",\"file\":\"" + regionsSrc
 				+ "\",\"minzoom\":4,\"maxzoom\":6,\"simplification\":12}");

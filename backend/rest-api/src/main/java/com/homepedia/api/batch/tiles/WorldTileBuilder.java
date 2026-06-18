@@ -6,14 +6,13 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.homepedia.api.service.CountryGeoService;
 import com.homepedia.api.service.WorldVectorTileService;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
@@ -75,6 +74,8 @@ public class WorldTileBuilder {
 	private final TileBuildLock tileBuildLock;
 
 	private final ObjectMapper objectMapper;
+
+	private final TileLayerBaker tileLayerBaker;
 
 	private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -269,44 +270,15 @@ public class WorldTileBuilder {
 	 */
 	private void runTippecanoe(Path countriesSrc, Path admin1Src, Path admin2Src, Path admin3Src, Path destination)
 			throws IOException, InterruptedException {
-		final var args = new java.util.ArrayList<String>();
-		args.add(tippecanoeBin);
-		args.add("--output=" + destination);
-		args.add("--force");
-		args.add("--minimum-zoom=0");
-		// max-zoom is 12 when we have admin-3 (communes/Gemeinden), 10
-		// otherwise — beyond that the city MVT pipeline takes over for FR
-		// and the world layer drops off.
-		args.add("--maximum-zoom=" + (admin3Src != null ? "12" : "10"));
-		args.add("--drop-densest-as-needed");
-		args.add("--extend-zooms-if-still-dropping");
-		args.add("--maximum-tile-bytes=2000000");
-		args.add("-L");
-		args.add("{\"layer\":\"countries\",\"file\":\"" + countriesSrc
-				+ "\",\"minzoom\":0,\"maxzoom\":4,\"simplification\":14}");
-		args.add("-L");
-		args.add("{\"layer\":\"admin1\",\"file\":\"" + admin1Src
-				+ "\",\"minzoom\":5,\"maxzoom\":7,\"simplification\":10}");
-		args.add("-L");
-		args.add("{\"layer\":\"admin2\",\"file\":\"" + admin2Src
-				+ "\",\"minzoom\":8,\"maxzoom\":10,\"simplification\":8}");
+		final var layers = new java.util.ArrayList<TileLayerBaker.LayerSpec>();
+		layers.add(new TileLayerBaker.LayerSpec("countries", countriesSrc, 0, 4, 14));
+		layers.add(new TileLayerBaker.LayerSpec("admin1", admin1Src, 5, 7, 10));
+		layers.add(new TileLayerBaker.LayerSpec("admin2", admin2Src, 8, 10, 8));
 		if (admin3Src != null) {
-			args.add("-L");
-			args.add("{\"layer\":\"admin3\",\"file\":\"" + admin3Src
-					+ "\",\"minzoom\":11,\"maxzoom\":12,\"simplification\":6}");
+			layers.add(new TileLayerBaker.LayerSpec("admin3", admin3Src, 11, 12, 6));
 		}
-		final var pb = new ProcessBuilder(args);
-		pb.redirectErrorStream(true);
-		final var process = pb.start();
-		try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-			String line;
-			while ((line = reader.readLine()) != null) {
-				log.info("tippecanoe[world]: {}", line);
-			}
-		}
-		final var exit = process.waitFor();
-		if (exit != 0) {
-			throw new IOException("tippecanoe[world] exited " + exit);
-		}
+		tileLayerBaker.bake(layers, destination, destination.resolveSibling("world-tiles-cache"),
+				List.of("--drop-densest-as-needed", "--extend-zooms-if-still-dropping", "--detect-shared-borders",
+						"--maximum-tile-bytes=2000000"));
 	}
 }

@@ -134,6 +134,8 @@ public class CityTileBuilder {
 
 	private final TileBuildLock tileBuildLock;
 
+	private final TileLayerBaker tileLayerBaker;
+
 	private final AtomicBoolean running = new AtomicBoolean(false);
 
 	// Per-metric min/max across all communes, recomputed during enrichment.
@@ -791,42 +793,16 @@ public class CityTileBuilder {
 		// before z=12. `extend-zooms-if-still-dropping` lets tippecanoe push
 		// past --maximum-zoom on dense city blocks if dropping would lose
 		// data — important for Paris arrondissements and IRIS detail.
-		final var args = new java.util.ArrayList<String>();
-		args.add(tippecanoeBin);
-		args.add("--output=" + destination);
-		args.add("--force");
-		args.add("--minimum-zoom=4");
-		args.add("--maximum-zoom=14");
-		args.add("--drop-densest-as-needed");
-		args.add("--extend-zooms-if-still-dropping");
-		args.add("--maximum-tile-bytes=2000000");
-		args.add("-L");
-		args.add("{\"layer\":\"regions\",\"file\":\"" + regionsSrc
-				+ "\",\"minzoom\":4,\"maxzoom\":6,\"simplification\":12}");
-		args.add("-L");
-		args.add("{\"layer\":\"departments\",\"file\":\"" + departmentsSrc
-				+ "\",\"minzoom\":7,\"maxzoom\":8,\"simplification\":10}");
-		args.add("-L");
-		args.add("{\"layer\":\"cities\",\"file\":\"" + communesSrc
-				+ "\",\"minzoom\":9,\"maxzoom\":14,\"simplification\":8}");
+		final var layers = new java.util.ArrayList<TileLayerBaker.LayerSpec>();
+		layers.add(new TileLayerBaker.LayerSpec("regions", regionsSrc, 4, 6, 12));
+		layers.add(new TileLayerBaker.LayerSpec("departments", departmentsSrc, 7, 8, 10));
+		layers.add(new TileLayerBaker.LayerSpec("cities", communesSrc, 9, 14, 8));
 		if (irisSrc != null) {
-			args.add("-L");
-			args.add("{\"layer\":\"iris\",\"file\":\"" + irisSrc
-					+ "\",\"minzoom\":13,\"maxzoom\":14,\"simplification\":6}");
+			layers.add(new TileLayerBaker.LayerSpec("iris", irisSrc, 13, 14, 6));
 		}
-		final var pb = new ProcessBuilder(args);
-		pb.redirectErrorStream(true);
-		final var process = pb.start();
-		try (var reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-			String line;
-			while ((line = reader.readLine()) != null) {
-				log.info("tippecanoe: {}", line);
-			}
-		}
-		final var exit = process.waitFor();
-		if (exit != 0) {
-			throw new IOException("tippecanoe exited " + exit);
-		}
+		tileLayerBaker.bake(layers, destination, destination.resolveSibling("city-tiles-cache"),
+				List.of("--drop-densest-as-needed", "--extend-zooms-if-still-dropping", "--detect-shared-borders",
+						"--maximum-tile-bytes=2000000"));
 	}
 
 	private static List<String> buildDepartmentCodes() {

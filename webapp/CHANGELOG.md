@@ -1,5 +1,17 @@
 # app
 
+## [0.79.0] - 2026-06-18
+
+### Features
+
+- feat(map): flag DVF-unavailable departments (Alsace-Moselle, Mayotte)
+- feat(tiles): bake region and department DVF aggregates into tiles
+
+### Bug Fixes
+
+- perf(tiles): cap tile size at 2MB instead of unlimited to speed regeneration
+- fix(data): import municipal arrondissements for Paris/Lyon/Marseille DVF
+
 ## [0.78.0] - 2026-06-05
 
 ### Features

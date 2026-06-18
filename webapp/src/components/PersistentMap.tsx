@@ -214,6 +214,12 @@ const METRIC_LABELS: Record<MapMetric, string> = {
   pollution: "Pollution (GES 1-7)",
 };
 
+const DVF_ONLY_METRICS: ReadonlySet<MapMetric> = new Set([
+  "averagePrice",
+  "averagePricePerSqm",
+  "transactionCount",
+]);
+
 // Human label per MapStyle. The Select.Value render function reads from
 // here so the trigger shows "Choropleth" instead of the raw value "choropleth".
 const MAP_STYLE_LABELS: Record<string, string> = {
@@ -982,6 +988,13 @@ export function PersistentMap() {
           </SelectContent>
         </Select>
       </div>
+      {DVF_ONLY_METRICS.has(metric) && (
+        <div className="absolute top-12 right-3 z-[1000] mt-1 max-w-[15rem] pointer-events-none">
+          <span className="block rounded-md border border-amber-300 bg-amber-50/95 px-2 py-1 text-[11px] leading-snug text-amber-900 shadow-sm backdrop-blur dark:border-amber-800 dark:bg-amber-950/85 dark:text-amber-100">
+            DVF indisponible : Alsace-Moselle (57·67·68) et Mayotte — régimes fonciers hors DVF.
+          </span>
+        </div>
+      )}
       <div className="absolute top-3 left-3 z-[1000] pointer-events-auto">
         <span className="inline-flex items-center gap-1.5 rounded-md bg-background/90 backdrop-blur px-2 py-1 text-xs shadow-sm">
           <span className="font-medium uppercase tracking-wide text-muted-foreground">Showing</span>

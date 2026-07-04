@@ -251,7 +251,5 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 		Double getAverageSurface();
 
 		Double getAveragePricePerSqm();
-
-		Double getPollutionScore();
 	}
 }

@@ -5,6 +5,13 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.82.1] - 2026-07-04
+
+### Bug Fixes
+
+- fix(stats): drop stray pollutionScore getter from transaction projection
+- fix(map): aggregate GES pollution at region and department level
+
 ## [3.82.0] - 2026-06-18
 
 ### Features

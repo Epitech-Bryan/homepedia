@@ -477,13 +477,14 @@ public class CityTileBuilder {
 		properties.put("transactionCount", stats.transactionCount());
 		putIfNonNull(properties, "averagePrice", stats.averagePrice());
 		putIfNonNull(properties, "averagePricePerSqm", stats.averagePricePerSqm());
+		putIfNonNull(properties, "pollutionScore", stats.pollutionScore());
 	}
 
 	private Map<String, AdminDvfStats> loadRegionStats() {
 		final var map = new HashMap<String, AdminDvfStats>();
 		for (final var r : adminStatsRepository.aggregateRegionStats()) {
 			map.put(r.getCode(), new AdminDvfStats(r.getPopulation(), r.getArea(), r.getTransactionCount(),
-					r.getAveragePrice(), r.getAveragePricePerSqm()));
+					r.getAveragePrice(), r.getAveragePricePerSqm(), r.getPollutionScore()));
 		}
 		log.info("loaded DVF aggregates for {} regions", map.size());
 		return map;
@@ -493,14 +494,14 @@ public class CityTileBuilder {
 		final var map = new HashMap<String, AdminDvfStats>();
 		for (final var d : adminStatsRepository.aggregateDepartmentStats(null)) {
 			map.put(d.getCode(), new AdminDvfStats(d.getPopulation(), d.getArea(), d.getTransactionCount(),
-					d.getAveragePrice(), d.getAveragePricePerSqm()));
+					d.getAveragePrice(), d.getAveragePricePerSqm(), d.getPollutionScore()));
 		}
 		log.info("loaded DVF aggregates for {} departments", map.size());
 		return map;
 	}
 
 	private record AdminDvfStats(Long population, Double area, Long transactionCount, Double averagePrice,
-			Double averagePricePerSqm) {
+			Double averagePricePerSqm, Double pollutionScore) {
 	}
 
 	private static void expect(JsonToken actual, JsonToken expected) throws IOException {

@@ -41,7 +41,16 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 			       ELSE NULL END AS averagePrice,
 			  CASE WHEN COALESCE(SUM(s.total_residential_surface), 0) > 0
 			       THEN (SUM(s.total_price) / SUM(s.total_residential_surface))::double precision
-			       ELSE NULL END AS averagePricePerSqm
+			       ELSE NULL END AS averagePricePerSqm,
+			  (SELECT SUM(i.indicator_value * (ASCII(SUBSTRING(i.label, 11, 1)) - 64))::double precision
+			          / NULLIF(SUM(i.indicator_value), 0)
+			   FROM indicators i
+			   JOIN cities c2 ON c2.insee_code = i.geographic_code
+			   JOIN departments d2 ON d2.code = c2.department_code
+			   WHERE d2.region_code = r.code
+			     AND i.geographic_level = 'CITY'
+			     AND i.category = 'ENVIRONMENT'
+			     AND i.label LIKE 'GES label _') AS pollutionScore
 			FROM regions r
 			LEFT JOIN departments d ON d.region_code = r.code
 			LEFT JOIN cities c ON c.department_code = d.code
@@ -64,7 +73,15 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 			       ELSE NULL END AS averagePrice,
 			  CASE WHEN COALESCE(SUM(s.total_residential_surface), 0) > 0
 			       THEN (SUM(s.total_price) / SUM(s.total_residential_surface))::double precision
-			       ELSE NULL END AS averagePricePerSqm
+			       ELSE NULL END AS averagePricePerSqm,
+			  (SELECT SUM(i.indicator_value * (ASCII(SUBSTRING(i.label, 11, 1)) - 64))::double precision
+			          / NULLIF(SUM(i.indicator_value), 0)
+			   FROM indicators i
+			   JOIN cities c2 ON c2.insee_code = i.geographic_code
+			   WHERE c2.department_code = d.code
+			     AND i.geographic_level = 'CITY'
+			     AND i.category = 'ENVIRONMENT'
+			     AND i.label LIKE 'GES label _') AS pollutionScore
 			FROM departments d
 			LEFT JOIN cities c ON c.department_code = d.code
 			LEFT JOIN city_dvf_yearly_stats s ON s.insee_code = c.insee_code
@@ -120,6 +137,8 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 		Double getAveragePrice();
 
 		Double getAveragePricePerSqm();
+
+		Double getPollutionScore();
 	}
 
 	interface DepartmentStatsProjection {
@@ -138,6 +157,8 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 		Double getAveragePrice();
 
 		Double getAveragePricePerSqm();
+
+		Double getPollutionScore();
 	}
 
 	interface CityStatsProjection {
@@ -230,5 +251,7 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 		Double getAverageSurface();
 
 		Double getAveragePricePerSqm();
+
+		Double getPollutionScore();
 	}
 }

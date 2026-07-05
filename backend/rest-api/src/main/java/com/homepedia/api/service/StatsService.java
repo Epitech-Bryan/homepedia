@@ -2,6 +2,7 @@ package com.homepedia.api.service;
 
 import com.homepedia.api.config.CacheConfig;
 import com.homepedia.common.stats.CityStats;
+import com.homepedia.common.stats.CountryStats;
 import com.homepedia.common.stats.DepartmentDvfStatsRepository;
 import com.homepedia.common.stats.DepartmentDvfStatsResponse;
 import com.homepedia.common.stats.DepartmentStats;
@@ -29,7 +30,7 @@ public class StatsService {
 	public List<RegionStats> regionStats() {
 		return statsRepository.aggregateRegionStats().stream()
 				.map(p -> new RegionStats(p.getCode(), p.getName(), p.getPopulation(), p.getArea(),
-						p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm()))
+						p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm(), p.getPollutionScore()))
 				.toList();
 	}
 
@@ -37,7 +38,8 @@ public class StatsService {
 	public List<DepartmentStats> departmentStats(String regionCode) {
 		return statsRepository.aggregateDepartmentStats(regionCode).stream()
 				.map(p -> new DepartmentStats(p.getCode(), p.getName(), p.getRegionCode(), p.getPopulation(),
-						p.getArea(), p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm()))
+						p.getArea(), p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm(),
+						p.getPollutionScore()))
 				.toList();
 	}
 
@@ -56,6 +58,11 @@ public class StatsService {
 				.map(p -> new CityStats(p.getCode(), p.getName(), p.getDepartmentCode(), p.getPopulation(), p.getArea(),
 						p.getTransactionCount(), p.getAveragePrice(), p.getAveragePricePerSqm(), p.getPollutionScore()))
 				.toList();
+	}
+
+	@Cacheable(value = CacheConfig.CACHE_STATS, key = "'country'")
+	public CountryStats countryStats() {
+		return new CountryStats(statsRepository.aggregateCountryPollutionScore());
 	}
 
 	@Cacheable(value = CacheConfig.CACHE_STATS, key = "'dvf-departments'")

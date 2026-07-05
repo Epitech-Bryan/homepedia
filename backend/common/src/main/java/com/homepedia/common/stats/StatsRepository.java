@@ -123,6 +123,22 @@ public interface StatsRepository extends JpaRepository<Region, String> {
 			""", nativeQuery = true)
 	List<CityStatsProjection> aggregateCityStats(@Param("codes") Collection<String> codes);
 
+	/**
+	 * Country-wide weighted GES score — the same A=1..G=7 aggregation the region /
+	 * department queries run, but over every commune with DPE data. Returns
+	 * {@code null} when no GES rows exist at all. Drives the national pollution
+	 * figure on the country overview page.
+	 */
+	@Query(value = """
+			SELECT SUM(i.indicator_value * (ASCII(SUBSTRING(i.label, 11, 1)) - 64))::double precision
+			       / NULLIF(SUM(i.indicator_value), 0)
+			FROM indicators i
+			WHERE i.geographic_level = 'CITY'
+			  AND i.category = 'ENVIRONMENT'
+			  AND i.label LIKE 'GES label _'
+			""", nativeQuery = true)
+	Double aggregateCountryPollutionScore();
+
 	interface RegionStatsProjection {
 		String getCode();
 

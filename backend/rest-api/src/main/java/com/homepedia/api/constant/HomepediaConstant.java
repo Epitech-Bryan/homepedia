@@ -16,6 +16,24 @@ public interface HomepediaConstant {
 			String REGIONS = "/regions";
 			String DEPARTMENTS = "/departments";
 			String CITIES = "/cities";
+			String COUNTRY = "/country";
+		}
+
+		/**
+		 * Cross-level review aggregation endpoints (department / region / country).
+		 * Mirror the per-city {@link City} review paths but roll the underlying commune
+		 * reviews up to the requested scope.
+		 */
+		interface AreaReview {
+			String REGION_REVIEWS = REGIONS + "/{code}/reviews";
+			String REGION_WORD_CLOUD = REGION_REVIEWS + "/word-cloud";
+			String REGION_SENTIMENT_STATS = REGION_REVIEWS + "/sentiment-stats";
+			String DEPARTMENT_REVIEWS = DEPARTMENTS + "/{code}/reviews";
+			String DEPARTMENT_WORD_CLOUD = DEPARTMENT_REVIEWS + "/word-cloud";
+			String DEPARTMENT_SENTIMENT_STATS = DEPARTMENT_REVIEWS + "/sentiment-stats";
+			String COUNTRY_REVIEWS = "/country/reviews";
+			String COUNTRY_WORD_CLOUD = COUNTRY_REVIEWS + "/word-cloud";
+			String COUNTRY_SENTIMENT_STATS = COUNTRY_REVIEWS + "/sentiment-stats";
 		}
 
 		interface Region {

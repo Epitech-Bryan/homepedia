@@ -5,6 +5,7 @@ import static com.homepedia.api.constant.HomepediaConstant.RestPath.STATS;
 import com.homepedia.api.constant.HomepediaConstant;
 import com.homepedia.api.service.StatsService;
 import com.homepedia.common.stats.CityStats;
+import com.homepedia.common.stats.CountryStats;
 import com.homepedia.common.stats.DepartmentDvfStatsResponse;
 import com.homepedia.common.stats.DepartmentStats;
 import com.homepedia.common.stats.RegionStats;
@@ -46,6 +47,12 @@ public class StatsController {
 	public ResponseEntity<List<CityStats>> cityStats(
 			@Parameter(description = "INSEE codes of the communes to aggregate (capped server-side)") @RequestParam final List<String> codes) {
 		return ResponseEntity.ok(statsService.cityStats(codes));
+	}
+
+	@Operation(summary = "National aggregate stats (weighted GES pollution score across all communes)")
+	@GetMapping(HomepediaConstant.RestPath.Stats.COUNTRY)
+	public ResponseEntity<CountryStats> countryStats() {
+		return ResponseEntity.ok(statsService.countryStats());
 	}
 
 	@Operation(summary = "Pre-computed department stats from Spark (includes median price)")

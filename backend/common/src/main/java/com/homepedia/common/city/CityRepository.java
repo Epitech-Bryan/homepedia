@@ -23,4 +23,13 @@ public interface CityRepository extends JpaRepository<City, String> {
 	// columns the consumer never touches.
 	@Query("SELECT c.inseeCode FROM City c")
 	List<String> findAllInseeCodes();
+
+	// INSEE-code projections used to resolve a department / region scope into
+	// the set of communes whose Mongo reviews should be aggregated. Lightweight
+	// on purpose — the review aggregation only ever needs the keys.
+	@Query("SELECT c.inseeCode FROM City c WHERE c.department.code = :departmentCode")
+	List<String> findInseeCodesByDepartmentCode(String departmentCode);
+
+	@Query("SELECT c.inseeCode FROM City c WHERE c.department.region.code = :regionCode")
+	List<String> findInseeCodesByRegionCode(String regionCode);
 }

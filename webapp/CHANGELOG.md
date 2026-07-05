@@ -1,5 +1,12 @@
 # app
 
+## [0.81.0] - 2026-07-05
+
+### Features
+
+- feat(map): drill into regions, departments and country for reviews and pollution
+- feat(stats): expose pollution at region/department/country and aggregate reviews by area
+
 ## [0.80.0] - 2026-07-05
 
 ### Features

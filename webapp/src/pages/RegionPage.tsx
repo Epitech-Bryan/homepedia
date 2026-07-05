@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useRegion, useDepartments, useTransactionStats } from "@/api/hooks";
+import { useRegion, useDepartments, useTransactionStats, useRegionStats } from "@/api/hooks";
 import { StatCard } from "@/components/StatCard";
+import { AreaReviewsSection } from "@/components/AreaReviewsSection";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,8 @@ export function RegionPage() {
   const { data: region, isLoading, error } = useRegion(code);
   const { data: departments = [] } = useDepartments(code ? { regionCode: code } : undefined);
   const { data: stats } = useTransactionStats(code ? { regionCode: code } : undefined);
+  const { data: regionStats } = useRegionStats();
+  const pollutionScore = regionStats?.find((r) => r.code === code)?.pollutionScore ?? null;
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
@@ -37,6 +40,8 @@ export function RegionPage() {
           <StatCard label="Avg. Price" value={stats.averagePrice} unit="€" />
         )}
       </div>
+
+      <AreaReviewsSection basePath={`/regions/${code}`} pollutionScore={pollutionScore} />
 
       <div>
         <h2 className="text-sm font-semibold mb-2">Departments ({departments.length})</h2>

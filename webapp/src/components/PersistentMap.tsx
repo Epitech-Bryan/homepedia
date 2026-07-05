@@ -257,10 +257,9 @@ function extractValue(
     case "transactionCount":
       return s.transactionCount ?? null;
     case "pollution":
-      // Only CityStats carries pollutionScore today (commune-level GES from
-      // ADEME). Region/department stats don't aggregate it yet → null falls
-      // through to the gray "no data" fill on the choropleth.
-      return "pollutionScore" in s ? ((s as CityStats).pollutionScore ?? null) : null;
+      // Region / department / city stats all carry a weighted GES pollution
+      // score now (aggregated commune-level ADEME data). null → gray "no data".
+      return s.pollutionScore ?? null;
   }
 }
 
@@ -819,9 +818,9 @@ export function PersistentMap() {
   const onFeatureClick = useCallback(
     (code: string) => {
       // GADM admin codes always contain a "." (e.g. "DEU.2_1" admin-1,
-      // "DEU.2.5_1" admin-2) whereas FR INSEE codes are pure digits. Route
-      // world admin-1 clicks to the dedicated detail page; admin-2 has no
-      // page yet so we just highlight (no-op nav).
+      // "DEU.2.5_1" admin-2) whereas FR region/department/INSEE codes never
+      // do. Route world admin-1 clicks to the dedicated detail page; admin-2
+      // has no page yet so we just highlight (no-op nav).
       if (code.includes(".")) {
         const dots = (code.match(/\./g) ?? []).length;
         if (dots === 1) {
@@ -831,15 +830,30 @@ export function PersistentMap() {
         }
         return;
       }
-      // At city zoom, polygons are commune outlines — clicking them goes to
-      // the city detail page (same as marker click). Otherwise just zoom.
+      // World zoom: countries are the foreground (ISO-3 codes). France drills
+      // into the national overview; other countries have no homepedia data so
+      // we just highlight them.
+      if (showWorld) {
+        if (code === "FRA") {
+          navigate("/country");
+        } else {
+          setClickedFeatureCode(code);
+        }
+        return;
+      }
+      // France stack, routed by the active zoom tier so a click on any level
+      // opens that level's page (aggregated reviews + pollution), mirroring the
+      // city drill-down. City zoom → commune, department zoom → department,
+      // region zoom → region.
       if (showCityDetail) {
         navigate(`/cities/${code}`);
+      } else if (showDepartments) {
+        navigate(`/departments/${code}`);
       } else {
-        setClickedFeatureCode(code);
+        navigate(`/regions/${code}`);
       }
     },
-    [showCityDetail, navigate],
+    [showWorld, showDepartments, showCityDetail, navigate],
   );
 
   const onMarkerClick = useCallback(

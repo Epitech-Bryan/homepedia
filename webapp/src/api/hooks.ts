@@ -82,6 +82,44 @@ export function useSentimentStats(inseeCode: string) {
   });
 }
 
+/**
+ * Aggregated reviews for a geographic scope above the commune level.
+ * `basePath` is the scope root (`/regions/{code}`, `/departments/{code}` or
+ * `/country`); pass `null` to disable the query (e.g. while the code param is
+ * still empty).
+ */
+export function useAreaReviews(basePath: string | null, params?: Record<string, string>) {
+  return useQuery({
+    queryKey: ["areaReviews", basePath, params],
+    queryFn: () => api.areaReviews.list(basePath as string, params),
+    enabled: !!basePath,
+  });
+}
+
+export function useAreaWordCloud(basePath: string | null) {
+  return useQuery({
+    queryKey: ["areaWordCloud", basePath],
+    queryFn: () => api.areaReviews.wordCloud(basePath as string),
+    enabled: !!basePath,
+  });
+}
+
+export function useAreaSentiment(basePath: string | null) {
+  return useQuery({
+    queryKey: ["areaSentiment", basePath],
+    queryFn: () => api.areaReviews.sentimentStats(basePath as string),
+    enabled: !!basePath,
+  });
+}
+
+export function useCountryStats() {
+  return useQuery({
+    queryKey: ["stats", "country"],
+    queryFn: () => api.stats.country(),
+    staleTime: 30 * 60_000,
+  });
+}
+
 export function useRegions() {
   return useQuery({ queryKey: ["regions"], queryFn: () => api.regions.list() });
 }

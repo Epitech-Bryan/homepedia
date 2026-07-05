@@ -122,6 +122,7 @@ export const api = {
     regions: () => fetchJson<RegionStats[]>("/stats/regions"),
     departments: (regionCode?: string) =>
       fetchJson<DepartmentStats[]>("/stats/departments", regionCode ? { regionCode } : undefined),
+    country: () => fetchJson<CountryStats>("/stats/country"),
     departmentsPrecomputed: () => fetchJson<DepartmentDvfStats[]>("/stats/departments/precomputed"),
     departmentPrecomputed: (departmentCode: string) =>
       fetchJson<DepartmentDvfStats>(`/stats/departments/precomputed/${departmentCode}`),
@@ -158,6 +159,17 @@ export const api = {
       fetchJson<Record<string, number>>(`/cities/${inseeCode}/reviews/word-cloud`),
     sentimentStats: (inseeCode: string) =>
       fetchJson<SentimentStats>(`/cities/${inseeCode}/reviews/sentiment-stats`),
+  },
+  // Aggregated reviews above the commune level. `basePath` is the scope root:
+  // `/regions/{code}`, `/departments/{code}` or `/country`. The backend rolls
+  // the underlying commune reviews up to that scope.
+  areaReviews: {
+    list: (basePath: string, params?: Record<string, string>) =>
+      fetchJson<PagedResponse<ReviewSummary>>(`${basePath}/reviews`, params),
+    wordCloud: (basePath: string) =>
+      fetchJson<Record<string, number>>(`${basePath}/reviews/word-cloud`),
+    sentimentStats: (basePath: string) =>
+      fetchJson<SentimentStats>(`${basePath}/reviews/sentiment-stats`),
   },
 };
 
@@ -211,6 +223,8 @@ export interface RegionStats {
   transactionCount: number;
   averagePrice: number | null;
   averagePricePerSqm: number | null;
+  /** Weighted GES (greenhouse-gas) class 1..7, aggregated over the region's communes. */
+  pollutionScore: number | null;
 }
 
 export interface DepartmentStats {
@@ -222,6 +236,14 @@ export interface DepartmentStats {
   transactionCount: number;
   averagePrice: number | null;
   averagePricePerSqm: number | null;
+  /** Weighted GES (greenhouse-gas) class 1..7, aggregated over the department's communes. */
+  pollutionScore: number | null;
+}
+
+/** National aggregate — mirrors {@code CountryStats} on the backend. */
+export interface CountryStats {
+  /** Weighted GES class 1..7 over every commune, or null when no GES data exists. */
+  pollutionScore: number | null;
 }
 
 export interface DepartmentDvfStats {

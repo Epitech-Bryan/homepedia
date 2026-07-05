@@ -4,8 +4,10 @@ import {
   useCitiesForDepartment,
   useTransactionStats,
   useDepartmentPrecomputedStats,
+  useDepartmentStats,
 } from "@/api/hooks";
 import { StatCard } from "@/components/StatCard";
+import { AreaReviewsSection } from "@/components/AreaReviewsSection";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +20,8 @@ export function DepartmentPage() {
   const { data: citiesPage } = useCitiesForDepartment(code || undefined);
   const { data: stats } = useTransactionStats(code ? { departmentCode: code } : undefined);
   const { data: precomputed } = useDepartmentPrecomputedStats(code || undefined);
+  const { data: departmentStats } = useDepartmentStats(dept?.regionCode);
+  const pollutionScore = departmentStats?.find((d) => d.code === code)?.pollutionScore ?? null;
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorMessage message={error.message} />;
@@ -62,6 +66,8 @@ export function DepartmentPage() {
           )}
         </div>
       )}
+
+      <AreaReviewsSection basePath={`/departments/${code}`} pollutionScore={pollutionScore} />
 
       <div>
         <h2 className="text-sm font-semibold mb-2">

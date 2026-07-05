@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.82.2] - 2026-07-05
+
+### Bug Fixes
+
+- perf(reviews): materialise the cityInseeCode Mongo index via auto-index-creation
+
 ## [3.82.1] - 2026-07-04
 
 ### Bug Fixes

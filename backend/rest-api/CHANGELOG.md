@@ -5,6 +5,327 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.83.0] - 2026-07-05
+
+### Features
+
+- feat(map): flag DVF-unavailable departments (Alsace-Moselle, Mayotte)
+- feat(tiles): bake region and department DVF aggregates into tiles
+- feat(geo): fill admin-2 coverage for 27 countries from geoBoundaries (CC0)
+- feat(map): add Belgium provinces and communes to world GADM tiles
+- feat(map): default to the 3D globe view (opt out with VITE_USE_MAPLIBRE=false)
+- feat(country): add population growth, internet, CO2, health/education spend and Gini indicators
+- feat(country): add OECD house price index for major non-EU economies
+- feat(country): import Eurostat house price index and expose it as a map metric
+- feat(country): expand World Bank import with growth, inflation, unemployment, life expectancy, urban and density
+- feat(country): import current World Bank metrics for all countries and overlay onto geo data
+- feat(map): bake complete country metrics (population, gdp, gdpPerCapita, area) into world tiles
+- feat(map): mirror 2D zoom bands on the globe (regions to departments to communes)
+- feat(map): render real centroid bubbles on the globe in bubbles mode
+- feat(map): add OSM POI layer, hover-address and bubbles fallback to the globe
+- feat(map): port heatmap and transaction pins to the globe and cap world tiles for perf
+- feat(map): add opt-in MapLibre globe view with choropleth alongside the 2D map
+- feat(map): allow dezooming to the full planet view (minZoom 2 to 1)
+- feat(spark): make the dvf aggregate output table configurable via --output-table
+- feat(spark): run dvf aggregation as a kubernetes job reading the transactions table
+- feat(spark): optional LSH nearest-neighbour matcher for comparable sales
+- feat(dvf): import geo-dvf per-mutation coordinates for precise heatmap and markers
+- feat(admin): surface live import phase in job status cards
+- feat(map): add pollution choropleth metric (GES 1-7)
+- feat(indicators): persist GES class from DPE feed and expose city pollution score
+- feat(pois): backend proxy + Redis 7d cache in front of Overpass
+- feat(map): satellite basemap + OSM POIs + hover reverse-geocode + admin-3 expansion
+- feat(map): overlay OSM street/POI labels at z>=9 for non-FR detail
+- feat(world): admin-1 detail page + global search + admin-3 MVT layer
+- feat(world): admin-1 round 4 — +50 missing countries + GDP backfill
+- feat(world): admin-2 for USA/BRA/MEX/CHN/IND + ~50 missing countries
+- feat(admin): expose ExitStatus message under FAILED jobs
+- feat(world): MVT pipeline for countries + admin-1 + admin-2
+- feat(world): +48 admin-2 countries with adaptive simplification
+- feat(world): +30 admin-1 countries (Africa/MENA/Central America/Pacific)
+- feat(admin): add rebuild tiles button + auto evict geo cache
+- feat(world): admin-2 layer for European countries past zoom 7
+- feat(world): +25 admin-1 countries + bake area and gdp metrics
+- feat(reviews): loading checkpoints + skeleton placeholders
+- feat(tiles): bake IRIS layer for sub-commune drilldown at z=13-14
+- feat(schemas): add Carte and Spark schema tabs
+- feat(geo): +17 countries to world admin-1 (1353 features, 1047 with population)
+- feat(tiles): multi-layer mbtiles (regions+departments+cities)
+- feat(map): zoom-aware country border weight
+- feat(map): revert departments to zoom 7, push city detail to zoom 10
+- feat(map): show departments from zoom 8 (was 7)
+- feat(map): quantile choropleth scale + admin tile rebuild trigger
+- feat: Belgian communes layer + city name search
+- feat: arrondissements MVT + Data schema page + index rationale
+- feat(geo): bake admin-1 population for 39 EU/G20 countries (94% coverage)
+- feat(webapp): React Flow schemas + K8s/Flux pipeline + tippecanoe bash fix
+- feat(tiles): bake DVF stats into commune MVT features
+- feat(observability): Grafana alerts + smoke CronJob (closes #2)
+- feat: IRIS boundaries endpoint + city page section (closes #10)
+- feat: Spark perf tuning + comparable sales popup (closes #11)
+- feat(webapp): page Schémas avec sous-routes (architecture, BDD, devops)
+- feat(webapp): hover tooltip + highlight on CityVectorGridLayer
+- feat(backend): perf tuning (#4 #5) + import skeletons (#7 #10 #11)
+- feat(api): foundations for comparable sales endpoint (issue #11)
+- feat(api): foundations for INSEE Filosofi IRIS indicators (issue #10)
+- feat(stats): quarterly price /m² timeline per commune (issue #9)
+- feat(webapp): enable vector tiles in prod build (issue #6)
+- feat(map): wire CityVectorGridLayer behind VITE_USE_VECTOR_TILES flag (issue #6)
+- feat(map): ship CityVectorGridLayer component (issue #6 step 3, not wired yet)
+- feat(tiles): add vector tile endpoint scaffolding for commune polygons (issue #6 step 1)
+- feat(geo): bake spherical area into world-admin1, extend GeographicLevel for NUTS/COUNTRY tiers
+- feat(observability): expose Prometheus metrics via Micrometer at /actuator/prometheus
+- feat(map): clickable markers for individual DVF transactions
+- feat(events): relay SSE batch events across pods via Redis pub/sub
+- feat(geocoding): geocode DVF transactions via BAN, expose precise heatmap
+- feat(map): density + GDP per capita at world zoom, dispersed heatmap
+- feat(webapp): hide polygon borders in heat/bubbles modes and enrich CityPage
+- feat(map): world admin-1 boundaries for ~38 EU + G20 countries
+- feat(map): Belgium provinces overlay + indicator top-left + restore world view
+- feat(map): always show France data, world borders are just backdrop
+- feat(map): keep world country outlines visible at all zooms + horizontal loop
+- feat(map): world view — Natural Earth country boundaries at low zoom
+- feat: ProblemDetail + validation + Resilience4j + RUM web vitals + error boundary
+- feat(admin): add per-year stats refresh button
+- feat(admin): hide DVF rows for years not served by data.gouv.fr
+- feat(admin): truncate DVF year + restrict dropdown to 2021+
+- feat(dvf): resumable HTTP download with retry + Range
+- feat(admin): show last-import duration on job cards and per DVF year
+- feat(admin): per-year inline trigger button in DVF partition table
+- feat(admin): DVF follow-ups — cleanup, perf, partition stats, bulk import
+- feat(admin): DVF import speed-up + Redis cache controls
+- feat(admin): DVF follow-ups — cleanup, perf, partition stats, bulk import
+- feat(admin): DVF import speed-up + Redis cache controls
+- feat: admin console with auth + on-demand import triggers
+- feat: add admin recompute-stats endpoint and wire Spark DVF stats
+- feat(webapp): rewrite to map-first architecture with floating panels
+- feat(batch): enable all auto-downloadable imports in prod
+- feat: agent-first development improvements
+- feat: per-city stats endpoint + arrondissements drilldown at zoom >= 12
+- feat(webapp): expand button on map (toggle 500px <-> 78vh) and remove side padding when expanded
+- feat(api): add Redis cache for geo/refdata/stats/reviews + invalidate after batch imports
+- feat(webapp): merge commune polygons across all visible departments + drop redundant city markers
+- feat(webapp): commune polygons (real INSEE borders) at zoom>=9 with city-level metric
+- feat(webapp): show current layer/zoom indicator + listen on zoom (not just zoomend)
+- feat(webapp): auto-detect department under center at zoom>=9 + city markers sized by population
+- feat(webapp): polygon clicks fly into the feature locally without URL change
+- feat(webapp): always show aggregated metric on map (drop uniform orange default)
+- feat(webapp): zoom-driven map layers (regions <7, departments >=7) with appropriate aggregation
+- feat(webapp): redesign map (carto voyager, sunset palette, legend, zoom-aware city markers)
+- feat(api): server-sent events for real-time batch progress + frontend banner
+- feat(spark): add spark-jobs module with DVF aggregation job + cluster in compose
+- feat(api): migrate city reviews to MongoDB (relational + non-relational mix)
+- feat(webapp): add heatmap layer alongside choropleth and bubbles
+- feat(batch): generic indicator import for economy, education, environment, infrastructure
+- feat(webapp): choropleth + bubble layers with metric/style selectors
+- feat(api): aggregate stats endpoints for region/department choropleth
+- feat(webapp): show city markers on department map and highlight active feature
+- feat(webapp): persistent URL-driven map with auto-zoom on selection
+- feat(webapp): add async dropdown autocomplete on region search
+- feat(api): aggregate population and area on regions and departments from communes
+- feat(batch): log scheduled job duration on completion and failure
+- feat(batch): provision spring batch schema via liquibase changeset
+- feat(batch): add cron scheduler for periodic data imports
+- feat(ci): migrate from semantic-release to FerrFlow
+- feat(ci): migrate from semantic-release to FerrFlow
+- feat(batch): adapt importers for real open data sources
+- feat(batch): add auto-download support for DVF, DPE, and Health datasets
+- feat(webapp): add reviews page with word cloud and sentiment analysis
+- feat: add city review scraper and sentiment analysis module
+- feat(webapp): build complete frontend with pages, components, and API hooks
+- feat: java multi modules
+- feat: initialize monorepo with CI/CD, versioning, and Traefik reverse proxy
+
+### Bug Fixes
+
+- fix(reviews): drop unused Mongo text index so startup index build does not crashloop the pod
+- perf(reviews): materialise the cityInseeCode Mongo index via auto-index-creation
+- fix(stats): drop stray pollutionScore getter from transaction projection
+- fix(map): aggregate GES pollution at region and department level
+- perf(tiles): build layers in parallel with incremental tile-join cache
+- perf(tiles): cap tile size at 2MB instead of unlimited to speed regeneration
+- fix(data): import municipal arrondissements for Paris/Lyon/Marseille DVF
+- fix(map): bridge choropleth zoom bands to remove z9 transition flash
+- fix(map): stop showing GADM 'NA' placeholder as world tile labels
+- perf(map): skip the 26 MB world admin-2 GeoJSON when world tiles are on
+- perf(api): cache the binary heatpoints endpoint like its JSON sibling (60s + ETag)
+- perf(api): serve heatpoints as a packed Float32 binary endpoint
+- perf(rest-api): add bbox+mutation_date covering index for transaction markers
+- perf(webapp): memoize merged geo FeatureCollections to avoid map source re-parse
+- fix(geocoder): avoid long-lived transaction and infinite re-geocoding of unresolved rows
+- perf(map): fetch heatpoints as a packed Float32 buffer with JSON fallback
+- perf(map): color globe layers from a prop-derived range on tile load instead of waiting for idle
+- fix(map): start globe region layer at z5 so it no longer stacks on the country fill
+- fix(tiles): serialize city and world tile builds to halve peak disk usage
+- perf(db): partial index for geocode backlog count to stop connection-leak warnings
+- fix(db): self-heal dept_dvf_stats column types on startup before schema validation
+- fix(spark): truncate dept_dvf_stats on overwrite to preserve column types
+- fix(map): use lightweight countries layer at planet zoom and color it via metricByCode
+- fix(map): align globe zone layers to the tippecanoe zoom bands and add countries/admin3
+- perf(spark): stage geo-dvf to partitioned parquet and read it columnar in dvf aggregate
+- perf(heatpoints): finer 44m grid now that transactions are geocoded
+- fix(transactions): tolerate null property_type and date in marker rows
+- fix(map): guard FitBounds against non-finite bounds and make heat kernel zoom-aware
+- fix(stats): move GES lateral comments out of native query string
+- fix(indicators): use DpeRawRecord#dpeLabelGes accessor for GES aggregation
+- perf(reviews): stream generation into bounded queue with parallel mongo writers
+- fix(tiles): pull regions/departements geojson from github after geo.api.gouv.fr regression
+- fix(map): isolate vector tile panes, gate layers by zoom band, clear stale canvas
+- fix(webapp): rewrite /api prefix in vite dev proxy
+- fix(world): skip MVT countries draw so SVG choropleth shows at z<5
+- fix(map): mount world MVT layer below city so clicks at z=9+ work
+- fix(ui): format Select trigger labels instead of leaking raw values
+- fix(dpe): skip rows whose insee code exceeds the varchar(9) column
+- perf(spark): COPY FROM STDIN + drop/recreate indexes + PK pre-sort
+- fix(map): create backdrop pane synchronously to avoid _removePath crash
+- perf(webapp): useDeferredValue on bounds, unbundle recharts, SW tile cache
+- fix(map): backdrop pane with pointer-events:none so MVT hover works
+- perf(map): debounce center + skip city-level fetches under vector tiles
+- fix(tiles): cities start at z9 (depts z7-8 · cities+arr z9-14)
+- fix(tiles): no zoom overlap between layers (regions z4-6, depts z7-9, cities z10-14)
+- perf(spark): broadcast cities, partition JDBC reads, kryo serializer
+- fix(geo): patch 5 NA/? entries in world admin-1 (UK England, Munster, Zuid-Holland, Kyiv)
+- fix(tiles): persist metric-ranges + recompute on startup
+- fix(reviews): show loader while sentiment/wordcloud/reviews are pending
+- fix(tiles): return 204 for empty tiles to silence DevTools 404 noise
+- fix(map): arrondissements URL + VectorGrid z=8 storm
+- fix(map): stitch Russia/Fiji across the antimeridian
+- fix(tiles): include batch.tiles package in JPA repository scan
+- fix(webapp): catch VectorGrid fetch rejections so failed tiles don't leak as unhandled promises
+- fix(test): migrate TransactionServiceTest to new statsRepository mock
+- fix(db): splitStatements:false on changeset 017 DO block
+- perf(jvm): G1GC + 100ms pause target + RAM percentage (closes #4)
+- perf(db): backfill autovacuum tuning to historical partitions (closes #5)
+- perf(backend): port computeStats to DB-side aggregate (closes #3)
+- perf(webapp): drop bounds debounce from 200ms to 50ms
+- fix(webapp): mark VectorGrid features interactive so clicks fire
+- perf(webapp): redraw VectorGrid only on choropleth range shifts
+- fix(webapp): keep MapContainer mounted when vector tiles drive the city layer
+- fix(webapp): move CityVectorGridLayer ref sync out of render
+- fix(webapp): stop CityVectorGridLayer from remounting on every pan
+- fix(webapp): cap VectorGrid at maxNativeZoom=14 to keep polygons visible past z14
+- fix(webapp): bind leaflet.vectorgrid to the app's Leaflet instance under Vite
+- perf: cache + indexed prefix lookup for IRIS/comparables/quarterly endpoints
+- fix(webapp): disable vector tiles flag until frontend rendering is debugged
+- perf(webapp): persist React Query cache in localStorage and prefetch refdata at idle
+- fix(cache): revert Jackson typing to EVERYTHING and bump Redis namespace to v2
+- perf(http): 60s browser cache on /transactions/heatpoints and /markers
+- perf(db): composite index indicators(level, code, category)
+- perf(webapp): lazy-load Recharts in price and sentiment charts
+- perf(http): cache /geo /regions /departments for 24h, keep stats at 5min
+- perf(db): index cities.department_code and add trigram GIN on cities.name
+- fix(map): heatmap follows polygon shape via boundary sampling
+- fix(map): hide Natural Earth borders for countries with precise overlay
+- fix(map): restore world wrap-around with duplicated country borders
+- fix(map): recover FR/NO/Somaliland codes, stop world wrap, default to world view
+- fix(map): hide foreground polygons in pure heat mode
+- fix(geo): commit Natural Earth countries.geojson + gitignore exception
+- perf(map): debounce bounds + canvas renderer + bbox cache + stable layerKey
+- perf(webapp): nginx tuning + pre-gzip + index.html preconnect
+- perf: GZIP compression + Mongo bulk insert + bundle analyzer
+- fix(routing): conditional on spring.datasource.replica.url
+- perf: streaming bulk inserts + HTTP cache + read replica routing
+- fix(dvf): use plain ANALYZE instead of VACUUM ANALYZE after swap
+- perf: BRIN index on mutation_date + actuator dump endpoints + lazy routes
+- fix(stats): revert SQL refactor of computeStats, add unscoped-call guard
+- fix(stats): aggregate /transactions/stats in SQL instead of streaming rows
+- perf: pre-aggregate DVF stats + univocity parser + DPE batch insert
+- fix(stats): deduplicate DVF mutations to fix avg price + price/m²
+- fix(batch): prevent orphan JDBC sessions and stuck Spring Batch jobs
+- perf(imports): drop @Transactional from DPE/Health/Indicator services
+- perf(reviews): parallelize generation and bump batch size
+- perf(insee): drop @Transactional + parallelize fetchCommunes calls
+- fix(reviews): drop @Transactional from importReviews to avoid 6h Postgres tx leak
+- fix: update dependency com.fasterxml.jackson.core:jackson-databind to v2.21.3
+- fix: update dependency com.fasterxml.jackson.core:jackson-databind to v2.21.3
+- fix(dvf): wire id sequence on shadow table + 409 for job already running
+- fix(dvf): wire id sequence on shadow table + 409 for job already running
+- fix(dvf): @JobScope on dvfImportStep + table layout for partition stats
+- fix(dvf): @JobScope on dvfImportStep + table layout for partition stats
+- fix(liquibase): splitStatements:false on the DO block in 006
+- fix(rest-api): include api.auth in JPA scan so AdminUserRepository is wired
+- fix(rest-api): correct SecurityContextRepository import path
+- perf(rest-api): use Postgres COPY FROM STDIN for DVF bulk insert
+- fix(rest-api): make Feature.geometry round-trippable through Redis
+- perf(rest-api): tune JDBC batching for DVF bulk insert
+- fix: auto-flush stale Redis cache entries on startup
+- fix: add Spark timeout, increase HikariCP pool, fix thread starvation
+- fix: increase dialog z-index above map layer (z-2000)
+- fix: price/sqm mismatch, transaction detail endpoint, wider selects, dept cities list
+- fix: DVF insee code bug + departments API type mismatch
+- fix: PropertyType enum values + Leaflet z-index overlay
+- fix: Redis cache serialization for records + ResponseEntity migration
+- fix: DVF import uses per-batch transactions instead of one giant TX
+- fix: raise header z-index above Leaflet map layers
+- fix(cache): configure Jackson ObjectMapper for record deserialization
+- fix(map): propagate h-full through FranceMap container chain
+- fix(api): batch city stats requests to avoid URL length overflow
+- fix(test): update ExplorerPage tests to match panel-compact labels
+- fix(ci): remove H2 config conflicting with Testcontainers PostgreSQL
+- fix(ci): disable DinD TLS — certs not shared in K8s runner pod
+- fix(ci): add -am flag to build common module before rest-api tests
+- fix(backend): apply spotless formatting to regression tests
+- fix: not checked is present in spring cache
+- fix: format
+- fix: changed zoom level
+- fix: format
+- fix: use @class json typing + homepedia: key prefix to safely share redis; close tooltips on map drag
+- fix(api): swallow Redis errors in cache layer to degrade gracefully
+- fix(webapp): satisfy eslint (no non-null assertion, set-state-in-effect, useless assignment)
+- fix(webapp): subtle hover on default polygons (no orange flood) + reset on zoomstart
+- fix(api): enable mongo repositories scan in com.homepedia.common
+- fix: update spark.version to v3.5.8
+- fix: update spark.version to v3.5.8
+- fix(build): align spark-jobs parent version with root + register module in ferrflow
+- fix(build): copy spark-jobs pom into rest-api docker build context
+- fix(build): drop shade transformer + make leaflet.heat type augment instead of replace
+- fix(build): pin springdoc to 2.8.17 (v3 requires spring boot 3.6+)
+- fix(webapp): bump select dropdown z-index above leaflet map controls
+- fix(api): silence 404 logs (NoResourceFoundException) in exception handler
+- fix(ci): drop common pom from cache key (gitlab limits to 2 files)
+- fix: update dependency org.springdoc:springdoc-openapi-starter-webmvc-ui to v3
+- fix: update dependency org.springdoc:springdoc-openapi-starter-webmvc-ui to v3
+- fix(api): silence client disconnect noise in exception handler
+- perf(webapp): memoize FranceMap and stabilize click handlers
+- fix(batch): paginate INSEE communes import per department to avoid timeout
+- fix(batch): use dedicated flag for startup runner to avoid clashing with spring boot auto-runner
+- fix(webapp): set page title to HomePedia
+- fix(build): align root pom version with child modules (3.7.0)
+- fix(build): reorder root pom + pin spring-boot 3.5.14 to work around ferrflow xml selector
+- fix(ci): drop redundant cd webapp from script (pwd already set by before_script)
+- fix(batch): remove @EnableBatchProcessing so spring boot creates metadata tables
+- fix(build): align root pom version with child modules (3.6.0)
+- fix(build): revert spring-boot parent to 3.5.14 (3.6.0 not on maven central)
+- fix: update dependency org.apache.commons:commons-collections4 to v4.5.0
+- fix: update dependency org.projectlombok:lombok to v1.18.46
+- fix(ci): replace @semantic-release/npm with exec for webapp
+- fix: update Dockerfiles for current project structure
+- fix(ci): use Buildah instead of Docker for K8s builds
+- fix(ci): configure DOCKER_HOST for DinD on Kubernetes executor
+- fix: sync child POM parent versions to 1.0.0
+- fix(ci): target parent pom for versions:set in release
+- fix(ci): convert releaserc YAML to CJS for semantic-release
+- fix(webapp): resolve ESLint errors in pages
+- fix(ci): fix webapp lint cd issue and remove data-pipeline jobs
+- fix: remove final for jpa entity
+- fix: update dependency org.springframework.boot:spring-boot-starter-parent to v3.5.14
+- fix: update dependency org.springframework.boot:spring-boot-starter-parent to v3.5.13
+- fix: trigger jobs main-branch only, optional needs, remove automergeType
+- fix: remove package-lock.json reference from app Dockerfiles
+- fix(ci): use fully qualified image names for buildah compatibility
+- fix: resolve @types/node conflict between workspaces for npm ci
+
+### Refactoring
+
+- refactor(map): extract layer visibility toggling into the layers module
+- refactor(map): extract globe map creation and basemap config into a module
+- refactor(map): extract globe layer installation into a dedicated module
+- refactor(map): extract geojson source builders and a useGeoJsonSource hook
+- refactor(map): extract globe choropleth and layer logic into a dedicated module
+- refactor: merge data-pipeline into rest-api with Spring Batch + Liquibase
+- refactor(webapp): migrate all pages and components to shadcn/ui
+- refactor: rename data-pipeline package, use GeographicLevel enum, add ParseUtils
+
 ## [3.82.2] - 2026-07-05
 
 ### Bug Fixes

@@ -1,6 +1,9 @@
 spring:
   application:
     name: homepedia-api
+  data:
+    mongodb:
+      auto-index-creation: true
   jpa:
     open-in-view: false
     hibernate:

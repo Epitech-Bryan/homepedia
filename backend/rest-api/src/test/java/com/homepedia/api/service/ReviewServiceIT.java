@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.IndexField;
 
 import static com.homepedia.api.config.CacheConfig.CACHE_REVIEWS;
 
@@ -48,6 +50,9 @@ class ReviewServiceIT {
 
 	@Autowired
 	private CacheManager cacheManager;
+
+	@Autowired
+	private MongoTemplate mongoTemplate;
 
 	@AfterEach
 	void clearCache() {
@@ -126,6 +131,14 @@ class ReviewServiceIT {
 
 		assertThat(page.getTotalElements()).isEqualTo(2);
 		assertThat(page.getContent()).allMatch(r -> r.content().contains("Paris"));
+	}
+
+	@Test
+	void cityInseeCodeIndex_isMaterialised_soCityQueriesDoNotFullScan() {
+		final var indexedKeys = mongoTemplate.indexOps(CityReview.class).getIndexInfo().stream()
+				.flatMap(info -> info.getIndexFields().stream()).map(IndexField::getKey).toList();
+
+		assertThat(indexedKeys).contains("cityInseeCode");
 	}
 
 	private void seedReview(final String cityInsee, final String content, final String label, final double score) {

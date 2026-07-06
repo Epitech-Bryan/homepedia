@@ -5,6 +5,12 @@
 
 * **batch:** adapt importers for real open data sources ([65aec9b](https://gitlab.com/t-dat-902/homepedia/commit/65aec9b1f0f16329e2b17f488b6121cd33640993))
 
+## [3.85.0] - 2026-07-06
+
+### Features
+
+- feat(map): colour France by national GES at world zoom and inherit department GES for communes without data
+
 ## [3.84.0] - 2026-07-05
 
 ### Features

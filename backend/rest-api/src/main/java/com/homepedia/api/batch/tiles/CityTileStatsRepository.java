@@ -34,6 +34,17 @@ import org.springframework.data.jpa.repository.Query;
 public interface CityTileStatsRepository extends JpaRepository<City, String> {
 
 	@Query(value = """
+			WITH dept_ges AS (
+			  SELECT c2.department_code AS dept,
+			         SUM(i.indicator_value * (ASCII(SUBSTRING(i.label, 11, 1)) - 64))::double precision
+			         / NULLIF(SUM(i.indicator_value), 0) AS pollution
+			  FROM indicators i
+			  JOIN cities c2 ON c2.insee_code = i.geographic_code
+			  WHERE i.geographic_level = 'CITY'
+			    AND i.category = 'ENVIRONMENT'
+			    AND i.label LIKE 'GES label _'
+			  GROUP BY c2.department_code
+			)
 			SELECT
 			  c.insee_code                                                                AS code,
 			  c.population                                                                AS population,
@@ -45,7 +56,7 @@ public interface CityTileStatsRepository extends JpaRepository<City, String> {
 			  CASE WHEN COALESCE(SUM(s.total_residential_surface), 0) > 0
 			       THEN (SUM(s.total_price) / SUM(s.total_residential_surface))::double precision
 			       ELSE NULL END                                                          AS averagePricePerSqm,
-			  ges.pollution                                                               AS pollutionScore
+			  COALESCE(ges.pollution, dg.pollution)                                       AS pollutionScore
 			FROM cities c
 			LEFT JOIN city_dvf_yearly_stats s ON s.insee_code = c.insee_code
 			LEFT JOIN LATERAL (
@@ -57,7 +68,8 @@ public interface CityTileStatsRepository extends JpaRepository<City, String> {
 			    AND i.category = 'ENVIRONMENT'
 			    AND i.label LIKE 'GES label _'
 			) ges ON TRUE
-			GROUP BY c.insee_code, c.population, c.area, ges.pollution
+			LEFT JOIN dept_ges dg ON dg.dept = c.department_code
+			GROUP BY c.insee_code, c.population, c.area, ges.pollution, dg.pollution
 			ORDER BY c.insee_code
 			""", nativeQuery = true)
 	List<CityTileStatsProjection> findAllForTiles();

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.homepedia.api.config.CacheConfig;
 import com.homepedia.common.indicator.GeographicLevel;
 import com.homepedia.common.indicator.IndicatorRepository;
+import com.homepedia.common.stats.StatsRepository;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -50,6 +51,8 @@ public class CountryGeoService {
 	private final ObjectMapper objectMapper;
 
 	private final IndicatorRepository indicatorRepository;
+
+	private final StatsRepository statsRepository;
 
 	private String trimmedGeoJsonCache;
 
@@ -489,6 +492,7 @@ public class CountryGeoService {
 			return;
 		}
 		final var overlay = loadCountryOverlay();
+		final var nationalGes = statsRepository.aggregateCountryPollutionScore();
 		final var resource = new ClassPathResource("data/countries.geojson");
 		try (var in = resource.getInputStream()) {
 			final var root = (ObjectNode) objectMapper.readTree(in);
@@ -538,6 +542,9 @@ public class CountryGeoService {
 				}
 				if (code != null) {
 					props.put("code", code);
+					if ("FRA".equals(code) && nationalGes != null) {
+						props.put("pollutionScore", nationalGes);
+					}
 				}
 				if (name != null) {
 					props.put("name", name);

@@ -1,5 +1,15 @@
 # app
 
+## [0.82.0] - 2026-07-08
+
+### Features
+
+- feat(map): colour France by national GES at world zoom and inherit department GES for communes without data
+
+### Bug Fixes
+
+- fix(map): drop Leaflet {r} token from CARTO basemap URLs so MapLibre GL loads raster tiles
+
 ## [0.81.0] - 2026-07-05
 
 ### Features

@@ -4,10 +4,10 @@ export type Basemap = "voyager" | "satellite";
 
 export const RASTER_TILES: Record<Basemap, string[]> = {
   voyager: [
-    "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+    "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+    "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+    "https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
   ],
   satellite: [
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
